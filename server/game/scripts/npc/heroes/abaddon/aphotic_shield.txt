@@ -1,11 +1,15 @@
-"aphotic_shield"
+""
 {
-    "AbilityType"                    "normal"
-    "AbilityBehavior"                "UNIT_TARGET"
-    "castPoint"                      "0.4"
-    "cooldown"                       "6.0"
-    "channelTime"                    "0.0"
-    "castRange"                      "500"
-    "damageAbsorb"                   "110"
-    "duration"                       "6.0"
+    "ability_aphotic_shield"
+    {
+        "ScriptFile"            "heroes/abaddon/aphotic_shield"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "UNIT_TARGET"
+        "AbilityType"           "normal"
+        "AbilityCastPoint"      "0.4"
+        "AbilityCooldown"       "6.0"
+        "AbilityCastRange"      "500"
+        "damageAbsorb"          "110"
+        "duration"              "6.0"
+    }
 }

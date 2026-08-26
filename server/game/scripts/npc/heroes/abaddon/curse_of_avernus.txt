@@ -1,0 +1,13 @@
+""
+{
+    "ability_curse_of_avernus"
+    {
+        "ScriptFile"            "heroes/abaddon/curse_of_avernus"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "PASSIVE"
+        "AbilityType"           "normal"
+        "AbilityCooldown"       "0.0"
+        "slowDuration"          "2.0"
+        "attackSlow"            "20"
+    }
+}

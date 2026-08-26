@@ -1,0 +1,15 @@
+""
+{
+    "ability_mist_coil"
+    {
+        "ScriptFile"            "heroes/abaddon/mist_coil"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "UNIT_TARGET"
+        "AbilityType"           "normal"
+        "AbilityCastPoint"      "0.2"
+        "AbilityCooldown"       "4.0"
+        "AbilityCastRange"      "600"
+        "damage"                "90"
+        "selfDamage"            "45"
+    }
+}

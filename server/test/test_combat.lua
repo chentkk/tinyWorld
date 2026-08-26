@@ -6,8 +6,8 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local entity = require "tinyworld.entity.entity"
 local defs = require "tinyworld.entity.defs"
-local caster = require "game.scripts.vscripts.combat.caster"
-local combatDamage = require "game.scripts.vscripts.combat.damage"
+local caster = require "tinyworld.combat.caster"
+local combatDamage = require "tinyworld.combat.damage"
 
 defs.register("CombatDummy", {
     name = "CombatDummy",
@@ -19,23 +19,27 @@ defs.register("CombatDummy", {
 
 local unit = entity.Entity.new(defs.get("CombatDummy"), 1, "CombatDummy")
 caster.apply(unit)
-assert(unit.combatModifiers)
+assert(unit.combatApplied)
 
--- 能力: 无光之盾(施法时间 0.4s)
-local shieldMod = require "game.scripts.vscripts.heroes.abaddon.ability_abaddon_aphotic_shield_lua"
-local shield = shieldMod.ability_abaddon_aphotic_shield_lua.new(unit, {
-    castPoint = 0.4, cooldown = 6, duration = 6, damageAbsorb = 110 })
+local abilityReg = require "game.scripts.vscripts.abilities"
+
+-- 能力数据来自 npc/, 逻辑来自 vscripts/
+local shield = assert(abilityReg.create(unit, "ability_aphotic_shield"))
 table.insert(unit.abilities, shield)
 
-local borrowedMod = require "game.scripts.vscripts.heroes.abaddon.ability_abaddon_borrowed_time_lua"
-local borrowed = borrowedMod.ability_abaddon_borrowed_time_lua.new(unit, {
-    castPoint = 0, cooldown = 40, channelTime = 3 })
+local borrowed = assert(abilityReg.create(unit, "ability_borrowed_time"))
 table.insert(unit.abilities, borrowed)
+
+-- 被动 / 立即释放技能同样按 npc 数据构建
+local mistCoil = assert(abilityReg.create(unit, "ability_mist_coil"))
+table.insert(unit.abilities, mistCoil)
+local curse = assert(abilityReg.create(unit, "ability_curse_of_avernus"))
+table.insert(unit.abilities, curse)
 
 -- 立即进入持续施法
 assert(unit:castAbility(2, nil))
 unit:updateCombat(0.1)
-assert(borrowed.state == borrowed.state and borrowed.state == "channeling" or borrowed.state == "channeling")
+assert(borrowed.state == "channeling")
 
 -- 带施法时间: 施法中尚不产生 modifier
 local target = entity.Entity.new(defs.get("CombatDummy"), 2, "CombatDummy")
@@ -43,19 +47,38 @@ caster.apply(target)
 target.hp = 500
 unit:castAbility(1, target)
 unit:updateCombat(0.2)
-assert(#target.combatModifiers == 0, "should not apply before cast point")
+assert(#target.modifiers == 0, "should not apply before cast point")
 
 unit:updateCombat(0.3) -- 达到 castPoint 0.4 后开始
 unit:updateCombat(0.1)
-assert(#target.combatModifiers == 1, "shield modifier should apply after cast point")
+assert(#target.modifiers == 1, "shield modifier should apply after cast point")
 
--- 伤害结算: hp 属性自动变化, 并触发事件
+-- 先摧毁盾, 再验证伤害结算: hp 属性自动变化, 并触发事件
+target.modifiers[1]:destroy()
+assert(#target.modifiers == 0)
 local damaged = 0
-target:on("on_damage", function(_, a, amount, t)
+target:on("combat_damage", function(_, a, amount, t)
     damaged = amount
 end)
 combatDamage.dealDamage(unit, target, 80, combatDamage.DAMAGE_TYPE.MAGICAL)
 assert(target:get("hp") == 420)
 assert(damaged == 80)
+
+-- 立即释放: 迷雾缠绕造成 90 点魔法伤害
+unit:castAbility(3, target)
+unit:updateCombat(0.2)
+assert(target:get("hp") == 330)
+
+-- modifier 增加 / 移除事件可驱动底层同步(buff view)
+local addedNames = {}
+target:on("combat_modifier_add", function(_, name, duration, stack)
+    addedNames[#addedNames + 1] = name
+end)
+shield.cooldownLeft = 0
+shield.state = "ready"
+unit:castAbility(1, target)
+unit:updateCombat(0.5) -- 超过 castPoint
+assert(#target.modifiers == 1)
+assert(addedNames[1] == "modifier_abaddon_aphotic_shield_lua")
 
 print("PASS test_combat")

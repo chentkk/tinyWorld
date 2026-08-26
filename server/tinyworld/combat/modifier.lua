@@ -1,6 +1,7 @@
--- game/scripts/vscripts/combat/modifier.lua
--- Modifier 基类(dota2 风格生命周期)。由 ability 施加到单位上,
--- 修改属性通过 PropertySchema 完成, 变更是自动同步的。
+-- tinyworld/combat/modifier.lua
+-- Modifier 基类(dota2 风格生命周期)。
+-- modifier 的 create/refresh/destroy 会通过实体事件通知上层,
+-- 由上层同步系统(如 buff 视图)统一推给客户端, 战斗框架不直接处理网络。
 
 local class = require "tinyworld.core.class"
 local M = {}
@@ -13,8 +14,11 @@ function Modifier:ctor(caster, ability, duration)
     self.duration = duration
     self.elapsed = 0
     self.destroyed = false
+    self.stack = 1
+    self.intervalThink = tonumber(ability and ability.data and ability.data.intervalThink) or 0
 end
 
+-- 以下生命周期回调由具体逻辑脚本覆盖
 function Modifier:OnCreated(params) end
 function Modifier:OnRefresh(params) end
 function Modifier:OnDestroy() end
@@ -32,7 +36,7 @@ function Modifier:update(dt)
     if self.destroyed then return end
 
     self.elapsed = self.elapsed + dt
-    if self.OnIntervalThink then
+    if self.intervalThink > 0 and self.elapsed % self.intervalThink < dt then
         self:OnIntervalThink()
     end
 
@@ -41,12 +45,19 @@ function Modifier:update(dt)
     end
 end
 
+function Modifier:refresh(params)
+    self.elapsed = 0
+    self.stack = self.stack + 1
+    self:OnRefresh(params)
+end
+
 function Modifier:destroy()
     if self.destroyed then return end
     self.destroyed = true
     self:OnDestroy()
-    if self.caster and self.caster.removeModifier then
-        self.caster:removeModifier(self)
+    local owner = self.owner or self.caster
+    if owner and owner.removeModifier then
+        owner:removeModifier(self)
     end
 end
 

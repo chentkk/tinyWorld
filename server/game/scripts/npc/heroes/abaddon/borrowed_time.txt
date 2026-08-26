@@ -1,9 +1,15 @@
-"borrowed_time"
+""
 {
-    "AbilityType"                    "ultimate"
-    "AbilityBehavior"                "NO_TARGET"
-    "castPoint"                      "0.0"
-    "cooldown"                       "40.0"
-    "channelTime"                    "3.0"
-    "duration"                       "3.0"
+    "ability_borrowed_time"
+    {
+        "ScriptFile"            "heroes/abaddon/borrowed_time"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "NO_TARGET"
+        "AbilityType"           "ultimate"
+        "AbilityCastPoint"      "0.0"
+        "AbilityCooldown"       "40.0"
+        "channelTime"           "3.0"
+        "duration"              "3.0"
+        "threshold_pct"         "30"
+    }
 }
