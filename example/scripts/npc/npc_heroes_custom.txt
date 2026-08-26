@@ -1,0 +1,508 @@
+// Dota Heroes File
+// NOTE: This is not for creating new heroes, this is for taking a currently existing hero as a template and overriding
+// the specified key-value combinations.  Use override_hero <hero_to_override> for this.
+"DOTAHeroes"
+{
+	"npc_dota_hero_silencer"
+	{
+		"Ability1"	"ability_curse_of_the_silent"
+		"Ability2"	"ability_glaives_of_wisdom"
+		"Ability3"	"ability_last_word"
+		"Ability6"	"ability_global_silence"
+	}
+
+	"npc_dota_hero_obsidian_destroyer"
+	{
+		"Ability1"	"ability_arcane_orb"
+		"Ability2"	"ability_astral_imprisonment"
+		"Ability3"	"ability_equilibrium"
+		"Ability6"	"ability_sanity_eclipse"
+	}
+
+	"npc_dota_hero_nevermore"
+	{
+		"Ability1"	"ability_shadowraze1"
+		"Ability2"	"ability_shadowraze2"
+		"Ability3"	"ability_shadowraze3"
+		"Ability4"	"ability_necromastery"
+		"Ability5"	"ability_dark_lord"
+		"Ability6"	"ability_requiem"
+	}
+
+	"npc_dota_hero_sand_king"
+	{
+		"Ability1"	"ability_burrowstrike"
+		"Ability2"	"ability_sand_storm"
+		"Ability3"	"ability_caustic_finale"
+		"Ability6"	"ability_epicenter"
+	}
+
+	"npc_dota_hero_queenofpain"
+	{
+		"Ability1"	"ability_shadow_strike"
+		"Ability2"	"ability_qop_blink"
+		"Ability3"	"ability_scream_of_pain"
+		"Ability6"	"ability_sonic_wave"
+	}
+
+	"npc_dota_hero_ogre_magi"
+	{
+		"Ability1"	"ability_fireblast"
+		"Ability2"	"ability_ignite"
+		"Ability3"	"ability_bloodlust"
+		"Ability4"	"ability_unrefined_fireblast"
+		"Ability6"	"ability_multicast"
+	}
+
+	"npc_dota_hero_naga_siren"
+	{
+		"Ability1"	"ability_mirror_image"
+		"Ability2"	"ability_ensnare"
+		"Ability3"	"ability_rip_tide"
+		"Ability6"	"ability_song_of_the_siren"
+		"Ability7"	"ability_song_of_the_siren_cancel"
+	}
+
+	"npc_dota_hero_magnataur"
+	{
+		"Ability1"	"ability_shockwave"
+		"Ability2"	"ability_empower"
+		"Ability3"	"ability_skewer"
+		"Ability6"	"ability_reverse_polarity"
+	}
+
+	"npc_dota_hero_puck"
+	{
+		"Ability1"	"ability_illusory_orb"
+		"Ability2"	"ability_waning_rift"
+		"Ability3"	"ability_phase_shift"
+		"Ability4"	"ability_ethereal_jaunt"
+		"Ability6"	"ability_dream_coil"
+	}
+
+	"npc_dota_hero_luna"
+	{
+		"Ability1"	"ability_lucent_beam"
+		"Ability2"	"ability_moon_glaive"
+		"Ability3"	"ability_lunar_blessing"
+		"Ability6"	"ability_eclipse"
+	}
+
+	"npc_dota_hero_jakiro"
+	{
+		"Ability1"	"ability_dual_breath"
+		"Ability2"	"ability_ice_path"
+		"Ability3"	"ability_liquid_fire"
+		"Ability6"	"ability_macropyre"
+	}
+
+	"npc_dota_hero_slark"
+	{
+		"Ability1"	"ability_dark_pact"
+		"Ability2"	"ability_pounce"
+		"Ability3"	"ability_essence_shift"
+		"Ability6"	"ability_shadow_dance"
+	}
+
+	"npc_dota_hero_earth_spirit"
+	{
+		"Ability1"	"ability_boulder_smash"
+		"Ability2"	"ability_rolling_boulder"
+		//"Ability3"	"ability_geomagnetic_grip"
+		"Ability4"	"ability_stone_caller"
+		"Ability6"	"ability_magnetize"
+	}
+
+	"npc_dota_hero_grimstroke"
+	{
+		"Ability1"	"ability_dark_artistry"
+		"Ability2"	"ability_ink_creature"
+		"Ability3"	"ability_spirit_walk"
+		"Ability6"	"ability_soul_chain"
+	}
+
+	"npc_dota_hero_terrorblade"
+	{
+		"Ability1"	"ability_reflection"
+		"Ability2"	"ability_conjure_image"
+		"Ability3"	"ability_metamorphosis"
+		"Ability6"	"ability_sunder"
+	}
+
+	"npc_dota_hero_shredder"
+	{
+		"Ability1"	"ability_whirling_death"
+		"Ability2"	"ability_timber_chain"
+		"Ability3"	"ability_reactive_armor"
+		"Ability4"	"ability_chakram_2"
+		"Ability6"	"ability_chakram"
+		"Ability7"	"ability_return_chakram"
+		"Ability8"	"ability_return_chakram_2"
+	}
+
+	"npc_dota_hero_tinker"
+	{
+		"Ability1"	"ability_laser"
+		"Ability2"	"ability_heat_seeking_missile"
+		"Ability3"	"ability_march_of_the_machines"
+		"Ability6"	"ability_rearm"
+	}
+
+	"npc_dota_hero_ursa"
+	{
+		"Ability1"	"ability_earthshock"
+		"Ability2"	"ability_overpower"
+		"Ability3"	"ability_fury_swipes"
+		"Ability6"	"ability_enrage"
+	}
+
+	"npc_dota_hero_skeleton_king"
+	{
+		"Ability1"	"ability_hellfire_blast"
+		"Ability2"	"ability_vampiric_aura"
+		"Ability3"	"ability_mortal_strike"
+		"Ability6"	"ability_reincarnation"
+	}
+
+	"npc_dota_hero_medusa"
+	{
+		"Ability1"	"ability_split_shot"
+		"Ability2"	"ability_mystic_snake"
+		"Ability3"	"ability_mana_shield"
+		"Ability6"	"ability_stone_gaze"
+	}
+
+	"npc_dota_hero_leshrac"
+	{
+		"Ability1"	"ability_split_earth"
+		"Ability2"	"ability_diabolic_edict"
+		"Ability3"	"ability_lightning_storm"
+		"Ability6"	"ability_pulse_nova"
+	}
+
+	"npc_dota_hero_enigma"
+	{
+		"Ability1"	"ability_malefice"
+		"Ability2"	"ability_demonic_conversion"
+		"Ability3"	"ability_midnight_pulse"
+		"Ability6"	"ability_black_hole"
+	}
+
+	"npc_dota_hero_enchantress"
+	{
+		"Ability1"	"ability_impetus"
+		"Ability2"	"ability_enchant"
+		"Ability3"	"ability_natures_attendants"
+		"Ability6"	"ability_untouchable"
+	}
+
+	"npc_dota_hero_dragon_knight"
+	{
+		"Ability1"	"ability_breathe_fire"
+		"Ability2"	"ability_dragon_tail"
+		"Ability3"	"ability_dragon_blood"
+		"Ability6"	"ability_elder_dragon_form"
+	}
+
+	"npc_dota_hero_doom_bringer"
+	{
+		"Ability1"	"ability_devour"
+		"Ability2"	"ability_scorched_earth"
+		"Ability3"	"ability_infernal_blade"
+		"Ability6"	"ability_doom"
+	}
+
+	"npc_dota_hero_dark_seer"
+	{
+		"Ability1"	"ability_vacuum"
+		"Ability2"	"ability_ion_shell"
+		"Ability3"	"ability_surge"
+		"Ability6"	"ability_wall_of_replica"
+	}
+
+	"npc_dota_hero_abaddon"
+	{
+		"Ability1"	"ability_mist_coil"
+		"Ability2"	"ability_aphotic_shield"
+		"Ability3"	"ability_curse_of_avernus"
+		"Ability6"	"ability_borrowed_time"
+	}
+
+	"npc_dota_hero_abyssal_underlord"
+	{
+		"Ability1"	"ability_firestorm"
+		"Ability2"	"ability_pit_of_malice"
+		"Ability3"	"ability_atrophy_aura"
+		"Ability3"	"ability_dark_rift"
+	}
+
+	"npc_dota_hero_alchemist"
+	{
+		"Ability1"		"ability_acid_spray"
+		"Ability2"		"ability_unstable_concoction"
+		"Ability3"		"ability_goblins_greed"
+		"Ability4"		"ability_unstable_concoction_throw"
+		"Ability6"		"ability_chemical_rage"
+	}
+	"npc_dota_hero_axe"
+	{
+		"Ability1"		"ability_berserkers_call"
+		"Ability2"		"ability_battle_hunger"
+		"Ability3"		"ability_counter_helix"
+		"Ability6"		"ability_culling_blade"
+	}
+
+    "npc_dota_hero_brewmaster"
+    {
+        "Ability1"      "ability_thunder_clap"
+        "Ability2"      "ability_cinder_brew"
+        "Ability3"      "ability_drunken_brawler"
+        "Ability6"     "ability_primal_split"
+    }
+
+	"npc_dota_hero_centaur"
+	{
+		"Ability1"		"ability_hoof_stomp"
+		"Ability2"		"ability_double_edge"
+		"Ability3"		"ability_centaur_return"
+		"Ability6"		"ability_stampede"
+	}
+
+	"npc_dota_hero_bristleback"
+	{
+		"Ability1"		"ability_viscous_nasal_goo"
+		"Ability2"		"ability_quill_spray"
+		"Ability3"		"ability_bristleback"
+		"Ability6"		"ability_warpath"
+	}
+
+	"npc_dota_hero_chaos_knight"
+	{
+		"Ability1"		"ability_chaos_bolt"
+		"Ability2"		"ability_reality_rift"
+		"Ability3"		"ability_chaos_strike"
+		"Ability6"		"ability_phantasm"
+	}
+
+	"npc_dota_hero_rattletrap"
+	{
+		"Ability1"		"ability_battery_assault"
+		"Ability2"		"ability_power_cogs"
+		"Ability3"		"ability_rocket_flare"
+		"Ability6"		"ability_hookshot"
+	}
+
+	"npc_dota_hero_bane"
+	{
+		"Ability1"		"ability_nightmare"
+		"Ability2"		"ability_brain_sap"
+		"Ability3"		"ability_enfeeble"
+		"Ability6"		"ability_fiends_grip"
+		"Ability7"		"ability_nightmare_end"
+	}
+
+	"npc_dota_hero_crystal_maiden"
+	{
+		"Ability1"		"ability_crystal_nova"
+		"Ability2"		"ability_frostbite"
+		"Ability3"		"ability_brilliance_aura"
+		"Ability6"		"ability_freezing_field"
+	}
+
+	"npc_dota_hero_dark_willow"
+	{
+		"Ability1"		"ability_bramble_maze"
+		"Ability2"		"ability_shadow_realm"
+		"Ability3"		"ability_cursed_crown"
+		"Ability4"		"ability_bedlam"
+		"Ability6"		"ability_terrorize"
+	}
+
+	"npc_dota_hero_dazzle"
+	{
+		"Ability1"		"ability_poison_touch"
+		"Ability2"		"ability_shallow_grave"
+		"Ability3"		"ability_shadow_wave"
+		"Ability4"		"generic_hidden"
+		"Ability5"		"generic_hidden"
+		"Ability6"		"ability_bad_juju"
+	}
+
+	"npc_dota_hero_spectre"
+	{
+		"Ability1"		"ability_spectral_dagger"
+		"Ability2"		"ability_desolate"
+		"Ability3"		"ability_dispersion"
+		"Ability4"		"ability_reality"
+		"Ability5"		"generic_hidden"
+		"Ability6"		"ability_haunt"
+	}
+
+	"npc_dota_hero_vengefulspirit"
+	{
+		"Ability1"		"ability_magic_missile"
+		"Ability2"		"ability_wave_of_terror"
+		"Ability3"		"ability_command_aura"
+		"Ability4"		"generic_hidden"
+		"Ability5"		"generic_hidden"
+		"Ability6"		"ability_nether_swap"
+	}
+	"npc_dota_hero_bloodseeker"
+	{
+		"Ability1"      "ability_bloodseeker_bloodrage"
+		"Ability2"      "ability_bloodseeker_blood_bath"
+		"Ability3"      "ability_bloodseeker_thirst"
+		"Ability4"      "generic_hidden"
+		"Ability5"      "generic_hidden"
+		"Ability6"      "ability_bloodseeker_rupture"
+	}
+	"npc_dota_hero_zuus"
+	{
+		"Ability1"      "ability_zuus_arc_lightning"
+		"Ability2"      "ability_zuus_lightning_bolt"
+		"Ability3"      "ability_zuus_static_field"
+		"Ability4"      "zuus_cloud"
+		"Ability5"      "generic_hidden"
+		"Ability6"      "ability_zuus_thundergods_wrath"
+	}
+	"npc_dota_hero_sven"
+    {
+        "Ability1"      "ability_sven_storm_bolt"
+        "Ability2"      "ability_sven_great_cleave"
+        "Ability3"      "ability_sven_warcry"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_sven_gods_strength"
+    }
+    "npc_dota_hero_lina"
+    {
+        "Ability1"      "ability_lina_dragon_slave"
+        "Ability2"      "ability_lina_light_strike_array"
+        "Ability3"      "ability_lina_fiery_soul"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_lina_laguna_blade"
+    }
+
+    "npc_dota_hero_disruptor"
+    {
+        "Ability1"      "ability_disruptor_thunder_strike"
+        "Ability2"      "ability_disruptor_glimpse"
+        "Ability3"      "ability_disruptor_kinetic_field"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_disruptor_static_storm"
+    }
+
+    "npc_dota_hero_phantom_assassin"
+    {
+        "Ability1"      "ability_phantom_assassin_stifling_dagger"
+        "Ability2"      "ability_phantom_assassin_phantom_strike"
+        "Ability3"      "ability_phantom_assassin_blur"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_phantom_assassin_coup_de_grace"
+    }
+
+    "npc_dota_hero_lion"
+    {
+        "Ability1"      "ability_lion_impale"
+        "Ability2"      "ability_lion_voodoo"
+        "Ability3"      "ability_lion_mana_drain"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_lion_finger_of_death"
+    }
+
+    "npc_dota_hero_sniper"
+    {
+        "Ability1"      "ability_sniper_shrapnel"
+        "Ability2"      "ability_sniper_headshot"
+        "Ability3"      "ability_sniper_take_aim"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_sniper_assassinate"
+    }
+
+	"npc_dota_hero_skywrath_mage"
+	{
+		"Ability1"		"ability_skywrath_mage_arcane_bolt"
+		"Ability2"		"ability_skywrath_mage_concussive_shot"
+		"Ability3"		"ability_skywrath_mage_ancient_seal"
+		"Ability6"		"ability_skywrath_mage_mystic_flare"
+	}
+
+	"npc_dota_hero_slardar"
+	{
+		"Ability1"		"ability_slardar_sprint"
+		"Ability2"		"ability_slardar_slithereen_crush"
+		"Ability3"		"ability_slardar_bash"
+		"Ability6"		"ability_slardar_amplify_damage"
+	}
+
+	"npc_dota_hero_storm_spirit"
+	{
+		"Ability1"		"ability_storm_spirit_static_remnant"
+		"Ability2"		"ability_storm_spirit_electric_vortex"
+		"Ability3"		"ability_storm_spirit_overload"
+		"Ability6"		"ability_storm_spirit_ball_lightning"
+	}
+	
+	"npc_dota_hero_nyx_assassin"
+    {
+        "Ability1"      "ability_nyx_assassin_impale"
+        "Ability2"      "ability_nyx_assassin_mana_burn"
+        "Ability3"      "ability_nyx_assassin_spiked_carapace"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_nyx_assassin_vendetta"
+    }
+
+    "npc_dota_hero_tidehunter"
+    {
+        "Ability1"      "ability_tidehunter_gush"
+        "Ability2"      "ability_tidehunter_kraken_shell"
+        "Ability3"      "ability_tidehunter_anchor_smash"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_tidehunter_ravage"
+    }
+
+    "npc_dota_hero_viper"
+    {
+        "Ability1"      "ability_viper_poison_attack"
+        "Ability2"      "ability_viper_nethertoxin"
+        "Ability3"      "ability_viper_corrosive_skin"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_viper_viper_strike"
+    }
+
+    "npc_dota_hero_omniknight"
+    {
+        "Ability1"      "ability_omniknight_purification"
+        "Ability2"      "ability_omniknight_repel"
+        "Ability3"      "ability_omniknight_degen_aura"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_omniknight_guardian_angel"
+    }
+
+    "npc_dota_hero_drow_ranger"
+    {
+        "Ability1"      "ability_drow_ranger_frost_arrows"
+        "Ability2"      "ability_drow_ranger_wave_of_silence"
+        "Ability3"      "ability_drow_ranger_multishot"
+        "Ability4"      "generic_hidden"
+        "Ability5"      "generic_hidden"
+        "Ability6"      "ability_drow_ranger_marksmanship"
+    }
+
+	"npc_dota_hero_weaver"
+	{
+		"Ability1"	"ability_the_swarm"
+		"Ability2"	"ability_shukuchi"
+		"Ability3"	"ability_geminate_attack"
+		"Ability6"	"ability_time_lapse"
+	}
+}

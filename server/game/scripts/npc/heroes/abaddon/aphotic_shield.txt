@@ -1,0 +1,11 @@
+"aphotic_shield"
+{
+    "AbilityType"                    "normal"
+    "AbilityBehavior"                "UNIT_TARGET"
+    "castPoint"                      "0.4"
+    "cooldown"                       "6.0"
+    "channelTime"                    "0.0"
+    "castRange"                      "500"
+    "damageAbsorb"                   "110"
+    "duration"                       "6.0"
+}

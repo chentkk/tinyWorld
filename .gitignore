@@ -1,0 +1,11 @@
+# engine / runtime
+server/skynet/
+
+# logs
+*.log
+server/game/logs/
+client/logs/
+
+# artifacts
+*.so
+core

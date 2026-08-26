@@ -1,0 +1,9 @@
+"borrowed_time"
+{
+    "AbilityType"                    "ultimate"
+    "AbilityBehavior"                "NO_TARGET"
+    "castPoint"                      "0.0"
+    "cooldown"                       "40.0"
+    "channelTime"                    "3.0"
+    "duration"                       "3.0"
+}
