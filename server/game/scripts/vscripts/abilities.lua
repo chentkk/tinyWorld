@@ -3,7 +3,7 @@
 -- 具体技能逻辑只存在于 scripts 目录; 战斗核心框架位于 tinyworld/combat。
 
 local kv = require "game.scripts.vscripts.kv"
-local M = {}
+local registry = {}
 
 -- 技能名(与 npc 内 key 一致) -> npc 文件路径
 local npcPath = {
@@ -13,7 +13,7 @@ local npcPath = {
     ability_curse_of_avernus = "game/scripts/npc/heroes/abaddon/curse_of_avernus.txt",
 }
 
-function M.create(caster, abilityName)
+function registry.create(caster, abilityName)
     local path = npcPath[abilityName]
     if not path then return nil, "unknown ability " .. tostring(abilityName) end
 
@@ -32,4 +32,4 @@ function M.create(caster, abilityName)
     return ability
 end
 
-return M
+return registry

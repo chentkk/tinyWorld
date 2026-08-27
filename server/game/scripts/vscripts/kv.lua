@@ -2,7 +2,7 @@
 -- 极简 dota KV 解析器, 读取 npc/ 下的能力数据定义。
 -- 支持 "DOTAAbilities" 外层块与按能力名切开内层数据。
 
-local M = {}
+local kv = {}
 
 local function block(text, name)
     local startPos = text:find('"' .. name .. '"', 1, true)
@@ -39,7 +39,7 @@ local function parseBlock(body)
 end
 
 -- path 形如 "game/scripts/npc/heroes/abaddon/abaddon_aphotic_shield.txt" 或 npaths
-function M.load(path, abilityName)
+function kv.load(path, abilityName)
     local file = io.open(path, "r")
     if not file then return nil end
     local text = file:read("*a")
@@ -54,8 +54,8 @@ function M.load(path, abilityName)
     return data
 end
 
-function M.loadAbility(npcPath, abilityName)
-    return M.load(npcPath, abilityName)
+function kv.loadAbility(npcPath, abilityName)
+    return kv.load(npcPath, abilityName)
 end
 
-return M
+return kv
