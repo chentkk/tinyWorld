@@ -42,7 +42,7 @@ local function drawPanel(title, children, cols, x, y, w, h)
     end
 end
 
-function M.draw()
+function M.draw(entityId)
     for _, b in ipairs(buttons) do
         love.graphics.setColor(0.3, 0.6, 0.9, 0.9)
         love.graphics.rectangle("fill", b.x, b.y, b.w, b.h)
@@ -51,11 +51,11 @@ function M.draw()
     end
 
     if M.panelsOpen.bag then
-        local bag = views.get("bag")
+        local bag = views.get(entityId, "bag")
         if bag then drawPanel("bag", bag.children, 5, 120, 30, 340, 150) end
     end
     if M.panelsOpen.equipment then
-        local eq = views.get("equipment")
+        local eq = views.get(entityId, "equipment")
         if eq then drawPanel("equipment", eq.children, 3, 120, 200, 220, 110) end
     end
 end

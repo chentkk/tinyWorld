@@ -239,7 +239,7 @@ function love.draw()
     end
 
     -- 任务表格(当前任务)
-    local cur = records.get("current_tasks")
+    local cur = records.get(net.selfId, "current_tasks")
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("tasks: " .. tostring(0), 10, 120)
     local i = 0
@@ -256,7 +256,7 @@ function love.draw()
         end
     end
 
-    ui.draw()
+    ui.draw(net.selfId)
 end
 
 function love.keypressed(key)

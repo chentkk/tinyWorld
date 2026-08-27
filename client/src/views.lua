@@ -3,18 +3,27 @@
 
 local M = {}
 
-M.views = {} -- name -> { id -> childData, props }
+M.views = {} -- entityId -> { name -> { props, children } }
 
-M.onChange = nil -- function(viewName, op)
+M.onChange = nil -- function(entityId, viewName, op)
 
 function M.apply(msg)
+    local entityId = msg.d and msg.d.entityId
+    if not entityId then return end
+
     local name = msg.n
     local d = msg.d or {}
     for _, op in ipairs(d.ops or {}) do
-        local view = M.views[name]
+        local byName = M.views[entityId]
+        if not byName then
+            byName = {}
+            M.views[entityId] = byName
+        end
+
+        local view = byName[name]
         if not view then
             view = { props = {}, children = {} }
-            M.views[name] = view
+            byName[name] = view
         end
 
         if op.type == "add" then
@@ -30,16 +39,18 @@ function M.apply(msg)
             for k, v in pairs(op.data or {}) do view.props[k] = v end
         end
 
-        if M.onChange then M.onChange(name, op) end
+        if M.onChange then M.onChange(entityId, name, op) end
     end
 end
 
-function M.get(viewName)
-    return M.views[viewName]
+function M.get(entityId, viewName)
+    local byName = M.views[entityId]
+    return byName and byName[viewName]
 end
 
-function M.clear(viewName)
-    M.views[viewName] = nil
+function M.clear(entityId, viewName)
+    local byName = M.views[entityId]
+    if byName then byName[viewName] = nil end
 end
 
 return M

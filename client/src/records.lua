@@ -3,15 +3,24 @@
 
 local M = {}
 
-M.records = {} -- name -> { key -> row }
+M.records = {} -- entityId -> { name -> { key -> row } }
 
 function M.apply(msg)
+    local entityId = msg.d and msg.d.entityId
+    if not entityId then return end
+
     local name = msg.n
     local d = msg.d or {}
-    local rec = M.records[name]
+    local byName = M.records[entityId]
+    if not byName then
+        byName = {}
+        M.records[entityId] = byName
+    end
+
+    local rec = byName[name]
     if not rec then
         rec = {}
-        M.records[name] = rec
+        byName[name] = rec
     end
 
     for _, op in ipairs(d.ops or {}) do
@@ -28,8 +37,9 @@ function M.apply(msg)
     end
 end
 
-function M.get(name)
-    return M.records[name] or {}
+function M.get(entityId, name)
+    local byName = M.records[entityId]
+    return byName and byName[name] or {}
 end
 
 return M
