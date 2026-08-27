@@ -145,6 +145,7 @@ function GhostEntity:ctor(def, id, kind, space, cell, realId, x, y)
 end
 
 function GhostEntity:stageProp(name, value)
+    if self.props:get(name) == value then return end
     self.props:set(name, value)
     self.stageProps[name] = value
 end

@@ -169,7 +169,7 @@ function LocalSpace:neighborNeedsGhost(neighborInfo)
         return cell.playerCount > 0
     end
 
-    -- 远端 cell 是否有玩家由远端维护: 保守地请求, 远端自行判断
+    -- 远端 cell 是否有玩家由远端在 onGhostCreate 里兜底
     return true
 end
 
@@ -214,6 +214,7 @@ function LocalSpace:onGhostCreate(cellKey, req)
 
     local ghost = self:findGhost(req.realId, cellKey)
     if ghost then return true end
+    if cell.playerCount == 0 then return false end
 
     local def = defs.get(req.kind)
     if not def then return false end

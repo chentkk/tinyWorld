@@ -54,7 +54,7 @@ end
 function Cell:sendToAround(entity, msg)
     local around = self.aoi:query(entity.x, entity.y)
     for _, other in ipairs(around) do
-        if other.kind == "Player" and other.isReal and other.baseApp then
+        if other ~= entity and other.kind == "Player" and other.isReal and other.baseApp then
             self.app:sendToClient(other, msg)
         end
     end
