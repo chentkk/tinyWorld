@@ -313,6 +313,7 @@ function Cell:migrateRemote(real, ideal)
     real.cell:removeEntity(real)
 
     local peers = self:collectGhostPeers(real)
+    self:reparentOldGhosts(real, ideal, peers)
     self.app:send(ideal.appId, "ghost_promote", self.space.spaceId, ideal.id, real.id, {
         fromApp = self.app.appId,
         witnessCellKey = real.cell.info.id,
@@ -324,10 +325,39 @@ function Cell:migrateRemote(real, ideal)
     real.migrating = nil
 end
 
+-- 迁移前显式通知所有旧 ghost: real 换到新的 app/cell
+function Cell:reparentOldGhosts(real, ideal, peers)
+    for _, peer in ipairs(peers) do
+        if peer.app == self.app.appId then
+            local cell = self.space:getCell(peer.cellKey)
+            local ghost = cell and cell:findGhost(real.id)
+            if ghost then
+                ghost:reparent(ideal.appId, ideal.id)
+                self:ghostLog("reparent local ghost real=%d ghost=%d -> app=%d cell=%s",
+                    real.id, ghost.id, ideal.appId, ideal.id)
+            end
+        else
+            self.app:send(peer.app, "ghost_reparent", self.space.spaceId,
+                peer.cellKey, real.id, ideal.appId, ideal.id)
+            self:ghostLog("request reparent ghost real=%d app=%d cell=%s -> app=%d cell=%s",
+                real.id, peer.app, peer.cellKey, ideal.appId, ideal.id)
+        end
+    end
+end
+
 function Cell:collectGhostPeers(real)
     local peers = {}
     for _, info in pairs(real.ghosts) do
-        peers[#peers + 1] = { app = info.app, cellKey = info.cellKey, sameApp = info.sameApp }
+        local ghostId
+        if info.app == self.app.appId then
+            local cell = self.space:getCell(info.cellKey)
+            local ghost = cell and cell:findGhost(real.id)
+            ghostId = ghost and ghost.id
+        end
+        peers[#peers + 1] = {
+            app = info.app, cellKey = info.cellKey, sameApp = info.sameApp,
+            ghostId = ghostId,
+        }
     end
     return peers
 end

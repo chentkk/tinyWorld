@@ -240,6 +240,12 @@ function cmd.ghost_promote(spaceId, cellKey, realId, req)
     return true
 end
 
+function cmd.ghost_reparent(spaceId, cellKey, realId, realApp, realCellKey)
+    local cell = selfApp.localSpace:getCell(cellKey)
+    local ghost = cell and cell:findGhost(realId)
+    if ghost then ghost:reparent(realApp, realCellKey) end
+end
+
 function cmd.ghost_sync(spaceId, cellKey, realId, props)
     local cell = selfApp.localSpace:getCell(cellKey)
     if cell then cell:applyRemoteGhostSync(realId, props) end

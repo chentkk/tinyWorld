@@ -44,6 +44,12 @@ function GhostEntity:callReal(method, data)
         self.space.spaceId, self.realCellKey, self.realId, method, data)
 end
 
+-- real 跨 cell 迁移后, 旧 ghost 的 real 换到新的 app/cell
+function GhostEntity:reparent(realApp, realCellKey)
+    self.realApp = realApp
+    self.realCellKey = realCellKey
+end
+
 function GhostEntity:applyOutbox(outbox)
     outbox = outbox or {}
 
