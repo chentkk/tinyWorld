@@ -26,6 +26,7 @@ function Cell:ctor(cellInfo, app, space)
     self.app = app
     self.space = space
     self.entities = {}
+    self.players = {}
     self.aoi = aoiMod.new(app.spaceConfig.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
 end
@@ -43,6 +44,9 @@ function Cell:addEntity(entity)
     if entity.kind == "Player" and entity.isReal then
         self.playerCount = self.playerCount + 1
     end
+    if entity.kind == "Player" and entity.isReal then
+        self.players[entity.id] = entity
+    end
     entity:onEnterCell(self)
 end
 
@@ -53,6 +57,9 @@ function Cell:removeEntity(entity)
     self.aoi:leave(entity, entity.x, entity.y)
     if entity.kind == "Player" and entity.isReal then
         self.playerCount = self.playerCount - 1
+    end
+    if entity.kind == "Player" and entity.isReal then
+        self.players[entity.id] = nil
     end
     entity:onLeaveCell(self)
 end
@@ -89,10 +96,8 @@ function Cell:updateEntities(dt)
 end
 
 function Cell:updateVisibilities()
-    for _, player in pairs(self.entities) do
-        if player.isReal and player.kind == "Player" then
-            self:updatePlayerVisibility(player)
-        end
+    for _, player in pairs(self.players) do
+        self:updatePlayerVisibility(player)
     end
 end
 
@@ -185,10 +190,8 @@ function Cell:sendViewOps(player, entity, name, ops)
 end
 
 function Cell:deliverOutboxes()
-    for _, player in pairs(self.entities) do
-        if player.isReal and player.kind == "Player" then
-            self:deliverToPlayer(player)
-        end
+    for _, player in pairs(self.players) do
+        self:deliverToPlayer(player)
     end
 end
 

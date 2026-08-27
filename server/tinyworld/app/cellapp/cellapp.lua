@@ -158,9 +158,11 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     local def = defs.get(kind)
     if not def then return nil, "unknown kind " .. tostring(kind) end
 
-    local entityId = selfApp:nextId()
+    -- 玩家 cell entity 使用 playerId(全服唯一), 其他对象(怪物/projectile)使用 app 分配 id
+    local playerId = data and data.playerId
+    local entityId = playerId or selfApp:nextId()
     local real = RealEntity.new(def, entityId, kind, selfApp.localSpace, cell)
-    real.playerId = data and data.playerId
+    real.playerId = playerId
     real.cellInitData = data and data.initData
     local x = data and data.x or cell.info.x + cell.info.w / 2
     local y = data and data.y or cell.info.y + cell.info.h / 2
