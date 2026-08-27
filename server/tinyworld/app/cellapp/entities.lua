@@ -4,6 +4,7 @@
 -- ghost 在下一个 tick 把变更发给周围玩家。
 
 local entityMod = require "tinyworld.entity.entity"
+local combatUnit = require "tinyworld.combat.unit"
 local class = require "tinyworld.core.class"
 local M = {}
 
@@ -24,7 +25,8 @@ M.clientProps = clientProps
 -- 下发对象新增 message
 function M.objectAddMsg(entity)
     return { t = "object", n = "add", d = {
-        entityId = entity.clientId or entity.id, kind = entity.kind, props = clientProps(entity) } }
+        entityId = entity.clientId or entity.id, kind = entity.kind, props = clientProps(entity),
+        modifiers = combatUnit.modifiersSnapshot(entity) } }
 end
 
 function M.objectRemoveMsg(entity)
@@ -47,6 +49,7 @@ function RealEntity:ctor(def, id, kind, space, cell, x, y)
     self.moving = false
     self.lastMigrateTime = 0
     self.baseApp = nil
+    self.readyForSync = false
     self.extra = {}
 end
 

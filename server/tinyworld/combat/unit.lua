@@ -5,6 +5,20 @@
 
 local M = {}
 
+function M.modifiersSnapshot(unit)
+    local out = {}
+    for _, mod in ipairs(unit.modifiers or {}) do
+        out[#out + 1] = {
+            name = mod:GetModifierName(),
+            duration = mod.duration,
+            stack = mod.stack,
+        }
+    end
+    return out
+end
+
+M.snapshot = M.modifiersSnapshot
+
 function M.apply(unit)
     if unit.combatApplied then return unit end
     unit.combatApplied = true

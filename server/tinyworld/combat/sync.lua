@@ -48,6 +48,8 @@ end
 -- 需要 cell 上下文, 实体进入 cell 后才可用
 function CombatSync:push(method, data)
     local entity = self.entity
+    if not entity.readyForSync then return end
+
     local cell = entity.cell
     if not cell then return end
 

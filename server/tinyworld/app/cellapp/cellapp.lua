@@ -176,9 +176,13 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
 
     cell:addEntity(real)
     selfApp:indexReal(real)
+    real.readyForSync = true
 
+    local combatUnit = require "tinyworld.combat.unit"
     local props = entities.clientProps(real)
-    return { entityId = entityId, cellKey = cellKey, kind = kind, props = props }
+    local modifiers = combatUnit.modifiersSnapshot(real)
+    return { entityId = entityId, cellKey = cellKey, kind = kind, props = props,
+             modifiers = modifiers }
 end
 
 function cmd.call_cell_rpc(spaceId, entityId, cellKey, name, data)
