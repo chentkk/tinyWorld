@@ -248,21 +248,82 @@ function Cell:updatePlayerVisibility(player)
 end
 
 -- cell 内部维护: 检查本 cell 中的 real 是否该跨 cell
+-- 迁移策略: 目标 cell 与抑制参数都在 Cell 内部处理
+function Cell:shouldMigrate(real, ideal)
+    local cfg = self.space.config
+    if real.x - ideal.x < cfg.hysteresis then return false end
+    if ideal.x + ideal.w - real.x < cfg.hysteresis then return false end
+    if real.y - ideal.y < cfg.hysteresis then return false end
+    if ideal.y + ideal.h - real.y < cfg.hysteresis then return false end
+
+    return self.app:now() - real.lastMigrateTime >= cfg.minMigrateInterval
+end
+
 function Cell:checkMigrations()
     local toMigrate = {}
-    local space = self.space
     for _, real in pairs(self.entities) do
         if real.isReal and not real.migrating then
-            local ideal = space.config:cellAt(real.x, real.y)
-            if ideal.id ~= self.info.id and space:shouldMigrate(real, ideal) then
+            local ideal = self.space.config:cellAt(real.x, real.y)
+            if ideal.id ~= self.info.id and self:shouldMigrate(real, ideal) then
                 toMigrate[#toMigrate + 1] = { real = real, ideal = ideal }
             end
         end
     end
 
     for _, item in ipairs(toMigrate) do
-        space:migrateEntity(item.real, item.ideal)
+        self:migrateEntity(item.real, item.ideal)
     end
+end
+
+-- 目标 cell 在本 cellapp: 直接换 cell 并留 witness
+-- 目标 cell 在别的 cellapp: 走远端迁移协议(消息边界仍是 app 收发)
+function Cell:migrateEntity(real, ideal)
+    real.lastMigrateTime = self.app:now()
+
+    local target = self.space:getCell(ideal.id)
+    if target then
+        real.cell:leaveWitness(real)
+        real.cell:removeEntity(real)
+        real.cell = target
+        target:addEntity(real)
+        return
+    end
+
+    self:migrateRemote(real, ideal)
+end
+
+function Cell:migrateRemote(real, ideal)
+    real.migrating = true
+    local snapshot = real:ghostSnapshot()
+
+    local ok = self.app:call(ideal.appId, "ghost_create", self.space.spaceId, ideal.id, {
+        realId = real.id, kind = real.kind, x = real.x, y = real.y,
+        snapshot = snapshot, fromApp = self.app.appId,
+        ownerCellKey = self.info.id, promote = true,
+    })
+    if not ok then
+        real.migrating = false
+        return
+    end
+
+    real.cell:leaveWitness(real)
+    real.cell:removeEntity(real)
+
+    local peers = self:collectGhostPeers(real)
+    self.app:send(ideal.appId, "ghost_promote", self.space.spaceId, ideal.id, real.id, {
+        fromApp = self.app.appId,
+        witnessCellKey = real.cell.info.id,
+        peers = peers,
+    })
+    real.migrating = nil
+end
+
+function Cell:collectGhostPeers(real)
+    local peers = {}
+    for _, info in pairs(real.ghosts) do
+        peers[#peers + 1] = { app = info.app, cellKey = info.cellKey, sameApp = info.sameApp }
+    end
+    return peers
 end
 
 -- 为 neighbor cell 有玩家的地方维护 real 的 ghost

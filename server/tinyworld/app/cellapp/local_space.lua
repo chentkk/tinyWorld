@@ -1,9 +1,10 @@
 -- tinyworld/app/cellapp/local_space.lua
--- 局部的 space: 管理本 cellapp 运行的 cell 集合。
--- 职责边界:
---   - 集合容器与 tick 驱动
---   - cellapp 之间的 ghost / 迁移协议协调
---   - 单一 cell 内部逻辑(迁移检查、ghost 维护、打包)归属 Cell
+-- 局部的 space: 仅作为数据边界。
+-- 提供:
+--   - 本 cellapp 上运行的 cell 集合
+--   - space 公共数据(网格 / cell 划分 / aoi 等)
+--   - 远端 cellapp 发来的 ghost 协议入口
+-- 迁移策略 / ghost 维护 / 属性广播等行为都归属 Cell。
 
 local class = require "tinyworld.core.class"
 local cellMod = require "tinyworld.app.cellapp.cell"
@@ -42,74 +43,6 @@ function LocalSpace:tick(dt)
     end
 end
 
--- 抗抖动策略: 是否允许 real 从当前 cell 迁入 ideal
-function LocalSpace:shouldMigrate(real, ideal)
-    local info = ideal
-    if real.x - info.x < self.config.hysteresis then return false end
-    if info.x + info.w - real.x < self.config.hysteresis then return false end
-    if real.y - info.y < self.config.hysteresis then return false end
-    if info.y + info.h - real.y < self.config.hysteresis then return false end
-
-    if self.app:now() - real.lastMigrateTime < self.config.minMigrateInterval then
-        return false
-    end
-    return true
-end
-
-function LocalSpace:migrateEntity(real, ideal)
-    real.lastMigrateTime = self.app:now()
-
-    local sourceCell = real.cell
-    local targetCell = self.byKey[ideal.id]
-    if sourceCell and targetCell then
-        -- 同 cellapp 迁移: 旧 cell 留下 witness ghost
-        sourceCell:leaveWitness(real)
-        sourceCell:removeEntity(real)
-        real.cell = targetCell
-        targetCell:addEntity(real)
-        return true
-    end
-
-    return self:startRemoteMigration(real, ideal)
-end
-
--- 跨 cellapp 迁移: 先在目标 app 建 ghost, 再降级为 witness, 最后提升
-function LocalSpace:startRemoteMigration(real, ideal)
-    real.migrating = true
-    local snapshot = real:ghostSnapshot()
-
-    local ok = self.app:call(ideal.appId, "ghost_create", self.spaceId, ideal.id, {
-        realId = real.id, kind = real.kind, x = real.x, y = real.y,
-        snapshot = snapshot, fromApp = self.app.appId,
-        ownerCellKey = real.cell.info.id, promote = true,
-    })
-
-    if not ok then
-        real.migrating = false
-        return false
-    end
-
-    real.cell:leaveWitness(real)
-    real.cell:removeEntity(real)
-
-    local peers = self:collectGhostPeers(real)
-    self.app:send(ideal.appId, "ghost_promote", self.spaceId, ideal.id, real.id, {
-        fromApp = self.app.appId,
-        witnessCellKey = real.cell.info.id,
-        peers = peers,
-    })
-    real.migrating = nil
-    return true
-end
-
-function LocalSpace:collectGhostPeers(real)
-    local peers = {}
-    for _, info in pairs(real.ghosts) do
-        peers[#peers + 1] = { app = info.app, cellKey = info.cellKey, sameApp = info.sameApp }
-    end
-    return peers
-end
-
 -- 远端 cellapp 请求在本 cell 创建一个 ghost
 function LocalSpace:onGhostCreate(cellKey, req)
     local cell = self.byKey[cellKey]
@@ -134,7 +67,7 @@ function LocalSpace:onGhostCreate(cellKey, req)
     return true
 end
 
--- ghost 提升为 real(跨 cellapp 迁移终点)
+-- 远端迁移结束: ghost 在本 cell 提升为 real
 function LocalSpace:onGhostPromote(cellKey, realId, req)
     local cell = self.byKey[cellKey]
     if not cell then return false end
@@ -142,8 +75,7 @@ function LocalSpace:onGhostPromote(cellKey, realId, req)
     local ghost = cell:findGhost(realId)
     if not ghost then return false end
 
-    local def = ghost.def
-    local real = entities.RealEntity.new(def, realId, ghost.kind, self, cell, ghost.x, ghost.y)
+    local real = entities.RealEntity.new(ghost.def, realId, ghost.kind, self, cell, ghost.x, ghost.y)
     real.props:load(ghost.props:dump())
 
     real.ghosts = {}
@@ -179,8 +111,8 @@ function LocalSpace:onGhostDestroy(cellKey, realId)
     if ghost then cell:removeEntity(ghost) end
 end
 
--- real 属性变更后广播给所有 ghost。
--- 本地 ghost 立即 stage, 远端 ghost 通过 cellapp 服务消息 stage。
+-- 边界出口: real 的 dirty 属性同步给所有 ghost
+-- 本地 ghost 直接 stage, 远端 ghost 通过 cellapp 消息 stage
 function LocalSpace:broadcastGhost(real, props)
     for _, info in pairs(real.ghosts) do
         if info.sameApp then
