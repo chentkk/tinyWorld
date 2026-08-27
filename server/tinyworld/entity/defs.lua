@@ -2,13 +2,13 @@
 -- 对象定义注册表。game 启动时按 kind 注册 *_def 文件,
 -- cellapp / baseapp 通过 kind 取得编译后的定义。
 
-local entity = require "tinyworld.entity.entity"
+local compileDef = require "tinyworld.entity.entity_def"
 local M = {}
 
 M.registry = {}
 
 function M.register(kind, defModuleOrTable)
-    local def = entity.compileDef(defModuleOrTable)
+    local def = compileDef(defModuleOrTable)
     M.registry[kind] = def
     return def
 end

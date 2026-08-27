@@ -6,7 +6,7 @@
 
 local component = require "tinyworld.entity.component"
 
-local CombatSync = component.Component.extend("CombatSync")
+local CombatSync = component.extend("CombatSync")
 
 function CombatSync:onCreate()
     local entity = self.entity

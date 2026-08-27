@@ -4,7 +4,7 @@
 
 local component = require "tinyworld.entity.component"
 
-local Task = component.Component.extend("Task")
+local Task = component.extend("Task")
 
 function Task:onCreate()
     self:registerClientRpc("onAcceptTask")

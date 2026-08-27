@@ -3,20 +3,18 @@
 -- 组件能侦听 / 抛出事件: 天气变化通过实体事件总线广播, 业务自行订阅。
 
 local event = require "tinyworld.core.event"
-local M = {}
-
-M.WEATHERS = { "sunny", "rain", "fog", "storm" }
+local WEATHERS = { "sunny", "rain", "fog", "storm" }
 
 local WeatherSystem = {}
 WeatherSystem.__index = WeatherSystem
 
 function WeatherSystem.new()
-    local self = setmetatable({ index = 1, timer = 0, event = event.EventBus.new() }, WeatherSystem)
+    local self = setmetatable({ index = 1, timer = 0, event = event.new() }, WeatherSystem)
     return self
 end
 
 function WeatherSystem:current()
-    return M.WEATHERS[self.index]
+    return WEATHERS[self.index]
 end
 
 function WeatherSystem:tick(dt)
@@ -28,5 +26,5 @@ function WeatherSystem:tick(dt)
     self.event:emit("weather_change", self:current())
 end
 
-M.WeatherSystem = WeatherSystem
-return M
+WeatherSystem.WEATHERS = WEATHERS
+return WeatherSystem

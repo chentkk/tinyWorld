@@ -3,9 +3,10 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
-local entity = require "tinyworld.entity.entity"
+local Entity = require "tinyworld.entity.entity"
+local compileDef = require "tinyworld.entity.entity_def"
 
-local def = entity.compileDef({
+local def = compileDef({
     name = "Perf",
     props = { { name = "v", type = "number", sync = "all", persist = true, default = 0 } },
     records = {
@@ -19,7 +20,7 @@ local def = entity.compileDef({
     },
 })
 
-local e = entity.Entity.new(def, 1, "Perf")
+local e = Entity.new(def, 1, "Perf")
 
 local t0 = os.clock()
 for i = 1, 200000 do

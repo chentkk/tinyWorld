@@ -17,7 +17,7 @@ function LocalSpace:ctor(app)
 end
 
 function LocalSpace:addLocalCell(cellInfo)
-    local cell = cellMod.Cell.new(cellInfo, self.app, self)
+    local cell = cellMod.new(cellInfo, self.app, self)
     self.cells[#self.cells + 1] = cell
     self.byKey[cellInfo.id] = cell
     return cell

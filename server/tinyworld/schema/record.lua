@@ -1,52 +1,5 @@
 -- tinyworld/schema/record.lua
--- 通用表格组件 Record。
--- 支持 add / remove / query / set / get，可同步客户端或仅服务器内部使用。
--- 同步下行需标记所属对象(entityId)，由实体统一派发 ops。
-
-local property = require "tinyworld.schema.property"
-local M = {}
-
-local RecordDef = {}
-RecordDef.__index = RecordDef
-
--- def: { name, keyFields={...}, sync="all"/"none", fields={ props 风格定义 } }
-function RecordDef.new(def)
-    local self = setmetatable({}, RecordDef)
-    self.name = def.name
-    self.keyFields = def.keyFields or { def.key or "key" }
-    self.sync = def.sync or "none"
-    self.schema = property.PropertySchema.new(def.fields or {})
-    self.indexes = def.indexes or {}
-    return self
-end
-
-function RecordDef:keyOf(data)
-    local parts = {}
-    for _, k in ipairs(self.keyFields) do
-        parts[#parts + 1] = tostring(data[k])
-    end
-    return table.concat(parts, ":")
-end
-
-function RecordDef:keyData(key)
-    local values = {}
-    for _, v in ipairs({key:match("([^:]+)") }) do
-        -- split 需要逐段, 简单用 gmatch
-    end
-    local i = 1
-    for part in key:gmatch("([^:]+)") do
-        local f = self.schema:get(self.keyFields[i])
-        if f and f.type == "number" then
-            values[self.keyFields[i]] = tonumber(part)
-        else
-            values[self.keyFields[i]] = part
-        end
-        i = i + 1
-    end
-    return values
-end
-
-M.RecordDef = RecordDef
+-- Record: 表格运行实例, 支持 add/remove/query/set/get, 提供同步 ops。
 
 local Record = {}
 Record.__index = Record
@@ -54,13 +7,12 @@ Record.__index = Record
 function Record.new(def, host)
     local self = setmetatable({}, Record)
     self.def = def
-    self.host = host -- 需实现 onRecordChange(record, op)
+    self.host = host
     self.rows = {}
     self.dirty = {}
     return self
 end
 
--- 按 keyFields 补全默认值
 function Record:newRow(data)
     local row = {}
     local schema = self.def.schema
@@ -83,9 +35,7 @@ function Record:add(data)
     if self.def.sync ~= "none" then
         self.dirty[#self.dirty + 1] = { type = "add", key = key, data = self:syncData(row) }
     end
-    if self.host.onRecordChange then
-        self.host:onRecordChange(self, { type = "add", key = key })
-    end
+    if self.host.onRecordChange then self.host:onRecordChange(self, { type = "add", key = key }) end
     return row
 end
 
@@ -94,18 +44,12 @@ function Record:remove(key)
     if not row then return false end
 
     self.rows[key] = nil
-    if self.def.sync ~= "none" then
-        self.dirty[#self.dirty + 1] = { type = "remove", key = key }
-    end
-    if self.host.onRecordChange then
-        self.host:onRecordChange(self, { type = "remove", key = key })
-    end
+    if self.def.sync ~= "none" then self.dirty[#self.dirty + 1] = { type = "remove", key = key } end
+    if self.host.onRecordChange then self.host:onRecordChange(self, { type = "remove", key = key }) end
     return true
 end
 
-function Record:get(key)
-    return self.rows[key]
-end
+function Record:get(key) return self.rows[key] end
 
 function Record:count()
     local n = 0
@@ -116,15 +60,10 @@ end
 function Record:update(key, patch)
     local row = self.rows[key]
     if not row then return nil end
-    for name, value in pairs(patch) do
-        row[name] = self.def.schema:coerce(name, value)
-    end
-    if self.def.sync ~= "none" then
-        self.dirty[#self.dirty + 1] = { type = "set", key = key, data = patch }
-    end
-    if self.host.onRecordChange then
-        self.host:onRecordChange(self, { type = "set", key = key })
-    end
+
+    for name, value in pairs(patch) do row[name] = self.def.schema:coerce(name, value) end
+    if self.def.sync ~= "none" then self.dirty[#self.dirty + 1] = { type = "set", key = key, data = patch } end
+    if self.host.onRecordChange then self.host:onRecordChange(self, { type = "set", key = key }) end
     return row
 end
 
@@ -141,9 +80,7 @@ end
 function Record:query(pred)
     local out = {}
     for key, row in pairs(self.rows) do
-        if not pred or pred(row, key) then
-            out[#out + 1] = row
-        end
+        if not pred or pred(row, key) then out[#out + 1] = row end
     end
     return out
 end
@@ -158,9 +95,7 @@ function Record:syncData(row)
     local out = {}
     local schema = self.def.schema
     for _, f in ipairs(schema.fields) do
-        if f.sync ~= "none" and row[f.name] ~= nil then
-            out[f.name] = row[f.name]
-        end
+        if f.sync ~= "none" and row[f.name] ~= nil then out[f.name] = row[f.name] end
     end
     return out
 end
@@ -183,6 +118,4 @@ function Record:dump()
     return out
 end
 
-M.Record = Record
-
-return M
+return Record

@@ -2,12 +2,12 @@
 -- baseapp 上的玩家实体: 加载 db 数据, 处理客户端 rpc(带登录完成 middleware),
 -- 与 cellentity(real entity) 双向 rpc。
 
-local entityMod = require "tinyworld.entity.entity"
+local Entity = require "tinyworld.entity.entity"
 
-local BaseEntity = entityMod.Entity.extend("BaseEntity")
+local BaseEntity = Entity.extend("BaseEntity")
 
 function BaseEntity:ctor(def, id, kind, conn)
-    entityMod.Entity.ctor(self, def, id, kind or "Player")
+    Entity.ctor(self, def, id, kind or "Player")
     self.conn = conn -- { gate, fd, connId }
     self.account = conn and conn.account
     self.entered = false

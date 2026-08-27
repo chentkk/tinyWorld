@@ -5,13 +5,10 @@
 
 local class = require "tinyworld.core.class"
 local event = require "tinyworld.core.event"
-local property = require "tinyworld.schema.property"
-local record = require "tinyworld.schema.record"
-local container = require "tinyworld.schema.container"
+local Properties = require "tinyworld.schema.property"
+local Record = require "tinyworld.schema.record"
+local Container = require "tinyworld.schema.container"
 local rpc = require "tinyworld.entity.rpc"
-local M = {}
-
-M.DEF_CACHE = setmetatable({}, { __mode = "k" })
 
 local Entity = class.makeClass("Entity")
 
@@ -20,29 +17,29 @@ function Entity:ctor(def, id, kind)
     rawset(self, "kind", kind or def.name)
     rawset(self, "def", def)
 
-    rawset(self, "props", property.Properties.new(def.propSchema))
+    rawset(self, "props", Properties.new(def.propSchema))
     self.props.host = self
 
     rawset(self, "records", {})
     for _, rdef in ipairs(def.recordDefs) do
-        self.records[rdef.name] = record.Record.new(rdef, self)
+        self.records[rdef.name] = Record.new(rdef, self)
     end
 
     rawset(self, "containers", {})
     for _, cdef in ipairs(def.containerDefs) do
-        self.containers[cdef.name] = container.Container.new(cdef, self)
+        self.containers[cdef.name] = Container.new(cdef, self)
     end
 
     rawset(self, "rpc", {
-        client = rpc.RpcRegistry.new(),
-        cell = rpc.RpcRegistry.new(),
-        base = rpc.RpcRegistry.new(),
-        real = rpc.RpcRegistry.new(),
-        ghost = rpc.RpcRegistry.new(),
+        client = rpc.new(),
+        cell = rpc.new(),
+        base = rpc.new(),
+        real = rpc.new(),
+        ghost = rpc.new(),
     })
 
     rawset(self, "components", {})
-    rawset(self, "event", event.EventBus.new())
+    rawset(self, "event", event.new())
 
     -- AOI 视野表: 以服务器实体 id 为索引。clientId 只是为了特定客户端显示,
     -- 由下发消息统一转换(objectAddMsg / objectRemoveMsg / cell 消息)。
@@ -269,28 +266,4 @@ function Entity:load(data)
     end
 end
 
-M.Entity = Entity
-
--- 编译 *_def 文件结果: 增加编译后的 schema 引用
-function M.compileDef(defModuleOrTable)
-    local def
-    if type(defModuleOrTable) == "string" then
-        def = require(defModuleOrTable)
-    else
-        def = defModuleOrTable
-    end
-
-    def.propSchema = property.PropertySchema.new(def.props or {})
-    def.recordDefs = {}
-    for _, rd in ipairs(def.records or {}) do
-        def.recordDefs[#def.recordDefs + 1] = record.RecordDef.new(rd)
-    end
-
-    def.containerDefs = {}
-    for _, cd in ipairs(def.containers or {}) do
-        def.containerDefs[#def.containerDefs + 1] = container.ContainerDef.new(cd)
-    end
-    return def
-end
-
-return M
+return Entity

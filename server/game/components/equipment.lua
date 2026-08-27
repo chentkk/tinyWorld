@@ -3,7 +3,7 @@
 
 local component = require "tinyworld.entity.component"
 
-local Equipment = component.Component.extend("Equipment")
+local Equipment = component.extend("Equipment")
 
 function Equipment:onCreate()
     self:registerClientRpc("onEquipItem")

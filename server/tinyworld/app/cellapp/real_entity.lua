@@ -2,11 +2,11 @@
 -- RealEntity(真身): cell 内的权威实体。
 -- 每 tick 由 Cell 打包 outbox, 观察者领取; 同时 outbox 交给关联 ghost。
 
-local entityMod = require "tinyworld.entity.entity"
-local RealEntity = entityMod.Entity.extend("RealEntity")
+local Entity = require "tinyworld.entity.entity"
+local RealEntity = Entity.extend("RealEntity")
 
 function RealEntity:ctor(def, id, kind, space, cell, x, y)
-    entityMod.Entity.ctor(self, def, id, kind)
+    Entity.ctor(self, def, id, kind)
     self.clientId = id
     self.isReal = true
     self.space = space
@@ -98,7 +98,7 @@ function RealEntity:applySnapshot(snap)
 end
 
 function RealEntity:onDestroy()
-    entityMod.Entity.onDestroy(self)
+    Entity.onDestroy(self)
 end
 
 return RealEntity

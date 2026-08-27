@@ -6,7 +6,7 @@ local abilityMod = require "tinyworld.combat.ability"
 local modifierMod = require "tinyworld.combat.modifier"
 local M = {}
 
-M.ability_borrowed_time = abilityMod.Ability.extend("ability_borrowed_time")
+M.ability_borrowed_time = abilityMod.extend("ability_borrowed_time")
 
 function M.ability_borrowed_time:onCreateAbility()
     self.caster:addModifier(M.modifier_ability_borrowed_time_passive.new(self.caster, self, nil))
@@ -24,10 +24,10 @@ end
 
 -- 冷却结束后重置, 便于被动再次触发
 function M.ability_borrowed_time:startCooldown()
-    abilityMod.Ability.startCooldown(self)
+    abilityMod.startCooldown(self)
 end
 
-M.modifier_ability_borrowed_time_passive = modifierMod.Modifier.extend("modifier_ability_borrowed_time_passive")
+M.modifier_ability_borrowed_time_passive = modifierMod.extend("modifier_ability_borrowed_time_passive")
 
 function M.modifier_ability_borrowed_time_passive:OnIntervalThink()
     local caster = self.caster
@@ -40,7 +40,7 @@ function M.modifier_ability_borrowed_time_passive:OnIntervalThink()
     end
 end
 
-M.modifier_abaddon_borrowed_time_lua_active = modifierMod.Modifier.extend("modifier_abaddon_borrowed_time_lua_active")
+M.modifier_abaddon_borrowed_time_lua_active = modifierMod.extend("modifier_abaddon_borrowed_time_lua_active")
 
 function M.modifier_abaddon_borrowed_time_lua_active:OnDamageReceived(attacker, amount, damageType)
     return -amount -- 转化为治疗

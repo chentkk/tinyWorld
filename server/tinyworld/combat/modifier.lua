@@ -4,7 +4,6 @@
 -- 由上层同步系统(如 buff 视图)统一推给客户端, 战斗框架不直接处理网络。
 
 local class = require "tinyworld.core.class"
-local M = {}
 
 local Modifier = class.makeClass("Modifier")
 
@@ -61,5 +60,4 @@ function Modifier:destroy()
     end
 end
 
-M.Modifier = Modifier
-return M
+return Modifier

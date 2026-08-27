@@ -2,7 +2,6 @@
 -- 网格 AOI(先简单实现)。cell 内再按 cellSize/4 划分网格,
 -- 查询可视列表时遍历附近网格, 按 aoiRange 精确过滤。
 
-local M = {}
 
 local Aoi = {}
 Aoi.__index = Aoi
@@ -74,5 +73,4 @@ function Aoi:query(x, y)
     return out
 end
 
-M.Aoi = Aoi
-return M
+return Aoi

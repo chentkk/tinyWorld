@@ -3,11 +3,12 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
-local entity = require "tinyworld.entity.entity"
+local Entity = require "tinyworld.entity.entity"
+local compileDef = require "tinyworld.entity.entity_def"
 local bin = require "tinyworld.core.bin"
 local json = require "tinyworld.core.json"
 
-local def = entity.compileDef({
+local def = compileDef({
     name = "Player",
     props = {
         { name = "level", type = "number", sync = "all", persist = true, default = 1 },
@@ -27,7 +28,7 @@ local def = entity.compileDef({
     },
 })
 
-local e = entity.Entity.new(def, 1000001, "Player")
+local e = Entity.new(def, 1000001, "Player")
 e:onCreate()
 
 -- property: dot 赋值自动同步 + 持久化标记

@@ -2,7 +2,6 @@
 -- RPC 注册表。仅保存 { 对象, 函数名 }, 调用时按名字直接索取,
 -- 不需要再遍历对象上的所有组件。
 
-local M = {}
 
 local RpcRegistry = {}
 RpcRegistry.__index = RpcRegistry
@@ -47,5 +46,4 @@ function RpcRegistry:has(name)
     return self.entries[name] ~= nil
 end
 
-M.RpcRegistry = RpcRegistry
-return M
+return RpcRegistry

@@ -3,10 +3,10 @@
 
 local component = require "tinyworld.entity.component"
 
-local Bag = component.Component.extend("Bag")
+local Bag = component.extend("Bag")
 
 function Bag:ctor(entity, name)
-    component.Component.ctor(self, entity, name)
+    component.ctor(self, entity, name)
 end
 
 function Bag:onCreate()

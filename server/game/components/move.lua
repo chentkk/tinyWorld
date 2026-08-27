@@ -6,10 +6,10 @@
 local component = require "tinyworld.entity.component"
 local math = math
 
-local Move = component.Component.extend("Move")
+local Move = component.extend("Move")
 
 function Move:ctor(entity, name)
-    component.Component.ctor(self, entity, name)
+    component.ctor(self, entity, name)
     self.queue = {}
 end
 

@@ -6,14 +6,14 @@ local abilityMod = require "tinyworld.combat.ability"
 local modifierMod = require "tinyworld.combat.modifier"
 local M = {}
 
-M.ability_aphotic_shield = abilityMod.Ability.extend("ability_aphotic_shield")
+M.ability_aphotic_shield = abilityMod.extend("ability_aphotic_shield")
 
 function M.ability_aphotic_shield:OnSpellStart()
     local target = self.target or self.caster
     target:addModifier(M.modifier_abaddon_aphotic_shield_lua.new(self.caster, self, tonumber(self.data.duration)))
 end
 
-M.modifier_abaddon_aphotic_shield_lua = modifierMod.Modifier.extend("modifier_abaddon_aphotic_shield_lua")
+M.modifier_abaddon_aphotic_shield_lua = modifierMod.extend("modifier_abaddon_aphotic_shield_lua")
 
 function M.modifier_abaddon_aphotic_shield_lua:OnCreated(params)
     self.absorb = tonumber(self.ability.data.damageAbsorb) or 0

@@ -10,7 +10,6 @@ local entityMsg = require "tinyworld.app.cellapp.entity_msg"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
 local GhostEntity = require "tinyworld.app.cellapp.ghost_entity"
 local defs = require "tinyworld.entity.defs"
-local M = {}
 
 local Cell = class.makeClass("Cell")
 
@@ -19,7 +18,7 @@ function Cell:ctor(cellInfo, app, space)
     self.app = app
     self.space = space
     self.entities = {}
-    self.aoi = aoiMod.Aoi.new(app.spaceConfig.aoiRange, cellInfo.w, cellInfo.h)
+    self.aoi = aoiMod.new(app.spaceConfig.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
 end
 
@@ -486,5 +485,4 @@ function Cell:destroyRemoteGhost(realId)
     if ghost then self:removeEntity(ghost) end
 end
 
-M.Cell = Cell
-return M
+return Cell

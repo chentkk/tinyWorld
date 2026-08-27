@@ -5,7 +5,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local aoiMod = require "tinyworld.app.cellapp.aoi"
 
-local aoi = aoiMod.Aoi.new(50, 100, 100)
+local aoi = aoiMod.new(50, 100, 100)
 
 for i = 1, 5000 do
     local x, y = math.random(0, 300), math.random(0, 300)

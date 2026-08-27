@@ -7,7 +7,7 @@ local component = require "tinyworld.entity.component"
 local abilityReg = require "game.scripts.vscripts.abilities"
 local combatUnit = require "tinyworld.combat.unit"
 
-local CombatAgent = component.Component.extend("CombatAgent")
+local CombatAgent = component.extend("CombatAgent")
 
 local function reply(code, msg)
     return { code = code, msg = msg }

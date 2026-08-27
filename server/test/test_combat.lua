@@ -4,7 +4,7 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
-local entity = require "tinyworld.entity.entity"
+local Entity = require "tinyworld.entity.entity"
 local defs = require "tinyworld.entity.defs"
 local caster = require "tinyworld.combat.unit"
 local combatDamage = require "tinyworld.combat.damage"
@@ -17,7 +17,7 @@ defs.register("CombatDummy", {
     },
 })
 
-local unit = entity.Entity.new(defs.get("CombatDummy"), 1, "CombatDummy")
+local unit = Entity.new(defs.get("CombatDummy"), 1, "CombatDummy")
 caster.apply(unit)
 assert(unit.combatApplied)
 
@@ -42,7 +42,7 @@ unit:updateCombat(0.1)
 assert(borrowed.state == "channeling")
 
 -- 带施法时间: 施法中尚不产生 modifier
-local target = entity.Entity.new(defs.get("CombatDummy"), 2, "CombatDummy")
+local target = Entity.new(defs.get("CombatDummy"), 2, "CombatDummy")
 caster.apply(target)
 target.hp = 500
 unit:castAbility(1, target)

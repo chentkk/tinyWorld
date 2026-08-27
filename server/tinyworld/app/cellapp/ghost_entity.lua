@@ -2,11 +2,11 @@
 -- GhostEntity(幽灵): real 在其他 cell 的投影。
 -- 接收 real.outbox 并存储, 下一 tick 由所在 cell 打包给观察者。
 
-local entityMod = require "tinyworld.entity.entity"
-local GhostEntity = entityMod.Entity.extend("GhostEntity")
+local Entity = require "tinyworld.entity.entity"
+local GhostEntity = Entity.extend("GhostEntity")
 
 function GhostEntity:ctor(def, id, kind, space, cell, realId, x, y)
-    entityMod.Entity.ctor(self, def, id, kind)
+    Entity.ctor(self, def, id, kind)
     self.isGhost = true
     self.isReal = false
     self.realId = realId

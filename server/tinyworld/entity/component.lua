@@ -3,7 +3,6 @@
 -- 可侦听 / 抛出事件, 实现完整生命周期回调。
 
 local class = require "tinyworld.core.class"
-local M = {}
 
 local Component = class.makeClass("Component")
 
@@ -41,5 +40,4 @@ function Component:onClientEnter(playerId) end
 function Component:onClientLeave(playerId) end
 function Component:onTick(dt) end
 
-M.Component = Component
-return M
+return Component
