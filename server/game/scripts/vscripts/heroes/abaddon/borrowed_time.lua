@@ -8,10 +8,6 @@ ability_borrowed_time = Ability.extend("ability_borrowed_time")
 modifier_ability_borrowed_time_passive = Modifier.extend("modifier_ability_borrowed_time_passive")
 modifier_abaddon_borrowed_time_lua_active = Modifier.extend("modifier_abaddon_borrowed_time_lua_active")
 
-function ability_borrowed_time:onCreateAbility()
-    self.caster:addModifier("modifier_ability_borrowed_time_passive", self, nil)
-end
-
 function ability_borrowed_time:OnChannelStart()
     self.caster:addModifier("modifier_abaddon_borrowed_time_lua_active", self, {
         duration = tonumber(self.data.duration),

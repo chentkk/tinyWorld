@@ -11,5 +11,6 @@
         "channelTime"           "3.0"
         "duration"              "3.0"
         "threshold_pct"         "30"
+        "passiveModifier"       "modifier_ability_borrowed_time_passive"
     }
 }

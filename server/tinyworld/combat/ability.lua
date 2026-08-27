@@ -92,6 +92,14 @@ function Ability:startCooldown()
     self.state = STATE.COOLDOWN
 end
 
+-- 技能初始化: 自动挂载被动 modifier(数据只给 modifier 名)
+function Ability:initModifier()
+    local passive = self.data.passiveModifier
+    if type(passive) == "string" then
+        self.caster:addModifier(passive, self, nil)
+    end
+end
+
 -- 子类回调
 function Ability:OnCastStart() end
 function Ability:OnSpellStart() end

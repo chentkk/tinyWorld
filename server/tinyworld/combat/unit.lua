@@ -5,6 +5,19 @@
 
 local M = {}
 
+-- 能力工厂: 项目启动时由 game.scripts.vscripts.abilities 注册。
+-- 能力创建由 unit/entity 层统一处理, 业务组件无需知道 npc / vscripts 路径。
+M.abilityFactory = nil
+
+function M.setAbilityFactory(factory)
+    M.abilityFactory = factory
+end
+
+function M.createAbility(caster, abilityName)
+    if not M.abilityFactory then return nil, "ability factory not set" end
+    return M.abilityFactory(caster, abilityName)
+end
+
 function M.modifiersSnapshot(unit)
     local out = {}
     for _, mod in ipairs(unit.modifiers or {}) do
@@ -78,6 +91,17 @@ old:refresh({})
         for i, ab in ipairs(self.abilities) do
             if ab then ab:update(dt) end
         end
+    end
+
+    function unit:loadAbilities(names)
+        self.abilities = {}
+        for _, abilityName in ipairs(names or {}) do
+            local ability = M.createAbility(self, abilityName)
+            if ability then
+                self.abilities[#self.abilities + 1] = ability
+            end
+        end
+        return self.abilities
     end
 
     function unit:castAbility(index, target)

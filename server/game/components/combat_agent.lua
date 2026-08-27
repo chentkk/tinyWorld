@@ -4,7 +4,6 @@
 -- 客户端请求释放技能时携带目标 targetId 与技能 index。
 
 local component = require "tinyworld.entity.component"
-local abilityReg = require "game.scripts.vscripts.abilities"
 local combatUnit = require "tinyworld.combat.unit"
 
 local CombatAgent = component.extend("CombatAgent")
@@ -26,10 +25,11 @@ function CombatAgent:loadAbilities()
     combatUnit.apply(entity)
 
     local initData = entity.cellInitData or {}
+    local names = {}
     for _, abilityName in ipairs(initData.abilities or {}) do
-        local ab = abilityReg.create(entity, abilityName)
-        table.insert(entity.abilities, ab)
+        names[#names + 1] = abilityName
     end
+    entity:loadAbilities(names)
 end
 
 function CombatAgent:onTick(dt)

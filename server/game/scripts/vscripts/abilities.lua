@@ -3,6 +3,7 @@
 -- 具体技能逻辑只存在于 scripts 目录; 战斗核心框架位于 tinyworld/combat。
 
 local kv = require "game.scripts.vscripts.kv"
+local combatUnit = require "tinyworld.combat.unit"
 local registry = {}
 
 -- LinkLuaModifier: 与 example 一致的 vscripts 预加载入口。
@@ -37,10 +38,9 @@ function registry.create(caster, abilityName)
     if not cls then return nil, "no vscript " .. abilityName end
 
     local ability = cls.new(caster, data)
-    if ability.onCreateAbility then
-        ability:onCreateAbility()
-    end
+    ability:initModifier()
     return ability
 end
 
+combatUnit.setAbilityFactory(registry.create)
 return registry
