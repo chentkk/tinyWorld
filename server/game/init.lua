@@ -104,6 +104,9 @@ function M.setupBaseEntity(entity)
     if bag then bag:openView("bag") end
     local equipment = entity:getContainer("equipment")
     if equipment then equipment:openView("equipment") end
+
+    -- 数据同步压力测试(表格/容器)
+    entity:addComponent("base_sync_stress", require "game.components.sync_stress")
 end
 
 -- cellapp 侧组件的装配
@@ -115,6 +118,9 @@ function M.setupCellEntity(real, data)
 
     -- 客户端释放技能与战斗驱动
     real:addComponent("combat_agent", require "game.components.combat_agent")
+
+    -- 数据同步压力测试(属性)
+    real:addComponent("cell_sync_stress", require "game.components.sync_stress")
 end
 
 return M

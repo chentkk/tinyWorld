@@ -38,6 +38,23 @@ local function replyAccount(session, name, data)
 end
 
 -- 发送自身初始化数据: 表格全量 + 视图全量
+-- 发送 baseentity 的增量 record/view 变更
+local function sendOwnIncrements(entity, session)
+    local myId = entity.cellEntityId or entity.id
+    for name, rec in pairs(entity.records) do
+        local flush = rec:flushSync()
+        if flush then
+            sendToClient(session, msgUtil.new("record", name, { entityId = myId, ops = flush.ops }))
+        end
+    end
+    for name, cont in pairs(entity.containers) do
+        local flush = cont:flushSync()
+        if flush then
+            sendToClient(session, msgUtil.new("view", name, { entityId = myId, ops = flush.ops }))
+        end
+    end
+end
+
 local function sendOwnState(entity, session)
     for name, rec in pairs(entity.records) do
         if rec.def.sync ~= "none" then
@@ -275,6 +292,21 @@ end
 local function init()
     gameInit = require "game.init"
     gameInit.registerDefs()
+
+    -- 驱动 baseentity 组件(onTick), 同步压力测试组件的表格/容器变更
+    skynet.fork(function()
+        while true do
+            for _, session in pairs(sessions) do
+                local entity = session.entity
+                if entity then
+                    entity:onTick(1)
+                    sendOwnIncrements(entity, session)
+                end
+            end
+            skynet.sleep(100) -- 1s
+        end
+    end)
+
     log.info("baseapp ready")
 end
 
