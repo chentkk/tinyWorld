@@ -2,9 +2,8 @@
 -- Space 通用定义: 空间尺寸、cell 网格划分、邻居关系与 cell 归属。
 -- world 侧使用 ServerSpace 保存完整信息, cellapp 侧使用 LocalSpace 管理本地 cell。
 
-local cellInfoMod = require "tinyworld.space.cell_info"
+local CellInfo = require "tinyworld.space.cell_info"
 local util = require "tinyworld.core.util"
-local M = {}
 
 local SpaceConfig = {}
 SpaceConfig.__index = SpaceConfig
@@ -48,7 +47,7 @@ function SpaceConfig.compile(config, defaultAppIds)
             else
                 appId = ref(idx)
             end
-            local info = cellInfoMod.CellInfo.new(cx, cy, x, y, w, h, appId)
+            local info = CellInfo.new(cx, cy, x, y, w, h, appId)
             self.cells[#self.cells + 1] = info
             self.byCoord[info.id] = info
         end
@@ -94,5 +93,4 @@ function SpaceConfig.rectDist2(info, x, y)
     return dx * dx + dy * dy
 end
 
-M.SpaceConfig = SpaceConfig
-return M
+return SpaceConfig

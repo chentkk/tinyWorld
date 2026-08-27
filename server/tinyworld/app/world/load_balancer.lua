@@ -5,7 +5,6 @@
 -- 当前只启用 2、3, 1、4 仅实现不启用。
 
 local class = require "tinyworld.core.class"
-local M = {}
 
 local LoadBalancer = class.makeClass("LoadBalancer")
 
@@ -95,5 +94,4 @@ function LoadBalancer:tick()
     return self:computeBoundaryAdvice()
 end
 
-M.LoadBalancer = LoadBalancer
-return M
+return LoadBalancer

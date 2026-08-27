@@ -2,7 +2,6 @@
 -- cell 描述信息。空间按网格划分为 cell, 每个 cell 分配给某个 cellapp。
 
 local class = require "tinyworld.core.class"
-local M = {}
 
 local CellInfo = class.makeClass("CellInfo")
 
@@ -32,5 +31,4 @@ function CellInfo:dump()
              w = self.w, h = self.h, appId = self.appId }
 end
 
-M.CellInfo = CellInfo
-return M
+return CellInfo

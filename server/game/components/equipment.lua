@@ -2,7 +2,6 @@
 -- 装备栏组件: 从背包穿装备、脱下装备到背包, 均通过通用容器 View 同步。
 
 local component = require "tinyworld.entity.component"
-local M = {}
 
 local Equipment = component.Component.extend("Equipment")
 
@@ -42,5 +41,4 @@ function Equipment:onUnequipItem(d)
     return nil
 end
 
-M.Equipment = Equipment
-return M
+return Equipment

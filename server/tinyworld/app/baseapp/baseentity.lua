@@ -3,7 +3,6 @@
 -- 与 cellentity(real entity) 双向 rpc。
 
 local entityMod = require "tinyworld.entity.entity"
-local M = {}
 
 local BaseEntity = entityMod.Entity.extend("BaseEntity")
 
@@ -47,5 +46,4 @@ function BaseEntity:dispatchCellRpcFromReal(name, data)
     return self:dispatchCellRpc(name, data)
 end
 
-M.BaseEntity = BaseEntity
-return M
+return BaseEntity

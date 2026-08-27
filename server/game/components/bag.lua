@@ -2,7 +2,6 @@
 -- 背包组件: 使用通用容器 View 实现, 自动同步客户端。
 
 local component = require "tinyworld.entity.component"
-local M = {}
 
 local Bag = component.Component.extend("Bag")
 
@@ -42,5 +41,4 @@ function Bag:removeItem(id)
     if bag then bag:remove(id) end
 end
 
-M.Bag = Bag
-return M
+return Bag

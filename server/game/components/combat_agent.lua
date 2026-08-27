@@ -6,7 +6,6 @@
 local component = require "tinyworld.entity.component"
 local abilityReg = require "game.scripts.vscripts.abilities"
 local combatUnit = require "tinyworld.combat.unit"
-local M = {}
 
 local CombatAgent = component.Component.extend("CombatAgent")
 
@@ -61,5 +60,4 @@ function CombatAgent:onCastAbility(d)
     return { code = 0, msg = "cast ok" }
 end
 
-M.CombatAgent = CombatAgent
-return M
+return CombatAgent

@@ -2,13 +2,12 @@
 -- world 服务侧的完整 space 信息(相当于 bigworld 的 cell 管理器视图)。
 
 local class = require "tinyworld.core.class"
-local spaceMod = require "tinyworld.space.space"
-local M = {}
+local SpaceConfig = require "tinyworld.space.space"
 
 local ServerSpace = class.makeClass("ServerSpace")
 
 function ServerSpace:ctor(config, appIds)
-    self.config = spaceMod.SpaceConfig.compile(config, appIds)
+    self.config = SpaceConfig.compile(config, appIds)
     self.id = config.id
     self.cellapps = config.cellapps or {}
     self.started = false
@@ -46,5 +45,4 @@ function ServerSpace:dump()
     }
 end
 
-M.ServerSpace = ServerSpace
-return M
+return ServerSpace

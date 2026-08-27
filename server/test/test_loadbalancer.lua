@@ -3,15 +3,15 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
-local spaceLib = require "tinyworld.space.space"
-local lbMod = require "tinyworld.app.world.load_balancer"
+local SpaceConfig = require "tinyworld.space.space"
+local LoadBalancer = require "tinyworld.app.world.load_balancer"
 
-local config = spaceLib.SpaceConfig.compile({ id = "lb", width = 100, height = 100,
+local config = SpaceConfig.compile({ id = "lb", width = 100, height = 100,
     cellSize = 50, aoiRange = 10, balance = { enabled = true, strategy = 2 } }, { 1 })
 
 assert(config.balance.enabled == true and config.balance.strategy == 2)
 
-local lb = lbMod.LoadBalancer.new(config)
+local lb = LoadBalancer.new(config)
 -- cpu 平滑: 上次 10%, 本次 90%, 不应直接判 90%
 local a = lb:report(1, 10, 0.10)
 local b = lb:report(1, 10, 0.90)
@@ -22,7 +22,7 @@ assert(lb:isEnabled())
 assert(type(lb:computeBoundaryAdvice()) == "number")
 
 -- 策略 4 防抖: 高负载迁移到低负载后, 冷却期内不再迁移
-local lb4 = lbMod.LoadBalancer.new(spaceLib.SpaceConfig.compile(
+local lb4 = LoadBalancer.new(SpaceConfig.compile(
     { id = "lb4", width = 100, height = 100, cellSize = 50, aoiRange = 10,
       balance = { enabled = true, strategy = 4 } }, { 1 }))
 lb4:report(1, 10, 0.9, { { key = "0:0" } })

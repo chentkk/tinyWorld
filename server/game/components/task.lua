@@ -3,7 +3,6 @@
 -- current_tasks 同步客户端, completed_tasks 仅服务器内部使用。
 
 local component = require "tinyworld.entity.component"
-local M = {}
 
 local Task = component.Component.extend("Task")
 
@@ -34,5 +33,4 @@ function Task:complete(taskid)
     return true
 end
 
-M.Task = Task
-return M
+return Task

@@ -8,7 +8,7 @@ local service = require "tinyworld.core.service"
 local log = require "tinyworld.core.log"
 local proto = require "tinyworld.core.proto"
 local util = require "tinyworld.core.util"
-local localSpaceMod = require "tinyworld.app.cellapp.local_space"
+local LocalSpace = require "tinyworld.app.cellapp.local_space"
 local defs = require "tinyworld.entity.defs"
 local entityMsg = require "tinyworld.app.cellapp.entity_msg"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
@@ -101,10 +101,10 @@ function cmd.init(spaceId, worldAddr)
     end
     rawConf = rawConf or { id = spaceId }
 
-    local spaceLib = require "tinyworld.space.space"
-    selfApp.spaceConfig = spaceLib.SpaceConfig.compile(rawConf, spaceModule.defaultCellApps)
+    local SpaceConfig = require "tinyworld.space.space"
+    selfApp.spaceConfig = SpaceConfig.compile(rawConf, spaceModule.defaultCellApps)
 
-    local localSpace = localSpaceMod.LocalSpace.new(selfApp)
+    local localSpace = LocalSpace.new(selfApp)
     for _, cellInfo in ipairs(ret.cells) do
         localSpace:addLocalCell({
             cx = cellInfo.cx, cy = cellInfo.cy,

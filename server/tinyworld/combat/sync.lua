@@ -5,7 +5,6 @@
 -- 战斗核心与技能脚本不碰网络, 底层通信全部收敛在本组件。
 
 local component = require "tinyworld.entity.component"
-local M = {}
 
 local CombatSync = component.Component.extend("CombatSync")
 
@@ -57,5 +56,4 @@ function CombatSync:push(method, data)
     cell:postEvent(entity, { t = "RPC", n = method, d = data })
 end
 
-M.CombatSync = CombatSync
-return M
+return CombatSync

@@ -5,7 +5,6 @@
 
 local class = require "tinyworld.core.class"
 local cellMod = require "tinyworld.app.cellapp.cell"
-local M = {}
 
 local LocalSpace = class.makeClass("LocalSpace")
 
@@ -38,5 +37,4 @@ function LocalSpace:tick(dt)
     end
 end
 
-M.LocalSpace = LocalSpace
-return M
+return LocalSpace

@@ -5,7 +5,6 @@
 
 local component = require "tinyworld.entity.component"
 local math = math
-local M = {}
 
 local Move = component.Component.extend("Move")
 
@@ -65,5 +64,4 @@ function Move:onTick(dt)
     entity.lastMoveSeq = lastSeq
 end
 
-M.Move = Move
-return M
+return Move

@@ -5,8 +5,8 @@
 local skynet = require "skynet"
 local service = require "tinyworld.core.service"
 local log = require "tinyworld.core.log"
-local serverSpaceMod = require "tinyworld.app.world.server_space"
-local loadBalancerMod = require "tinyworld.app.world.load_balancer"
+local ServerSpace = require "tinyworld.app.world.server_space"
+local LoadBalancer = require "tinyworld.app.world.load_balancer"
 
 local cmd = {}
 local spaces = {}
@@ -20,7 +20,7 @@ end
 local function init()
     local mod = require(spaceConfigModule())
     for _, spaceDef in ipairs(mod.spaces or {}) do
-        local space = serverSpaceMod.ServerSpace.new(spaceDef, mod.defaultCellApps)
+        local space = ServerSpace.new(spaceDef, mod.defaultCellApps)
         spaces[space.id] = space
         log.info("space %s loaded, cells=%d", space.id, #space.config.cells)
     end
@@ -34,7 +34,7 @@ function cmd.create_space(spaceId)
     local mod = require(spaceConfigModule())
     for _, spaceDef in ipairs(mod.spaces or {}) do
         if spaceDef.id == spaceId then
-            space = serverSpaceMod.ServerSpace.new(spaceDef, mod.defaultCellApps)
+            space = ServerSpace.new(spaceDef, mod.defaultCellApps)
             spaces[spaceId] = space
             return space:dump()
         end
@@ -98,7 +98,7 @@ function cmd.cellapp_report(appId, spaceId, realCount, cpu)
     appRegistry[appId].cpu = cpu
 
     if not space.balancer then
-        space.balancer = loadBalancerMod.LoadBalancer.new(space.config)
+        space.balancer = LoadBalancer.new(space.config)
     end
 
     local smooth = space.balancer:report(appId, realCount, cpu, nil)

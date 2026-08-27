@@ -9,7 +9,7 @@ local log = require "tinyworld.core.log"
 local proto = require "tinyworld.core.proto"
 local msgUtil = require "tinyworld.net.msg"
 local defs = require "tinyworld.entity.defs"
-local baseEntityMod = require "tinyworld.app.baseapp.baseentity"
+local BaseEntity = require "tinyworld.app.baseapp.baseentity"
 
 local cmd = {}
 local sessions = {} -- connId -> session
@@ -130,7 +130,7 @@ local function accountSelectCharacter(session, d)
 
     local data = gameInit.loadPlayer(playerId)
     local def = defs.get("Player")
-    local entity = baseEntityMod.BaseEntity.new(def, playerId, "Player", session)
+    local entity = BaseEntity.new(def, playerId, "Player", session)
     entity:load(data)
     entity.account = session.accountId
     entity:onCreate()

@@ -4,8 +4,8 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
-local spaceLib = require "tinyworld.space.space"
-local localSpaceMod = require "tinyworld.app.cellapp.local_space"
+local SpaceConfig = require "tinyworld.space.space"
+local LocalSpace = require "tinyworld.app.cellapp.local_space"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
 local defs = require "tinyworld.entity.defs"
 
@@ -19,7 +19,7 @@ defs.register("Dummy", {
     },
 })
 
-local config = spaceLib.SpaceConfig.compile({ id = "test", width = 200, height = 200, cellSize = 100,
+local config = SpaceConfig.compile({ id = "test", width = 200, height = 200, cellSize = 100,
     aoiRange = 30, minMigrateInterval = 0, hysteresis = 5 }, { 1 })
 
 local fake = {
@@ -34,7 +34,7 @@ local fake = {
     notifyEntityMoved = function(self, ...) end,
 }
 
-local space = localSpaceMod.LocalSpace.new(fake)
+local space = LocalSpace.new(fake)
 for _, info in ipairs(config.cells) do
     space:addLocalCell(info)
 end

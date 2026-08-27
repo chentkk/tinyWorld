@@ -96,10 +96,9 @@ end
 
 -- baseapp 侧组件的装配: 框架借此知道玩家使用了哪些组件
 function M.setupBaseEntity(entity)
-    local comp = require "game.components.bag"
-    entity:addComponent("bag", comp.Bag)
-    entity:addComponent("equipment", require("game.components.equipment").Equipment)
-    entity:addComponent("task", require("game.components.task").Task)
+    entity:addComponent("bag", require "game.components.bag")
+    entity:addComponent("equipment", require "game.components.equipment")
+    entity:addComponent("task", require "game.components.task")
 
     local bag = entity:getContainer("bag")
     if bag then bag:openView("bag") end
@@ -109,16 +108,13 @@ end
 
 -- cellapp 侧组件的装配
 function M.setupCellEntity(real, data)
-    local moveComp = require "game.components.move"
-    real:addComponent("move", moveComp.Move)
+    real:addComponent("move", require "game.components.move")
 
     -- 战斗一次性事件(伤害/治疗/modifier) -> 客户端 rpc 广播(自己 + 周围玩家)
-    local combatSync = require "tinyworld.combat.sync"
-    real:addComponent("combat_sync", combatSync.CombatSync)
+    real:addComponent("combat_sync", require "tinyworld.combat.sync")
 
     -- 客户端释放技能与战斗驱动
-    local combatAgent = require "game.components.combat_agent"
-    real:addComponent("combat_agent", combatAgent.CombatAgent)
+    real:addComponent("combat_agent", require "game.components.combat_agent")
 end
 
 return M
