@@ -1,13 +1,12 @@
 -- game/scripts/vscripts/heroes/abaddon/mist_coil.lua
 -- 迷雾缠绕: 立即对目标造成魔法伤害, 自身承受纯伤害。
 
-local abilityMod = require "tinyworld.combat.ability"
+local Ability = require "tinyworld.combat.ability"
 local combatDamage = require "tinyworld.combat.damage"
-local M = {}
 
-M.ability_mist_coil = abilityMod.extend("ability_mist_coil")
+local ability_mist_coil = Ability.extend("ability_mist_coil")
 
-function M.ability_mist_coil:OnSpellStart()
+function ability_mist_coil:OnSpellStart()
     local target = self.target
     if not target then return end
 
@@ -21,4 +20,4 @@ function M.ability_mist_coil:OnSpellStart()
     end
 end
 
-return M
+return { ability_mist_coil = ability_mist_coil }

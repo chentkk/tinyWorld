@@ -1,35 +1,32 @@
 -- game/scripts/vscripts/heroes/abaddon/borrowed_time.lua
 -- 回光返照: 被动 modifier 在低血量时自动开启持续施法。
--- 施法期间对应的 active modifier 把受到的伤害转化为治疗。
 
-local abilityMod = require "tinyworld.combat.ability"
-local modifierMod = require "tinyworld.combat.modifier"
-local M = {}
+local Ability = require "tinyworld.combat.ability"
+local Modifier = require "tinyworld.combat.modifier"
 
-M.ability_borrowed_time = abilityMod.extend("ability_borrowed_time")
+local ability_borrowed_time = Ability.extend("ability_borrowed_time")
+local modifier_ability_borrowed_time_passive = Modifier.extend("modifier_ability_borrowed_time_passive")
+local modifier_abaddon_borrowed_time_lua_active = Modifier.extend("modifier_abaddon_borrowed_time_lua_active")
 
-function M.ability_borrowed_time:onCreateAbility()
-    self.caster:addModifier(M.modifier_ability_borrowed_time_passive.new(self.caster, self, nil))
+function ability_borrowed_time:onCreateAbility()
+    self.caster:addModifier(modifier_ability_borrowed_time_passive.new(self.caster, self, nil))
 end
 
-function M.ability_borrowed_time:OnChannelStart()
-    self.caster:addModifier(M.modifier_abaddon_borrowed_time_lua_active.new(
+function ability_borrowed_time:OnChannelStart()
+    self.caster:addModifier(modifier_abaddon_borrowed_time_lua_active.new(
         self.caster, self, tonumber(self.data.duration)))
 end
 
-function M.ability_borrowed_time:OnChannelFinish()
+function ability_borrowed_time:OnChannelFinish()
     local active = self.caster:hasModifier("modifier_abaddon_borrowed_time_lua_active")
     if active then active:destroy() end
 end
 
--- 冷却结束后重置, 便于被动再次触发
-function M.ability_borrowed_time:startCooldown()
-    abilityMod.startCooldown(self)
+function ability_borrowed_time:startCooldown()
+    Ability.startCooldown(self)
 end
 
-M.modifier_ability_borrowed_time_passive = modifierMod.extend("modifier_ability_borrowed_time_passive")
-
-function M.modifier_ability_borrowed_time_passive:OnIntervalThink()
+function modifier_ability_borrowed_time_passive:OnIntervalThink()
     local caster = self.caster
     local hp = caster:get("hp") or 0
     local maxHp = caster:get("maxHp") or 1
@@ -40,10 +37,12 @@ function M.modifier_ability_borrowed_time_passive:OnIntervalThink()
     end
 end
 
-M.modifier_abaddon_borrowed_time_lua_active = modifierMod.extend("modifier_abaddon_borrowed_time_lua_active")
-
-function M.modifier_abaddon_borrowed_time_lua_active:OnDamageReceived(attacker, amount, damageType)
+function modifier_abaddon_borrowed_time_lua_active:OnDamageReceived(attacker, amount, damageType)
     return -amount -- 转化为治疗
 end
 
-return M
+return {
+    ability_borrowed_time = ability_borrowed_time,
+    modifier_ability_borrowed_time_passive = modifier_ability_borrowed_time_passive,
+    modifier_abaddon_borrowed_time_lua_active = modifier_abaddon_borrowed_time_lua_active,
+}
