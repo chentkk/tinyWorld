@@ -183,9 +183,11 @@ function Cell:updatePlayerVisibility(player)
         end
     end
 
+    -- visibleList 保存 entity 引用(而非 true), 这样才能区分
+    -- 同一个 clientId 在下一帧是否变成了不同实体(如 real -> ghost / ghost 重入)
     for clientId, other in pairs(visible) do
-        if not player.visibleList[clientId] then
-            player.visibleList[clientId] = true
+        if player.visibleList[clientId] ~= other then
+            player.visibleList[clientId] = other
             self:sendToSelf(player, entities.objectAddMsg(other))
         end
     end
