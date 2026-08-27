@@ -48,14 +48,14 @@ assert(cell.playerCount == 0)
 
 -- 边界抖动抑制: 略过边界不应迁移
 real.x = 99
-space:maintainEntityCells(real)
+cell:tick(0)
 assert(real.cell.info.id == "0:0")
 
 -- 深入目标 cell 后迁移到 1:0
 fake.time = 110
 real.x = 130
 real.y = 50
-space:maintainEntityCells(real)
+cell:tick(0)
 assert(real.cell.info.id == "1:0")
 assert(real.lastMigrateTime == 110)
 
@@ -69,7 +69,7 @@ assert(foundGhost, "witness ghost not created")
 
 -- 再回移但未满足最小间隔/阈值 -> 不抖
 real.x = 96
-space:maintainEntityCells(real)
+cell:tick(0)
 assert(real.cell.info.id == "1:0")
 
 -- ghost 属性同步由 broadcastGhost 驱动

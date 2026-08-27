@@ -7,13 +7,15 @@
 local class = require "tinyworld.core.class"
 local aoiMod = require "tinyworld.app.cellapp.aoi"
 local entities = require "tinyworld.app.cellapp.entities"
+local defs = require "tinyworld.entity.defs"
 local M = {}
 
 local Cell = class.makeClass("Cell")
 
-function Cell:ctor(cellInfo, app)
+function Cell:ctor(cellInfo, app, space)
     self.info = cellInfo
     self.app = app
+    self.space = space
     self.entities = {}
     self.aoi = aoiMod.Aoi.new(app.spaceConfig.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
@@ -64,6 +66,11 @@ function Cell:tick(dt)
     self:updateVisibilities()
     self:buildOutboxes()
     self:deliverOutboxes()
+
+    -- 同步之后做 cell 内部维护, 避免和上面的遍历互相影响
+    self:checkMigrations()
+    self:ensureGhosts()
+    self:broadcastGhostChanges()
 end
 
 function Cell:updateEntities(dt)
@@ -236,6 +243,110 @@ function Cell:updatePlayerVisibility(player)
         if not visible[id] then
             player.visibleEntities[id] = nil
             self.app:sendToClient(player, entities.objectRemoveMsg(old))
+        end
+    end
+end
+
+-- cell 内部维护: 检查本 cell 中的 real 是否该跨 cell
+function Cell:checkMigrations()
+    local toMigrate = {}
+    local space = self.space
+    for _, real in pairs(self.entities) do
+        if real.isReal and not real.migrating then
+            local ideal = space.config:cellAt(real.x, real.y)
+            if ideal.id ~= self.info.id and space:shouldMigrate(real, ideal) then
+                toMigrate[#toMigrate + 1] = { real = real, ideal = ideal }
+            end
+        end
+    end
+
+    for _, item in ipairs(toMigrate) do
+        space:migrateEntity(item.real, item.ideal)
+    end
+end
+
+-- 为 neighbor cell 有玩家的地方维护 real 的 ghost
+function Cell:ensureGhosts()
+    local space = self.space
+    for _, real in pairs(self.entities) do
+        if real.isReal and not real.migrating then
+            for _, neighbor in ipairs(space.config:neighbors(self.info)) do
+                self:ensureGhostIn(real, neighbor)
+            end
+        end
+    end
+end
+
+function Cell:neighborNeedsGhost(neighborInfo)
+    if neighborInfo.appId == self.app.appId then
+        local cell = self.space:getCell(neighborInfo.id)
+        return cell ~= nil and cell.playerCount > 0
+    end
+    return true
+end
+
+function Cell:ensureGhostIn(real, neighborInfo)
+    local key = real.id .. "@" .. neighborInfo.id
+    if real.ghosts[key] then return end
+
+    if neighborInfo.appId == self.app.appId then
+        local target = self.space:getCell(neighborInfo.id)
+        if not target or target.playerCount == 0 then return end
+
+        local ghost = target:buildGhost(real)
+        ghost.realApp = self.app.appId
+        target:addEntity(ghost)
+        real:addGhost({ key = key, app = self.app.appId, cellKey = neighborInfo.id, sameApp = true })
+        return
+    end
+
+    local snapshot = real:ghostSnapshot()
+    local ok = self.app:call(neighborInfo.appId, "ghost_create", self.space.spaceId, neighborInfo.id, {
+        realId = real.id, kind = real.kind, x = real.x, y = real.y,
+        snapshot = snapshot, fromApp = self.app.appId,
+        ownerCellKey = self.info.id, promote = false,
+    })
+    if ok then
+        real:addGhost({ key = key, app = neighborInfo.appId, cellKey = neighborInfo.id })
+    end
+end
+
+-- 在本 cell 构造一个 real 的 ghost
+function Cell:buildGhost(real)
+    local def = defs.get(real.kind) or real.def
+    local ghost = entities.GhostEntity.new(def, self.app:nextId(), real.kind, self.space, self, real.id, real.x, real.y)
+    for name, value in pairs(real.props:dump()) do
+        ghost:stageProp(name, value)
+    end
+    return ghost
+end
+
+-- 本 cell 内查找某 real 的 ghost
+function Cell:findGhost(realId)
+    for _, entity in pairs(self.entities) do
+        if entity.isGhost and entity.realId == realId then return entity end
+    end
+    return nil
+end
+
+-- 本 cell 内留下 witness ghost(同 app 迁移用)
+function Cell:leaveWitness(real)
+    local witness = self:buildGhost(real)
+    witness.realApp = self.app.appId
+    self:addEntity(witness)
+    real:addGhost({ key = real.id .. "@" .. self.info.id, app = self.app.appId,
+        cellKey = self.info.id, sameApp = true })
+    real.witnessCellKey = self.info.id
+end
+
+-- 把本 cell 内 real 的 ghost 脏属性广播出去
+function Cell:broadcastGhostChanges()
+    for _, real in pairs(self.entities) do
+        if real.isReal then
+            local dirty = real:collectGhostDirty()
+            if next(dirty) then
+                self.space:broadcastGhost(real, dirty)
+            end
         end
     end
 end

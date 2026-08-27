@@ -232,7 +232,8 @@ function cmd.ghost_destroy(spaceId, cellKey, realId)
 end
 
 function cmd.ghost_rpc(spaceId, cellKey, realId, name, data)
-    local ghost = selfApp.localSpace:findGhost(realId, cellKey)
+    local cell = selfApp.localSpace:getCell(cellKey)
+    local ghost = cell and cell:findGhost(realId)
     if ghost then
         return ghost:dispatchGhostRpc(name, data)
     end
