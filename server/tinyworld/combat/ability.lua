@@ -92,11 +92,16 @@ function Ability:startCooldown()
     self.state = STATE.COOLDOWN
 end
 
--- 技能初始化: 自动挂载被动 modifier(数据只给 modifier 名)
+-- example: 被动/自带 modifier 由技能 GetIntrinsicModifierName 声明,
+-- 创建 ability 时系统自动挂载, 不从 npc 数据读取。
+function Ability:GetIntrinsicModifierName()
+    return nil
+end
+
 function Ability:initModifier()
-    local passive = self.data.passiveModifier
-    if type(passive) == "string" then
-        self.caster:addModifier(passive, self, nil)
+    local name = self:GetIntrinsicModifierName()
+    if type(name) == "string" then
+        self.caster:addModifier(name, self, nil)
     end
 end
 
