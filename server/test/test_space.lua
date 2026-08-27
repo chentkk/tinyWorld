@@ -76,7 +76,7 @@ assert(real.cell.info.id == "1:0")
 real:set("x", 140)
 local dirty = real:collectGhostDirty()
 assert(dirty and dirty.x == 140)
-space:broadcastGhost(real, dirty)
+oldCell:broadcastGhostProps(real, dirty)
 foundGhost = nil
 for _, e in pairs(oldCell.entities) do
     if e.isGhost and e.realId == real.id then foundGhost = e end

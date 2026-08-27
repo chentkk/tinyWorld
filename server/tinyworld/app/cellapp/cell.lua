@@ -406,10 +406,85 @@ function Cell:broadcastGhostChanges()
         if real.isReal then
             local dirty = real:collectGhostDirty()
             if next(dirty) then
-                self.space:broadcastGhost(real, dirty)
+                self:broadcastGhostProps(real, dirty)
             end
         end
     end
+end
+
+-- real 的 dirty 属性同步给所有 ghost:
+-- 本地 ghost 直接 stage, 远端 ghost 通过 cellapp 服务消息 stage
+function Cell:broadcastGhostProps(real, props)
+    for _, info in pairs(real.ghosts) do
+        if info.sameApp then
+            local cell = self.space:getCell(info.cellKey)
+            local ghost = cell and cell:findGhost(real.id)
+            if ghost then
+                for name, value in pairs(props) do ghost:stageProp(name, value) end
+            end
+        else
+            self.app:send(info.app, "ghost_sync", self.space.spaceId, info.cellKey, real.id, props)
+        end
+    end
+end
+
+-- 远端请求在本 cell 创建 ghost
+function Cell:upsertRemoteGhost(req)
+    local ghost = self:findGhost(req.realId)
+    if ghost then return true end
+
+    -- 非迁移请求仅在 cell 有玩家时创建
+    if not req.promote and self.playerCount == 0 then return false end
+
+    local def = defs.get(req.kind)
+    if not def then return false end
+
+    ghost = entities.GhostEntity.new(def, self.app:nextId(), req.kind, self.space, self, req.realId, req.x, req.y)
+    if req.snapshot and req.snapshot.props then
+        ghost.props:load(req.snapshot.props)
+    end
+    ghost.realApp = req.fromApp
+    ghost.realCellKey = req.ownerCellKey
+    ghost.promote = req.promote
+
+    self:addEntity(ghost)
+    return true
+end
+
+-- 远端迁移终点: 本 cell 中的 ghost 提升为 real
+function Cell:promoteGhost(realId, req)
+    local ghost = self:findGhost(realId)
+    if not ghost then return false end
+
+    local real = entities.RealEntity.new(ghost.def, realId, ghost.kind, self.space, self, ghost.x, ghost.y)
+    real.props:load(ghost.props:dump())
+
+    real.ghosts = {}
+    for _, peer in ipairs(req.peers or {}) do
+        real:addGhost({ app = peer.app, cellKey = peer.cellKey, sameApp = peer.sameApp })
+    end
+    if req.witnessCellKey then
+        real:addGhost({ app = req.fromApp, cellKey = req.witnessCellKey, witness = true })
+    end
+
+    self:removeEntity(ghost)
+    self:addEntity(real)
+    self.app:notifyEntityMoved(real)
+    return true
+end
+
+function Cell:applyRemoteGhostProps(realId, props)
+    local ghost = self:findGhost(realId)
+    if not ghost then return end
+
+    for name, value in pairs(props or {}) do
+        ghost:stageProp(name, value)
+    end
+end
+
+function Cell:destroyRemoteGhost(realId)
+    local ghost = self:findGhost(realId)
+    if ghost then self:removeEntity(ghost) end
 end
 
 M.Cell = Cell

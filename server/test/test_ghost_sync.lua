@@ -54,7 +54,7 @@ local dirty = real:collectGhostDirty()
 assert(dirty and dirty.x == 30, "ghost dirty not collected")
 
 -- broadcastGhost 把 stage 写进 ghost 的 next-tick 队列
-space:broadcastGhost(real, dirty)
+cellA:broadcastGhostProps(real, dirty)
 local stage = ghost:collectStage()
 assert(stage.x == 30, "ghost stage not set")
 

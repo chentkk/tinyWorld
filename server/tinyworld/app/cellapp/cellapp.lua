@@ -216,19 +216,25 @@ end
 
 -- 内部: ghost 流程
 function cmd.ghost_create(spaceId, cellKey, req)
-    return selfApp.localSpace:onGhostCreate(cellKey, req)
+    local cell = selfApp.localSpace:getCell(cellKey)
+    if not cell then return false end
+    return cell:upsertRemoteGhost(req)
 end
 
 function cmd.ghost_promote(spaceId, cellKey, realId, req)
-    return selfApp.localSpace:onGhostPromote(cellKey, realId, req)
+    local cell = selfApp.localSpace:getCell(cellKey)
+    if not cell then return false end
+    return cell:promoteGhost(realId, req)
 end
 
 function cmd.ghost_sync(spaceId, cellKey, realId, props)
-    selfApp.localSpace:onGhostSync(cellKey, realId, props)
+    local cell = selfApp.localSpace:getCell(cellKey)
+    if cell then cell:applyRemoteGhostProps(realId, props) end
 end
 
 function cmd.ghost_destroy(spaceId, cellKey, realId)
-    selfApp.localSpace:onGhostDestroy(cellKey, realId)
+    local cell = selfApp.localSpace:getCell(cellKey)
+    if cell then cell:destroyRemoteGhost(realId) end
 end
 
 function cmd.ghost_rpc(spaceId, cellKey, realId, name, data)
