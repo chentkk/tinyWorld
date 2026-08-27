@@ -4,9 +4,9 @@
 local Ability = require "tinyworld.combat.ability"
 local Modifier = require "tinyworld.combat.modifier"
 
-local ability_borrowed_time = Ability.extend("ability_borrowed_time")
-local modifier_ability_borrowed_time_passive = Modifier.extend("modifier_ability_borrowed_time_passive")
-local modifier_abaddon_borrowed_time_lua_active = Modifier.extend("modifier_abaddon_borrowed_time_lua_active")
+ability_borrowed_time = Ability.extend("ability_borrowed_time")
+modifier_ability_borrowed_time_passive = Modifier.extend("modifier_ability_borrowed_time_passive")
+modifier_abaddon_borrowed_time_lua_active = Modifier.extend("modifier_abaddon_borrowed_time_lua_active")
 
 function ability_borrowed_time:onCreateAbility()
     self.caster:addModifier(modifier_ability_borrowed_time_passive.new(self.caster, self, nil))
@@ -41,8 +41,3 @@ function modifier_abaddon_borrowed_time_lua_active:OnDamageReceived(attacker, am
     return -amount -- 转化为治疗
 end
 
-return {
-    ability_borrowed_time = ability_borrowed_time,
-    modifier_ability_borrowed_time_passive = modifier_ability_borrowed_time_passive,
-    modifier_abaddon_borrowed_time_lua_active = modifier_abaddon_borrowed_time_lua_active,
-}

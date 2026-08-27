@@ -4,9 +4,9 @@
 local Ability = require "tinyworld.combat.ability"
 local Modifier = require "tinyworld.combat.modifier"
 
-local ability_curse_of_avernus = Ability.extend("ability_curse_of_avernus")
-local modifier_ability_curse_of_avernus_lua_debuff = Modifier.extend("modifier_ability_curse_of_avernus_lua_debuff")
-local modifier_ability_curse_of_avernus_lua_buff = Modifier.extend("modifier_ability_curse_of_avernus_lua_buff")
+ability_curse_of_avernus = Ability.extend("ability_curse_of_avernus")
+modifier_ability_curse_of_avernus_lua_debuff = Modifier.extend("modifier_ability_curse_of_avernus_lua_debuff")
+modifier_ability_curse_of_avernus_lua_buff = Modifier.extend("modifier_ability_curse_of_avernus_lua_buff")
 
 function ability_curse_of_avernus:OnSpellStart()
     local target = self.target or self.caster
@@ -35,8 +35,3 @@ function modifier_ability_curse_of_avernus_lua_buff:OnDestroy()
     if self.oldSpeed then self.caster:set("speed", self.oldSpeed) end
 end
 
-return {
-    ability_curse_of_avernus = ability_curse_of_avernus,
-    modifier_ability_curse_of_avernus_lua_debuff = modifier_ability_curse_of_avernus_lua_debuff,
-    modifier_ability_curse_of_avernus_lua_buff = modifier_ability_curse_of_avernus_lua_buff,
-}

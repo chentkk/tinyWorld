@@ -4,7 +4,7 @@
 local Ability = require "tinyworld.combat.ability"
 local combatDamage = require "tinyworld.combat.damage"
 
-local ability_mist_coil = Ability.extend("ability_mist_coil")
+ability_mist_coil = Ability.extend("ability_mist_coil")
 
 function ability_mist_coil:OnSpellStart()
     local target = self.target
@@ -20,4 +20,3 @@ function ability_mist_coil:OnSpellStart()
     end
 end
 
-return { ability_mist_coil = ability_mist_coil }

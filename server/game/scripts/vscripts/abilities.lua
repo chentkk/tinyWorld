@@ -21,8 +21,8 @@ function registry.create(caster, abilityName)
     if not data then return nil, "no npc data " .. abilityName end
 
     local scriptModule = "game.scripts.vscripts." .. data.ScriptFile:gsub("/", ".")
-    local mod = require(scriptModule)
-    local cls = mod[abilityName]
+    require(scriptModule)
+    local cls = _G[abilityName]
     if not cls then return nil, "no vscript " .. abilityName end
 
     local ability = cls.new(caster, data)

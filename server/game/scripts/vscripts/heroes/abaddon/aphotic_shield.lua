@@ -4,8 +4,8 @@
 local Ability = require "tinyworld.combat.ability"
 local Modifier = require "tinyworld.combat.modifier"
 
-local ability_aphotic_shield = Ability.extend("ability_aphotic_shield")
-local modifier_abaddon_aphotic_shield_lua = Modifier.extend("modifier_abaddon_aphotic_shield_lua")
+ability_aphotic_shield = Ability.extend("ability_aphotic_shield")
+modifier_abaddon_aphotic_shield_lua = Modifier.extend("modifier_abaddon_aphotic_shield_lua")
 
 function ability_aphotic_shield:OnSpellStart()
     local target = self.target or self.caster
@@ -29,7 +29,3 @@ function modifier_abaddon_aphotic_shield_lua:OnDamageReceived(attacker, amount, 
     return amount - blocked
 end
 
-return {
-    ability_aphotic_shield = ability_aphotic_shield,
-    modifier_abaddon_aphotic_shield_lua = modifier_abaddon_aphotic_shield_lua,
-}
