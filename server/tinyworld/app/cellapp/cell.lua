@@ -118,8 +118,13 @@ function Cell:buildRealOutbox(entity)
 end
 
 function Cell:buildGhostOutbox(entity)
-    local stage = entity:collectStage()
-    local outbox = { aroundProps = stage, events = {} }
+    local outbox = {
+        aroundProps = entity:collectStage(),
+        recordOps = entity:collectStageRecords(),
+        viewOps = entity:collectStageViews(),
+        events = entity.pendingEvents,
+    }
+    entity.pendingEvents = {}
     entity.outbox = outbox
 end
 
@@ -403,27 +408,23 @@ end
 -- 把本 cell 内 real 的 ghost 脏属性广播出去
 function Cell:broadcastGhostChanges()
     for _, real in pairs(self.entities) do
-        if real.isReal then
-            local dirty = real:collectGhostDirty()
-            if next(dirty) then
-                self:broadcastGhostProps(real, dirty)
-            end
+        if real.isReal and real.outbox then
+            self:applyOutboxToGhosts(real, real.outbox)
+            real.outbox = nil
         end
     end
 end
 
--- real 的 dirty 属性同步给所有 ghost:
--- 本地 ghost 直接 stage, 远端 ghost 通过 cellapp 服务消息 stage
-function Cell:broadcastGhostProps(real, props)
+-- real.outbox 同步给所有 ghost:
+-- 本地 ghost 直接应用, 远端 ghost 通过 cellapp 服务消息应用
+function Cell:applyOutboxToGhosts(real, outbox)
     for _, info in pairs(real.ghosts) do
         if info.sameApp then
             local cell = self.space:getCell(info.cellKey)
             local ghost = cell and cell:findGhost(real.id)
-            if ghost then
-                for name, value in pairs(props) do ghost:stageProp(name, value) end
-            end
+            if ghost then ghost:applyOutbox(outbox) end
         else
-            self.app:send(info.app, "ghost_sync", self.space.spaceId, info.cellKey, real.id, props)
+            self.app:send(info.app, "ghost_sync", self.space.spaceId, info.cellKey, real.id, outbox)
         end
     end
 end
@@ -473,13 +474,9 @@ function Cell:promoteGhost(realId, req)
     return true
 end
 
-function Cell:applyRemoteGhostProps(realId, props)
+function Cell:applyRemoteGhostSync(realId, outbox)
     local ghost = self:findGhost(realId)
-    if not ghost then return end
-
-    for name, value in pairs(props or {}) do
-        ghost:stageProp(name, value)
-    end
+    if ghost then ghost:applyOutbox(outbox) end
 end
 
 function Cell:destroyRemoteGhost(realId)

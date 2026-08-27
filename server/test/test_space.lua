@@ -72,11 +72,10 @@ real.x = 96
 cell:tick(0)
 assert(real.cell.info.id == "1:0")
 
--- ghost 属性同步由 broadcastGhost 驱动
+-- Real -> Ghost: cell 内广播用 real.outbox
 real:set("x", 140)
-local dirty = real:collectGhostDirty()
-assert(dirty and dirty.x == 140)
-oldCell:broadcastGhostProps(real, dirty)
+real.outbox = { aroundProps = { x = 140 } }
+oldCell:applyOutboxToGhosts(real, real.outbox)
 foundGhost = nil
 for _, e in pairs(oldCell.entities) do
     if e.isGhost and e.realId == real.id then foundGhost = e end

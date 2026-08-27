@@ -229,7 +229,7 @@ end
 
 function cmd.ghost_sync(spaceId, cellKey, realId, props)
     local cell = selfApp.localSpace:getCell(cellKey)
-    if cell then cell:applyRemoteGhostProps(realId, props) end
+    if cell then cell:applyRemoteGhostSync(realId, props) end
 end
 
 function cmd.ghost_destroy(spaceId, cellKey, realId)

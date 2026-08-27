@@ -48,13 +48,10 @@ local ghost = cellB:buildGhost(real)
 cellB:addEntity(ghost)
 real:addGhost({ key = "1001@1:0", app = 1, cellKey = "1:0", sameApp = true })
 
--- real 属性变更会产生 ghost dirty
-real:set("x", 30)
-local dirty = real:collectGhostDirty()
-assert(dirty and dirty.x == 30, "ghost dirty not collected")
+-- real.outbox 应用到 ghost, 下一 tick ghost 再向观察者打包
+real.outbox = { aroundProps = { x = 30 } }
+cellA:applyOutboxToGhosts(real, real.outbox)
 
--- broadcastGhost 把 stage 写进 ghost 的 next-tick 队列
-cellA:broadcastGhostProps(real, dirty)
 local stage = ghost:collectStage()
 assert(stage.x == 30, "ghost stage not set")
 
