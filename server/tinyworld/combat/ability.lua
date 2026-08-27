@@ -17,9 +17,9 @@ function Ability:ctor(caster, data)
     self.data = data or {}
     self.level = 1
     self.state = STATE.READY
-    self.castPoint = tonumber(self.data.castPoint or self.data.AbilityCastPoint) or 0
+    self.castPoint = tonumber(self:GetSpecialValueFor("AbilityCastPoint")) or 0
     self.cooldownLeft = 0
-    self.channelTime = tonumber(self.data.channelTime) or 0
+    self.channelTime = tonumber(self:GetSpecialValueFor("channelTime")) or 0
     self.elapsed = 0
 end
 
@@ -40,7 +40,7 @@ function Ability:GetSpecialValueFor(key)
 end
 
 function Ability:GetCastRange()
-    return tonumber(self.data.castRange or self.data.AbilityCastRange) or 100
+    return tonumber(self:GetSpecialValueFor("AbilityCastRange")) or 100
 end
 
 function Ability:IsReady()
@@ -104,7 +104,7 @@ function Ability:finishChannel()
 end
 
 function Ability:startCooldown()
-    self.cooldownLeft = tonumber(self.data.cooldown or self.data.AbilityCooldown or 1) or 1
+    self.cooldownLeft = tonumber(self:GetSpecialValueFor("AbilityCooldown")) or 1
     self.state = STATE.COOLDOWN
 end
 
