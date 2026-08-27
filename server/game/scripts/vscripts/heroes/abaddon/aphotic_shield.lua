@@ -9,8 +9,9 @@ modifier_abaddon_aphotic_shield_lua = Modifier.extend("modifier_abaddon_aphotic_
 
 function ability_aphotic_shield:OnSpellStart()
     local target = self.target or self.caster
-    target:addModifier(modifier_abaddon_aphotic_shield_lua.new(
-        self.caster, self, tonumber(self.data.duration)))
+    target:addModifier("modifier_abaddon_aphotic_shield_lua", self, {
+        duration = tonumber(self.data.duration),
+    })
 end
 
 function modifier_abaddon_aphotic_shield_lua:OnCreated(params)

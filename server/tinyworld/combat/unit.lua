@@ -26,8 +26,18 @@ function M.apply(unit)
     unit.modifiers = unit.modifiers or {}
     unit.abilities = unit.abilities or {}
 
-    function unit:addModifier(mod)
+    function unit:addModifier(mod, ability, params)
         if not mod then return nil end
+
+        -- example 风格: 直接传 modifier 名字, 由全局 vscripts 类实例化
+        if type(mod) == "string" then
+            local cls = _G[mod]
+            if not cls then return nil end
+            local duration = (params and params.duration) or
+                (ability and ability.data and ability.data.duration)
+            mod = cls.new(self, ability, duration)
+        end
+
         if not mod.owner then mod.owner = self end
 
         local name = mod:GetModifierName()

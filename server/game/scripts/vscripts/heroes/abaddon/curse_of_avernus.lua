@@ -10,10 +10,12 @@ modifier_ability_curse_of_avernus_lua_buff = Modifier.extend("modifier_ability_c
 
 function ability_curse_of_avernus:OnSpellStart()
     local target = self.target or self.caster
-    target:addModifier(modifier_ability_curse_of_avernus_lua_debuff.new(
-        self.caster, self, tonumber(self.data.slowDuration)))
-    self.caster:addModifier(modifier_ability_curse_of_avernus_lua_buff.new(
-        self.caster, self, tonumber(self.data.slowDuration)))
+    target:addModifier("modifier_ability_curse_of_avernus_lua_debuff", self, {
+        duration = tonumber(self.data.slowDuration),
+    })
+    self.caster:addModifier("modifier_ability_curse_of_avernus_lua_buff", self, {
+        duration = tonumber(self.data.slowDuration),
+    })
 end
 
 function modifier_ability_curse_of_avernus_lua_debuff:OnCreated(params)

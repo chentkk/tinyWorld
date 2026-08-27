@@ -9,12 +9,13 @@ modifier_ability_borrowed_time_passive = Modifier.extend("modifier_ability_borro
 modifier_abaddon_borrowed_time_lua_active = Modifier.extend("modifier_abaddon_borrowed_time_lua_active")
 
 function ability_borrowed_time:onCreateAbility()
-    self.caster:addModifier(modifier_ability_borrowed_time_passive.new(self.caster, self, nil))
+    self.caster:addModifier("modifier_ability_borrowed_time_passive", self, nil)
 end
 
 function ability_borrowed_time:OnChannelStart()
-    self.caster:addModifier(modifier_abaddon_borrowed_time_lua_active.new(
-        self.caster, self, tonumber(self.data.duration)))
+    self.caster:addModifier("modifier_abaddon_borrowed_time_lua_active", self, {
+        duration = tonumber(self.data.duration),
+    })
 end
 
 function ability_borrowed_time:OnChannelFinish()
