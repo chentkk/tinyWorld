@@ -1,7 +1,7 @@
 -- tinyworld/combat/sync.lua
 -- 战斗同步组件(cellapp 侧底层同步层)。
--- 监听实体发出的 combat_damage / combat_heal / combat_modifier_* 一次性事件,
--- 把这些事件转换成客户端 RPC, 下发给自己以及周围所有玩家。
+-- 监听 combat_damage / combat_heal 一次性事件转成客户端 RPC。
+-- modifier 状态由 modifiers_view 同步, 不在这里重复下发。
 -- 战斗核心与技能脚本不碰网络, 底层通信全部收敛在本组件。
 
 local component = require "tinyworld.entity.component"
@@ -30,18 +30,7 @@ function CombatSync:onCreate()
         })
     end)
 
-    entity:on("combat_modifier_add", function(_, name, duration, stack)
-        self:push("onModifierAdd", {
-            entityId = entity.clientId, modifier = name, duration = duration, stack = stack })
-    end)
-
-    entity:on("combat_modifier_remove", function(_, name)
-        self:push("onModifierRemove", { entityId = entity.clientId, modifier = name })
-    end)
-
-    entity:on("combat_modifier_refresh", function(_, name, stack)
-        self:push("onModifierRefresh", { entityId = entity.clientId, modifier = name, stack = stack })
-    end)
+    -- modifier 状态统一由 modifiers_view 同步, 不再发一次性 RPC
 end
 
 -- 需要 cell 上下文, 实体进入 cell 后才可用

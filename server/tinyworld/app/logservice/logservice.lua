@@ -21,7 +21,9 @@ local cmd = {}
 function cmd.write(connId, kind, msgType, name, data)
     if not file then file = openFile() end
 
-    local stamp = os.date("%Y-%m-%d %H:%M:%S")
+    local sec = math.floor(skynet.time())
+    local stamp = os.date("%Y-%m-%d %H:%M:%S", sec) ..
+        string.format(".%03d", math.floor((skynet.time() - sec) * 1000))
     local line
     if kind == "" then
         -- connect / disconnect 等无协议类型的事件, 不带大括号

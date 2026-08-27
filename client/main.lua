@@ -86,26 +86,10 @@ net.onMessage = function(msg)
         -- 服务器主动推送的战斗事件: 伤害 / 治疗 / modifier 变化
         local e = entities.get(d.entityId)
         local x, y = e and e.props.x, e and e.props.y
-        local ent = entities.get(d.entityId)
-        if ent then
-            ent.modifiers = ent.modifiers or {}
-            if msg.n == "onModifierAdd" then
-                ent.modifiers[d.modifier] = { name = d.modifier, duration = d.duration, stack = d.stack }
-            elseif msg.n == "onModifierRemove" then
-                ent.modifiers[d.modifier] = nil
-            elseif msg.n == "onModifierRefresh" then
-                if ent.modifiers[d.modifier] then ent.modifiers[d.modifier].stack = d.stack end
-            end
-        end
-
         if msg.n == "onCombatDamage" then
             combatEvents[#combatEvents + 1] = { text = "-" .. d.amount, x = x, y = y, ttl = 1 }
         elseif msg.n == "onCombatHeal" then
             combatEvents[#combatEvents + 1] = { text = "+" .. d.amount, x = x, y = y, ttl = 1 }
-        elseif msg.n == "onModifierAdd" then
-            combatEvents[#combatEvents + 1] = { text = "+" .. (d.modifier or ""), x = x, y = y, ttl = 1.2 }
-        elseif msg.n == "onModifierRemove" then
-            combatEvents[#combatEvents + 1] = { text = "-" .. (d.modifier or ""), x = x, y = y, ttl = 1.2 }
         end
     end
 end
