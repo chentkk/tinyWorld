@@ -252,6 +252,17 @@ function cmd.client_disconnect(connId)
     log.info("session closed %s playerId=%d saved", connId, entity.id)
 end
 
+-- cellapp 迁移完成后通知 baseapp 更新 real 的 cell 绑定
+function cmd.rebind_cell(playerId, spaceId, cellKey, appAddr)
+    for _, session in pairs(sessions) do
+        local entity = session.entity
+        if entity and entity.id == playerId then
+            entity:bindCell(appAddr, cellKey, spaceId)
+            return true
+        end
+    end
+end
+
 -- cellentity(real) -> baseentity 的 rpc
 function cmd.call_base(playerId, name, data)
     for _, session in pairs(sessions) do

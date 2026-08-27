@@ -225,7 +225,19 @@ end
 function cmd.ghost_promote(spaceId, cellKey, realId, req)
     local cell = selfApp.localSpace:getCell(cellKey)
     if not cell then return false end
-    return cell:promoteGhost(realId, req)
+
+    local real = cell:promoteGhost(realId, req)
+    if not real then return false end
+
+    -- 迁移后重新绑定 baseApp 并重建 cell 侧组件(移动 / 战斗同步等)
+    require("game.init").setupCellEntity(real, { initData = real.cellInitData })
+    real.readyForSync = true
+
+    if real.baseApp then
+        skynet.send(real.baseApp, "lua", "rebind_cell",
+            real.playerId, spaceId, cellKey, skynet.self())
+    end
+    return true
 end
 
 function cmd.ghost_sync(spaceId, cellKey, realId, props)

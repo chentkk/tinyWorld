@@ -303,6 +303,9 @@ function Cell:migrateRemote(real, ideal)
         fromApp = self.app.appId,
         witnessCellKey = real.cell.info.id,
         peers = peers,
+        baseApp = real.baseApp,
+        playerId = real.playerId,
+        initData = real.cellInitData,
     })
     real.migrating = nil
 end
@@ -457,6 +460,9 @@ function Cell:promoteGhost(realId, req)
 
     local real = RealEntity.new(ghost.def, realId, ghost.kind, self.space, self, ghost.x, ghost.y)
     real.props:load(ghost.props:dump())
+    real.baseApp = req.baseApp
+    real.playerId = req.playerId
+    real.cellInitData = req.initData
 
     real.ghosts = {}
     for _, peer in ipairs(req.peers or {}) do
@@ -470,7 +476,7 @@ function Cell:promoteGhost(realId, req)
     self:addEntity(real)
     self:ghostLog("promote real=%d cell=%s", real.id, self.info.id)
     self.app:notifyEntityMoved(real)
-    return true
+    return real
 end
 
 function Cell:applyRemoteGhostSync(realId, outbox)
