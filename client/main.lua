@@ -95,6 +95,14 @@ end
 function love.load()
     love.graphics.setBackgroundColor(0.1, 0.1, 0.14)
     dbg.write("client start account=%s", account)
+    local loadOk, loadErr = xpcall(doLoad, function(e)
+        dbg.write("LOVE LOAD ERROR: %s\n%s", tostring(e), debug.traceback())
+        return e
+    end)
+    if not loadOk then dbg.write("load failed: %s", tostring(loadErr)) end
+end
+
+function doLoad()
     local token = net.login(HOST, LOGIN_PORT, account, "123456")
     dbg.write("login token=%s", tostring(token and token.token))
     if not token or token.code ~= 0 then
