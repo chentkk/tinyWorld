@@ -92,6 +92,10 @@ function M.setupCellEntity(real, data)
     -- 战斗一次性事件(伤害/治疗/modifier) -> 客户端 rpc 广播(自己 + 周围玩家)
     local combatSync = require "tinyworld.combat.sync"
     real:addComponent("combat_sync", combatSync.CombatSync)
+
+    -- 客户端释放技能与战斗驱动
+    local combatAgent = require "game.components.combat_agent"
+    real:addComponent("combat_agent", combatAgent.CombatAgent)
 end
 
 return M

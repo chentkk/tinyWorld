@@ -19,6 +19,8 @@ local GAME_PORT = 8000
 local account = (arg and arg[2]) or "test1"
 local autoQuitAfter = tonumber(arg and arg[3])
 local autoMove = (arg and arg[4] == "automove") or false
+local autoCast = (arg and arg[5] == "cast") or false
+local didCast = false
 local testTimer = 0
 
 local state = "login" -- login / select / enter / world
@@ -94,7 +96,7 @@ end
 
 function love.load()
     love.graphics.setBackgroundColor(0.1, 0.1, 0.14)
-    dbg.write("client start account=%s", account)
+    dbg.write("client start account=%s autoMove=%s autoCast=%s autoQuit=%s", account, tostring(autoMove), tostring(autoCast), tostring(autoQuitAfter))
 
     local token = net.login(HOST, LOGIN_PORT, account, "123456")
     dbg.write("login token=%s", tostring(token and token.token))
@@ -148,6 +150,12 @@ function love.update(dt)
     for i = #combatEvents, 1, -1 do
         combatEvents[i].ttl = combatEvents[i].ttl - dt
         if combatEvents[i].ttl <= 0 then table.remove(combatEvents, i) end
+    end
+
+    if autoCast and state == "world" and myEntity and not didCast then
+        didCast = true
+        net.enqueue("RPC", "onCastAbility", { index = 3 })
+        dbg.write("cast ability index=3")
     end
 
     if autoQuitAfter then
