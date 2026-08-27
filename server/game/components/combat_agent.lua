@@ -15,21 +15,12 @@ end
 function CombatAgent:onCreate()
     combatUnit.apply(self.entity)
     self:registerClientRpc("onCastAbility")
-    self:loadAbilities()
-end
 
-function CombatAgent:loadAbilities()
-    local entity = self.entity
-    entity.abilities = {}
-    entity.combatApplied = false
-    combatUnit.apply(entity)
-
-    local initData = entity.cellInitData or {}
     local names = {}
-    for _, abilityName in ipairs(initData.abilities or {}) do
+    for _, abilityName in ipairs(self.entity.cellInitData and self.entity.cellInitData.abilities or {}) do
         names[#names + 1] = abilityName
     end
-    entity:loadAbilities(names)
+    self.entity:loadAbilities(names)
 end
 
 function CombatAgent:onTick(dt)

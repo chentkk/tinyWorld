@@ -21,20 +21,20 @@ local unit = Entity.new(defs.get("CombatDummy"), 1, "CombatDummy")
 caster.apply(unit)
 assert(unit.combatApplied)
 
-local abilityReg = require "game.scripts.vscripts.abilities"
+-- 注册能力工厂(与 cellapp init 一致), 再用 unit:loadAbilities 创建能力
+require "game.scripts.vscripts.abilities"
 
--- 能力数据来自 npc/, 逻辑来自 vscripts/
-local shield = assert(abilityReg.create(unit, "ability_aphotic_shield"))
-table.insert(unit.abilities, shield)
+unit:loadAbilities({
+    "ability_aphotic_shield",
+    "ability_borrowed_time",
+    "ability_mist_coil",
+    "ability_curse_of_avernus",
+})
 
-local borrowed = assert(abilityReg.create(unit, "ability_borrowed_time"))
-table.insert(unit.abilities, borrowed)
-
--- 被动 / 立即释放技能同样按 npc 数据构建
-local mistCoil = assert(abilityReg.create(unit, "ability_mist_coil"))
-table.insert(unit.abilities, mistCoil)
-local curse = assert(abilityReg.create(unit, "ability_curse_of_avernus"))
-table.insert(unit.abilities, curse)
+local shield = unit.abilities[1]
+local borrowed = unit.abilities[2]
+local mistCoil = unit.abilities[3]
+local curse = unit.abilities[4]
 
 -- 立即进入持续施法
 assert(unit:castAbility(2, nil))
