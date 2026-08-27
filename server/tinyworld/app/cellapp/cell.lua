@@ -6,7 +6,9 @@
 
 local class = require "tinyworld.core.class"
 local aoiMod = require "tinyworld.app.cellapp.aoi"
-local entities = require "tinyworld.app.cellapp.entities"
+local entityMsg = require "tinyworld.app.cellapp.entity_msg"
+local RealEntity = require "tinyworld.app.cellapp.real_entity"
+local GhostEntity = require "tinyworld.app.cellapp.ghost_entity"
 local defs = require "tinyworld.entity.defs"
 local M = {}
 
@@ -240,14 +242,14 @@ function Cell:updatePlayerVisibility(player)
     for id, other in pairs(visible) do
         if player.visibleEntities[id] ~= other then
             player.visibleEntities[id] = other
-            self.app:sendToClient(player, entities.objectAddMsg(other))
+            self.app:sendToClient(player, entityMsg.objectAddMsg(other))
         end
     end
 
     for id, old in pairs(player.visibleEntities) do
         if not visible[id] then
             player.visibleEntities[id] = nil
-            self.app:sendToClient(player, entities.objectRemoveMsg(old))
+            self.app:sendToClient(player, entityMsg.objectRemoveMsg(old))
         end
     end
 end
@@ -380,7 +382,7 @@ end
 -- 在本 cell 构造一个 real 的 ghost
 function Cell:buildGhost(real)
     local def = defs.get(real.kind) or real.def
-    local ghost = entities.GhostEntity.new(def, self.app:nextId(), real.kind, self.space, self, real.id, real.x, real.y)
+    local ghost = GhostEntity.new(def, self.app:nextId(), real.kind, self.space, self, real.id, real.x, real.y)
     for name, value in pairs(real.props:dump()) do
         ghost:stageProp(name, value)
     end
@@ -440,7 +442,7 @@ function Cell:upsertRemoteGhost(req)
     local def = defs.get(req.kind)
     if not def then return false end
 
-    ghost = entities.GhostEntity.new(def, self.app:nextId(), req.kind, self.space, self, req.realId, req.x, req.y)
+    ghost = GhostEntity.new(def, self.app:nextId(), req.kind, self.space, self, req.realId, req.x, req.y)
     if req.snapshot and req.snapshot.props then
         ghost.props:load(req.snapshot.props)
     end
@@ -457,7 +459,7 @@ function Cell:promoteGhost(realId, req)
     local ghost = self:findGhost(realId)
     if not ghost then return false end
 
-    local real = entities.RealEntity.new(ghost.def, realId, ghost.kind, self.space, self, ghost.x, ghost.y)
+    local real = RealEntity.new(ghost.def, realId, ghost.kind, self.space, self, ghost.x, ghost.y)
     real.props:load(ghost.props:dump())
 
     real.ghosts = {}

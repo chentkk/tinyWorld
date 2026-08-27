@@ -6,7 +6,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local spaceLib = require "tinyworld.space.space"
 local localSpaceMod = require "tinyworld.app.cellapp.local_space"
-local entities = require "tinyworld.app.cellapp.entities"
+local RealEntity = require "tinyworld.app.cellapp.real_entity"
 local defs = require "tinyworld.entity.defs"
 
 defs.register("GhostDummy", {
@@ -41,7 +41,7 @@ local cellA = space:getCell("0:0")
 local cellB = space:getCell("1:0")
 
 -- real 放 cellA, 同时在 cellB 造一个 ghost(模拟跨 cell 可见)
-local real = entities.RealEntity.new(defs.get("GhostDummy"), 1001, "GhostDummy", space, cellA, 10, 10)
+local real = RealEntity.new(defs.get("GhostDummy"), 1001, "GhostDummy", space, cellA, 10, 10)
 cellA:addEntity(real)
 
 local ghost = cellB:buildGhost(real)

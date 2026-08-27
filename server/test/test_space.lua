@@ -6,7 +6,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local spaceLib = require "tinyworld.space.space"
 local localSpaceMod = require "tinyworld.app.cellapp.local_space"
-local entities = require "tinyworld.app.cellapp.entities"
+local RealEntity = require "tinyworld.app.cellapp.real_entity"
 local defs = require "tinyworld.entity.defs"
 
 -- 定义 cell 侧实体
@@ -41,7 +41,7 @@ end
 
 local cell = space:getCell("0:0")
 assert(cell)
-local real = entities.RealEntity.new(defs.get("Dummy"), fake:nextId(), "Dummy", space, cell, 95, 50)
+local real = RealEntity.new(defs.get("Dummy"), fake:nextId(), "Dummy", space, cell, 95, 50)
 real.props:load({ x = 95, y = 50 })
 cell:addEntity(real)
 assert(cell.playerCount == 0)

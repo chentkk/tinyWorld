@@ -10,7 +10,8 @@ local proto = require "tinyworld.core.proto"
 local util = require "tinyworld.core.util"
 local localSpaceMod = require "tinyworld.app.cellapp.local_space"
 local defs = require "tinyworld.entity.defs"
-local entities = require "tinyworld.app.cellapp.entities"
+local entityMsg = require "tinyworld.app.cellapp.entity_msg"
+local RealEntity = require "tinyworld.app.cellapp.real_entity"
 
 local cmd = {}
 local selfApp = setmetatable({}, { __index = cmd })
@@ -158,7 +159,7 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     if not def then return nil, "unknown kind " .. tostring(kind) end
 
     local entityId = selfApp:nextId()
-    local real = entities.RealEntity.new(def, entityId, kind, selfApp.localSpace, cell)
+    local real = RealEntity.new(def, entityId, kind, selfApp.localSpace, cell)
     real.playerId = data and data.playerId
     real.cellInitData = data and data.initData
     local x = data and data.x or cell.info.x + cell.info.w / 2
@@ -180,7 +181,7 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     real.readyForSync = true
 
     local combatUnit = require "tinyworld.combat.unit"
-    local props = entities.clientProps(real)
+    local props = entityMsg.clientProps(real)
     local modifiers = combatUnit.modifiersSnapshot(real)
     return { entityId = entityId, cellKey = cellKey, kind = kind, props = props,
              modifiers = modifiers }
