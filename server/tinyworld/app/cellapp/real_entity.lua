@@ -65,7 +65,10 @@ function RealEntity:sendGhostEach(outbox)
         if info.app == self.cell.app.appId then
             local cell = self.space:getCell(info.cellKey)
             local ghost = cell and cell:findGhost(self.id)
-            if ghost then ghost:applyOutbox(outbox) end
+            if ghost then
+                ghost:applyOutbox(outbox)
+                cell:ghostLog("local ghost apply outbox real=%d ghost=%d", self.id, ghost.id)
+            end
         else
             self.cell.app:send(info.app, "ghost_sync",
                 self.space.spaceId, info.cellKey, self.id, outbox)

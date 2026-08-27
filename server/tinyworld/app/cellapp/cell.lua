@@ -6,6 +6,13 @@
 
 local class = require "tinyworld.core.class"
 local log = require "tinyworld.core.log"
+
+local function outboxHasChanges(outbox)
+    outbox = outbox or {}
+    return next(outbox.selfProps or {}) ~= nil or next(outbox.aroundProps or {}) ~= nil or
+           next(outbox.recordOps or {}) ~= nil or next(outbox.viewOps or {}) ~= nil or
+           #(outbox.events or {}) > 0
+end
 local aoiMod = require "tinyworld.app.cellapp.aoi"
 local entityMsg = require "tinyworld.app.cellapp.entity_msg"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
@@ -119,6 +126,10 @@ end
 function Cell:buildOutboxes()
     for _, entity in pairs(self.entities) do
         self:buildOutbox(entity)
+        if entity.isGhost and outboxHasChanges(entity.outbox) then
+            self:ghostLog("ghost outbox ready real=%d ghost=%d",
+                entity.realId, entity.id)
+        end
     end
 end
 
@@ -201,6 +212,9 @@ function Cell:deliverToPlayer(player)
     for _, target in pairs(player.visibleEntities) do
         if target.outbox then
             self:sendEntityAroundTo(player, target)
+            self:ghostLog("deliver outbox player=%s source=%s entity=%d kind=%s",
+                tostring(player.playerId), target.isGhost and "ghost" or "real",
+                target.clientId or target.id, target.kind)
         end
     end
 end
@@ -424,7 +438,13 @@ end
 -- 把本 cell 内 real 的 ghost 脏属性广播出去
 function Cell:broadcastGhostChanges()
     for _, real in pairs(self.entities) do
-        if real.isReal and real.outbox then
+        if real.isReal and real.outbox and outboxHasChanges(real.outbox) then
+            local count = 0
+            for _ in pairs(real.ghosts) do count = count + 1 end
+            if count > 0 then
+                self:ghostLog("real outbox sync real=%d ghosts=%d x=%.1f",
+                    real.id, count, real.x)
+            end
             real:sendGhostEach(real.outbox)
             real.outbox = nil
         end
@@ -481,7 +501,10 @@ end
 
 function Cell:applyRemoteGhostSync(realId, outbox)
     local ghost = self:findGhost(realId)
-    if ghost then ghost:applyOutbox(outbox) end
+    if ghost then
+        ghost:applyOutbox(outbox)
+        self:ghostLog("remote ghost apply outbox real=%d ghost=%d", realId, ghost.id)
+    end
 end
 
 function Cell:destroyRemoteGhost(realId)
