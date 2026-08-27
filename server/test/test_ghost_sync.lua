@@ -52,10 +52,11 @@ real:addGhost({ key = "1001@1:0", app = 1, cellKey = "1:0", sameApp = true })
 real.outbox = { aroundProps = { x = 30 } }
 cellA:applyOutboxToGhosts(real, real.outbox)
 
-local stage = ghost:collectStage()
-assert(stage.x == 30, "ghost stage not set")
+assert(ghost:get("x") == 30, "ghost x not applied")
+assert(ghost:collectClientProps(false).x == 30, "ghost dirty x not collected")
 
--- ghost 下一个 tick 应把 stage 发给观察者(此处只验证 stage 被取走)
-assert(next(ghost:collectStage()) == nil)
+-- 下一个 tick 会由 Cell:buildOutbox 统一 outbox, 这里只验证脏可被收集
+ghost:clearClientDirty()
+assert(next(ghost:collectClientProps(false)) == nil)
 
 print("PASS test_ghost_sync")

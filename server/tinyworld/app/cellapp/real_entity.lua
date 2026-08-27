@@ -14,8 +14,6 @@ function RealEntity:ctor(def, id, kind, space, cell, x, y)
     self.x = x or 0
     self.y = y or 0
     self.ghosts = {} -- 维护真实对象关联的 ghost 列表
-    self.dirtyGhostProps = {}
-    self.dirtyClient = {}
     self.moving = false
     self.lastMigrateTime = 0
     self.baseApp = nil
@@ -41,9 +39,6 @@ function RealEntity:onPropChanged(name, value, mode, source)
     if mode ~= "none" then
         self.dirtyClient[name] = value
     end
-    if mode == "all" then
-        self.dirtyGhostProps[name] = value
-    end
 end
 
 -- override 基类钩子
@@ -64,29 +59,6 @@ end
 
 function RealEntity:removeGhost(key)
     self.ghosts[key] = nil
-end
-
-function RealEntity:collectClientProps(forSelf)
-    local out = {}
-    local schema = self.def.propSchema
-    for name, value in pairs(self.dirtyClient) do
-        local f = schema:get(name)
-        if not f then out[name] = value
-        elseif forSelf or f.sync == "all" then
-            out[name] = value
-        end
-    end
-    return out
-end
-
-function RealEntity:clearClientDirty()
-    self.dirtyClient = {}
-end
-
-function RealEntity:collectGhostDirty()
-    local out = self.dirtyGhostProps
-    self.dirtyGhostProps = {}
-    return out
 end
 
 function RealEntity:ghostSnapshot()

@@ -44,6 +44,8 @@ function Entity:ctor(def, id, kind)
     -- AOI 视野表: 以服务器实体 id 为索引。clientId 只是为了特定客户端显示,
     -- 由下发消息统一转换(objectAddMsg / objectRemoveMsg / cell 消息)。
     rawset(self, "visibleEntities", {})
+    rawset(self, "dirtyClient", {})
+    rawset(self, "pendingEvents", {})
 end
 
 -- 元表: entity.level = 10 等价于 entity.props:set("level", 10)
@@ -79,6 +81,22 @@ end
 
 function Entity:getContainer(name)
     return self.containers[name]
+end
+
+-- Real / Ghost 共用: 属性变更只记录一份脏表, 出包时按观察者范围过滤
+function Entity:collectClientProps(forSelf)
+    local out = {}
+    local schema = self.def.propSchema
+    for name, value in pairs(self.dirtyClient) do
+        local f = schema:get(name)
+        if not f then out[name] = value
+        elseif forSelf or f.sync == "all" then out[name] = value end
+    end
+    return out
+end
+
+function Entity:clearClientDirty()
+    self.dirtyClient = {}
 end
 
 -- 组件
@@ -159,6 +177,7 @@ end
 
 -- 属性变化钩子(默认: 通知组件)
 function Entity:onPropChange(name, value, mode, source)
+    if mode ~= "none" then self.dirtyClient[name] = value end
     self:emit("prop_change", name, value, mode, source)
     self:eachComponent(function(_, comp)
         if comp.onPropChange then comp:onPropChange(name, value, mode, source) end

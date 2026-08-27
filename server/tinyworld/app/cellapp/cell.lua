@@ -88,54 +88,36 @@ function Cell:updateVisibilities()
     end
 end
 
--- 把一个 real 实体的本轮变更打入 outbox(只在这里 flush / collect 一次)
-function Cell:buildRealOutbox(entity)
-    local outbox = { events = {} }
-
-    outbox.selfProps = entity:collectClientProps(true)
-    outbox.aroundProps = entity:collectClientProps(false)
-
-    outbox.recordOps = {}
-    for name, rec in pairs(entity.records) do
-        local ops = rec:flushSync()
-        if ops and #ops > 0 then
-            outbox.recordOps[name] = ops
-        end
-    end
-
-    outbox.viewOps = {}
-    for name, cont in pairs(entity.containers) do
-        local ops = cont:flushSync()
-        if ops and #ops > 0 then
-            outbox.viewOps[name] = ops
-        end
-    end
-
-    outbox.events = entity.pendingEvents
-    entity.pendingEvents = {}
-    entity:clearClientDirty()
-
-    entity.outbox = outbox
-end
-
-function Cell:buildGhostOutbox(entity)
+-- 把实体的本轮变更打成 outbox。Real 与 Ghost 共用:
+-- real 的变更是 tick 产生的, ghost 的变更是 real.outbox 应用来的。
+function Cell:buildOutbox(entity)
     local outbox = {
-        aroundProps = entity:collectStage(),
-        recordOps = entity:collectStageRecords(),
-        viewOps = entity:collectStageViews(),
+        selfProps = entity:collectClientProps(true),
+        aroundProps = entity:collectClientProps(false),
+        recordOps = {},
+        viewOps = {},
         events = entity.pendingEvents,
     }
+
+    for name, rec in pairs(entity.records) do
+        local ops = rec:flushSync()
+        if ops and #ops > 0 then outbox.recordOps[name] = ops end
+    end
+
+    for name, cont in pairs(entity.containers) do
+        local ops = cont:flushSync()
+        if ops and #ops > 0 then outbox.viewOps[name] = ops end
+    end
+
     entity.pendingEvents = {}
+    entity:clearClientDirty()
     entity.outbox = outbox
+    return outbox
 end
 
 function Cell:buildOutboxes()
     for _, entity in pairs(self.entities) do
-        if entity.isReal then
-            self:buildRealOutbox(entity)
-        elseif entity.isGhost then
-            self:buildGhostOutbox(entity)
-        end
+        self:buildOutbox(entity)
     end
 end
 
@@ -382,9 +364,8 @@ end
 function Cell:buildGhost(real)
     local def = defs.get(real.kind) or real.def
     local ghost = GhostEntity.new(def, self.app:nextId(), real.kind, self.space, self, real.id, real.x, real.y)
-    for name, value in pairs(real.props:dump()) do
-        ghost:stageProp(name, value)
-    end
+    ghost.props:load(real.props:dump())
+    ghost.props:collectSync() -- 初始属性随 object add 下发, 不再作为变更重复广播
     return ghost
 end
 
