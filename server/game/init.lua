@@ -24,7 +24,13 @@ function M.loadPlayer(playerId)
     local skynet = require "skynet"
     local data = {
         props = { id = playerId },
-        records = {},
+        records = {
+            abilities = {
+                { name = "ability_aphotic_shield" },
+                { name = "ability_borrowed_time" },
+                { name = "ability_mist_coil" },
+            },
+        },
         containers = {},
     }
 
@@ -51,7 +57,14 @@ function M.loadPlayer(playerId)
     local row = rows and rows[1]
     if row and row.bin and row.bin ~= "" then
         local loaded = bin.unpackEntity(row.bin)
-        if loaded then return loaded end
+        if loaded then
+            loaded.records = loaded.records or {}
+            -- 旧档可能缺少新增字段, 这里做最小数据补齐
+            if not loaded.records.abilities then
+                loaded.records.abilities = data.records.abilities
+            end
+            return loaded
+        end
     end
     return data
 end
@@ -69,6 +82,16 @@ function M.savePlayer(playerId, dump)
         skynet.call(findDb(), "lua", "exec",
             string.format("INSERT INTO player_bin (player_id,bin) VALUES (%d,'%s')", playerId, body))
     end
+end
+
+-- cell 初始化数据: baseapp 从玩家数据中提取, 交给 cell 创建对象时使用。
+-- 技能属于玩家数据, 由 baseapp 加载, cellapp 不做技能数据来源。
+function M.buildCellData(entity)
+    local abilities = {}
+    for _, row in ipairs(entity:getRecord("abilities"):rowsList()) do
+        abilities[#abilities + 1] = row.name
+    end
+    return { abilities = abilities }
 end
 
 -- baseapp 侧组件的装配: 框架借此知道玩家使用了哪些组件

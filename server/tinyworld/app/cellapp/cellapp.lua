@@ -160,6 +160,7 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     local entityId = selfApp:nextId()
     local real = entities.RealEntity.new(def, entityId, kind, selfApp.localSpace, cell)
     real.playerId = data and data.playerId
+    real.cellInitData = data and data.initData
     local x = data and data.x or cell.info.x + cell.info.w / 2
     local y = data and data.y or cell.info.y + cell.info.h / 2
     real.x = x

@@ -102,8 +102,9 @@ local function enterWorld(entity, session)
         return
     end
 
+    local cellData = gameInit.buildCellData(entity)
     local spawn = skynet.call(info.appAddr, "lua", "spawn_entity", info.spaceId, info.cell.id,
-        "Player", { x = spawnX, y = spawnY, playerId = entity.id }, skynet.self())
+        "Player", { x = spawnX, y = spawnY, playerId = entity.id, initData = cellData }, skynet.self())
     if not spawn then
         replyAccount(session, "selectCharacter", { code = 2, msg = "spawn fail", playerId = entity.id })
         return

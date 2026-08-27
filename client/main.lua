@@ -154,8 +154,14 @@ function love.update(dt)
 
     if autoCast and state == "world" and myEntity and not didCast then
         didCast = true
-        net.enqueue("RPC", "onCastAbility", { index = 3 })
-        dbg.write("cast ability index=3")
+        local targetId
+        for id, e in pairs(entities.list) do
+            if e.entityId ~= net.selfId then targetId = e.entityId break end
+        end
+        if targetId then
+            net.enqueue("RPC", "onCastAbility", { index = 3, targetId = targetId })
+            dbg.write("cast ability index=3 target=%s", tostring(targetId))
+        end
     end
 
     if autoQuitAfter then

@@ -22,6 +22,12 @@ return {
                 { name = "taskid", type = "number", comment = "任务id" },
             },
         },
+        {
+            name = "abilities", sync = "none", keyFields = { "name" },
+            fields = {
+                { name = "name", type = "string", comment = "技能名" },
+            },
+        },
     },
     containers = {
         {
