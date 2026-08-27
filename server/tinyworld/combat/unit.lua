@@ -1,4 +1,4 @@
--- tinyworld/combat/caster.lua
+-- tinyworld/combat/unit.lua
 -- 战斗单位扩展: 管理 modifier 与 ability, 驱动每帧 update。
 -- modifier 的增删刷通过事件(combat_modifier_add/remove/refresh)通知,
 -- 由上层同步(如 buff view)决定如何下发, 战斗核心不碰网络。

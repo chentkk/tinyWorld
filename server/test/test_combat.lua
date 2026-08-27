@@ -6,7 +6,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local entity = require "tinyworld.entity.entity"
 local defs = require "tinyworld.entity.defs"
-local caster = require "tinyworld.combat.caster"
+local caster = require "tinyworld.combat.unit"
 local combatDamage = require "tinyworld.combat.damage"
 
 defs.register("CombatDummy", {

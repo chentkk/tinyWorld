@@ -48,7 +48,8 @@ function M.connect(host, port)
     sock:settimeout(5)
     local ok, err = sock:connect(host, port)
     if not ok then return nil, err end
-    sock:settimeout(0) -- 之后读取 non-blocking, 避免阻塞 game loop
+    -- 保持 0.2s 超时: LÖVE 的 LuaSocket 在 timeout=0 时不会真正 flush 发送缓冲
+    sock:settimeout(0.2)
     return true
 end
 
@@ -64,10 +65,9 @@ function M.sendFrame(t)
     local body = json.encode(t)
     local header = packU16(#body)
 
-    -- 小包用短暂阻塞发送, 避免 non-blocking 下数据未发完
-    sock:settimeout(0.5)
+    sock:settimeout(2)
     local sent, sendErr = sock:send(header .. body)
-    sock:settimeout(0)
+    sock:settimeout(0.2)
 
     if sent ~= #header + #body then
         local dbg = require "src.debuglog"
@@ -83,6 +83,15 @@ end
 
 function M.update()
     if not sock then return end
+
+    -- LÖVE 11.x 的 LuaSocket 需要 socket.sleep() 驱动底层的 select / 发送缓冲
+    socket.sleep(0.02)
+
+    if not M.updateLogged then
+        M.updateLogged = true
+        local dbg = require "src.debuglog"
+        dbg.write("net.update first run")
+    end
 
     local chunk, err = sock:receive()
     while chunk do
@@ -104,6 +113,8 @@ function M.update()
         end
         chunk = sock:receive()
     end
+
+    -- 接收超时/空读是正常情况; 连接错误由上层状态流转处理
 end
 
 return M

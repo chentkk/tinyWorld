@@ -86,8 +86,12 @@ end
 
 -- cellapp 侧组件的装配
 function M.setupCellEntity(real, data)
-    local comp = require "game.components.move"
-    real:addComponent("move", comp.Move)
+    local moveComp = require "game.components.move"
+    real:addComponent("move", moveComp.Move)
+
+    -- 战斗一次性事件(伤害/治疗/modifier) -> 客户端 rpc 广播(自己 + 周围玩家)
+    local combatSync = require "tinyworld.combat.sync"
+    real:addComponent("combat_sync", combatSync.CombatSync)
 end
 
 return M

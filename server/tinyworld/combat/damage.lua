@@ -16,7 +16,7 @@ M.HEAL_TYPE = {
     REGEN = 2,
 }
 
-function M.dealDamage(attacker, target, amount, damageType)
+function M.dealDamage(attacker, target, amount, damageType, sourceAbility)
     amount = math.floor(amount or 0)
     damageType = damageType or M.DAMAGE_TYPE.PHYSICAL
     if amount <= 0 or not target or not target.def then return 0 end
@@ -32,18 +32,19 @@ function M.dealDamage(attacker, target, amount, damageType)
     local hp = target:get("hp") or 0
     if amount < 0 then
         -- 负伤害 = 治疗(如回光返照)
-        return M.dealHeal(attacker, target, -amount, M.HEAL_TYPE.REGEN)
+        return M.dealHeal(attacker, target, -amount, M.HEAL_TYPE.REGEN, sourceAbility)
     end
 
+    local abilityName = sourceAbility and sourceAbility._name or nil
     target:set("hp", math.max(0, hp - amount))
-    target:emit("combat_damage", attacker, amount, damageType)
+    target:emit("combat_damage", attacker, amount, damageType, abilityName)
     if attacker then
-        attacker:emit("combat_damage_dealt", target, amount, damageType)
+        attacker:emit("combat_damage_dealt", target, amount, damageType, abilityName)
     end
     return amount
 end
 
-function M.dealHeal(caster, target, amount, healType)
+function M.dealHeal(caster, target, amount, healType, sourceAbility)
     amount = math.floor(amount or 0)
     healType = healType or M.HEAL_TYPE.HEAL
     if amount <= 0 or not target or not target.def then return 0 end
@@ -51,7 +52,8 @@ function M.dealHeal(caster, target, amount, healType)
     local hp = target:get("hp") or 0
     local maxHp = target:get("maxHp") or hp
     target:set("hp", math.min(maxHp, hp + amount))
-    target:emit("combat_heal", caster, amount, healType)
+    local abilityName = sourceAbility and sourceAbility._name or nil
+    target:emit("combat_heal", caster, amount, healType, abilityName)
     return amount
 end
 

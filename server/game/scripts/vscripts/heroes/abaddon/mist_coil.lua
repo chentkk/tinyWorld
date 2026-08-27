@@ -12,12 +12,12 @@ function M.ability_mist_coil:OnSpellStart()
     if not target then return end
 
     combatDamage.dealDamage(self.caster, target, tonumber(self.data.damage) or 90,
-        combatDamage.DAMAGE_TYPE.MAGICAL)
+        combatDamage.DAMAGE_TYPE.MAGICAL, self)
 
     local selfDamage = tonumber(self.data.selfDamage) or 0
     if selfDamage > 0 then
         combatDamage.dealDamage(self.caster, self.caster, selfDamage,
-            combatDamage.DAMAGE_TYPE.PURE)
+            combatDamage.DAMAGE_TYPE.PURE, self)
     end
 end
 

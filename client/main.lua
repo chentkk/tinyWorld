@@ -22,6 +22,7 @@ local autoMove = (arg and arg[4] == "automove") or false
 local testTimer = 0
 
 local state = "login" -- login / select / enter / world
+local combatEvents = {}
 local spaceInfo = nil
 local myEntity = nil
 local keys = { left = false, right = false, up = false, down = false }
@@ -76,7 +77,18 @@ net.onMessage = function(msg)
     elseif msg.t == "view" then
         views.apply(msg)
     elseif msg.t == "RPC" then
-        -- 服务器主动 rpc 回调, 预留
+        -- 服务器主动推送的战斗事件: 伤害 / 治疗 / modifier 变化
+        local e = entities.get(d.entityId)
+        local x, y = e and e.props.x, e and e.props.y
+        if msg.n == "onCombatDamage" then
+            combatEvents[#combatEvents + 1] = { text = "-" .. d.amount, x = x, y = y, ttl = 1 }
+        elseif msg.n == "onCombatHeal" then
+            combatEvents[#combatEvents + 1] = { text = "+" .. d.amount, x = x, y = y, ttl = 1 }
+        elseif msg.n == "onModifierAdd" then
+            combatEvents[#combatEvents + 1] = { text = "+" .. (d.modifier or ""), x = x, y = y, ttl = 1.2 }
+        elseif msg.n == "onModifierRemove" then
+            combatEvents[#combatEvents + 1] = { text = "-" .. (d.modifier or ""), x = x, y = y, ttl = 1.2 }
+        end
     end
 end
 
@@ -128,6 +140,12 @@ function love.update(dt)
         elseif #move.pending > 0 then
             move.stop()
         end
+    end
+
+    -- 战斗飘字凋亡
+    for i = #combatEvents, 1, -1 do
+        combatEvents[i].ttl = combatEvents[i].ttl - dt
+        if combatEvents[i].ttl <= 0 then table.remove(combatEvents, i) end
     end
 
     if autoQuitAfter then
@@ -211,6 +229,14 @@ function love.draw()
     for _, row in pairs(cur) do
         love.graphics.print("task " .. tostring(row.taskid) .. " p" .. tostring(row.progress), 10, 140 + i * 16)
         i = i + 1
+    end
+
+    -- 战斗事件飘字(伤害数字 / modifier 提示)
+    for _, ev in ipairs(combatEvents) do
+        if ev.x and ev.y then
+            love.graphics.setColor(1, ev.text:sub(1,1) == "-" and 0.9 or 0.3, 0.3)
+            love.graphics.print(ev.text, ev.x, ev.y - 24)
+        end
     end
 
     ui.draw()
