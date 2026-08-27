@@ -32,6 +32,11 @@ end
 
 M.snapshot = M.modifiersSnapshot
 
+local function round2(n)
+    n = tonumber(n) or 0
+    return math.floor(n * 100 + 0.5) / 100
+end
+
 -- 把 modifier / ability 状态同步到通用 View(只写有变化的值, 减少 ops)
 function M.syncCombatViews(unit, dt)
     if not unit.getContainer then return end
@@ -44,10 +49,10 @@ function M.syncCombatViews(unit, dt)
             local remaining = mod.duration and math.max(0, mod.duration - mod.elapsed) or 0
             if not modifiersView:has(id) then
                 modifiersView:add({ id = id, name = mod:GetModifierName(),
-                    stack = mod.stack, duration = mod.duration, remaining = remaining })
+                    stack = mod.stack, duration = round2(mod.duration), remaining = round2(remaining) })
             else
                 modifiersView:setChildProp(id, "stack", mod.stack)
-                modifiersView:setChildProp(id, "remaining", math.floor(remaining * 10) / 10)
+                modifiersView:setChildProp(id, "remaining", round2(remaining))
             end
             seen[id] = true
         end
@@ -62,9 +67,9 @@ function M.syncCombatViews(unit, dt)
             local id = ability:GetAbilityName()
             if id and not abilitiesView:has(id) then
                 abilitiesView:add({ id = id, level = ability.level or 1,
-                    cooldownLeft = ability.cooldownLeft or 0, state = ability.state or "ready" })
+                    cooldownLeft = round2(ability.cooldownLeft or 0), state = ability.state or "ready" })
             else
-                abilitiesView:setChildProp(id, "cooldownLeft", ability.cooldownLeft)
+                abilitiesView:setChildProp(id, "cooldownLeft", round2(ability.cooldownLeft))
                 abilitiesView:setChildProp(id, "state", ability.state)
             end
         end
