@@ -14,12 +14,13 @@ local sock
 local buffer = ""
 
 -- LÖVE 11.x 使用 LuaJIT(5.1), 没有 string.pack/unpack
+-- 与服务器 proto.lua 一致: 2 字节小端长度
 local function packU16(n)
-    return string.char(math.floor(n / 256) % 256, n % 256)
+    return string.char(n % 256, math.floor(n / 256) % 256)
 end
 
 local function unpackU16(s)
-    return string.byte(s, 1) * 256 + string.byte(s, 2)
+    return string.byte(s, 1) + string.byte(s, 2) * 256
 end
 
 local function writeLog(kind, msgType, name, data)
@@ -48,9 +49,14 @@ function M.connect(host, port)
     sock:settimeout(5)
     local ok, err = sock:connect(host, port)
     if not ok then return nil, err end
-    -- 保持 0.2s 超时: LÖVE 的 LuaSocket 在 timeout=0 时不会真正 flush 发送缓冲
-    sock:settimeout(0.2)
-    return true
+
+    -- LÖVE 合并 LuaSocket 时 connect 可能立即返回(non-blocking EINPROGRESS),
+    -- 需要 select 等 fd 可写确保连接真正建立。
+    for i = 1, 50 do
+        local _, writable = socket.select(nil, { sock }, 0.1)
+        if writable and #writable > 0 then return true end
+    end
+    return nil, "connect timeout"
 end
 
 function M.login(host, loginPort, name, password)
@@ -66,8 +72,14 @@ function M.sendFrame(t)
     local header = packU16(#body)
 
     sock:settimeout(2)
+    -- 发送前确保可写(非阻塞 fd 不能直接 send)
+    for i = 1, 50 do
+        local _, writable = socket.select(nil, { sock }, 0.1)
+        if writable and #writable > 0 then break end
+        socket.sleep(0.01)
+    end
+
     local sent, sendErr = sock:send(header .. body)
-    sock:settimeout(0.2)
 
     if sent ~= #header + #body then
         local dbg = require "src.debuglog"
@@ -79,6 +91,8 @@ end
 
 function M.enqueue(t, n, d)
     M.sendFrame({ t = t, n = n, d = d or {} })
+    -- 发送后立即驱动 luasocket flush 一次
+    socket.sleep(0.05)
 end
 
 function M.update()
@@ -87,15 +101,11 @@ function M.update()
     -- LÖVE 11.x 的 LuaSocket 需要 socket.sleep() 驱动底层的 select / 发送缓冲
     socket.sleep(0.02)
 
-    if not M.updateLogged then
-        M.updateLogged = true
-        local dbg = require "src.debuglog"
-        dbg.write("net.update first run")
-    end
-
-    local chunk, err = sock:receive()
-    while chunk do
-        buffer = buffer .. chunk
+    sock:settimeout(0.05)
+    -- LuaSocket 默认 receive() 是 *l, 不能读二进制帧, 因此逐字节拼帧
+    local byte = sock:receive(1)
+    while byte do
+        buffer = buffer .. byte
         while true do
             if #buffer < 2 then break end
             local len = unpackU16(buffer)
@@ -111,10 +121,8 @@ function M.update()
                 if M.onMessage then M.onMessage(msg) end
             end
         end
-        chunk = sock:receive()
+        byte = sock:receive(1)
     end
-
-    -- 接收超时/空读是正常情况; 连接错误由上层状态流转处理
 end
 
 return M
