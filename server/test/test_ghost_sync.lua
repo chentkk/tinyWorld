@@ -50,7 +50,7 @@ real:addGhost({ key = "1001@1:0", app = 1, cellKey = "1:0", sameApp = true })
 
 -- real.outbox 应用到 ghost, 下一 tick ghost 再向观察者打包
 real.outbox = { aroundProps = { x = 30 } }
-cellA:applyOutboxToGhosts(real, real.outbox)
+real:sendGhostEach(real.outbox)
 
 assert(ghost:get("x") == 30, "ghost x not applied")
 assert(ghost:collectClientProps(false).x == 30, "ghost dirty x not collected")

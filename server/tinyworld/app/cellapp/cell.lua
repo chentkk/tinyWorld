@@ -391,22 +391,8 @@ end
 function Cell:broadcastGhostChanges()
     for _, real in pairs(self.entities) do
         if real.isReal and real.outbox then
-            self:applyOutboxToGhosts(real, real.outbox)
+            real:sendGhostEach(real.outbox)
             real.outbox = nil
-        end
-    end
-end
-
--- real.outbox 同步给所有 ghost:
--- 本地 ghost 直接应用, 远端 ghost 通过 cellapp 服务消息应用
-function Cell:applyOutboxToGhosts(real, outbox)
-    for _, info in pairs(real.ghosts) do
-        if info.sameApp then
-            local cell = self.space:getCell(info.cellKey)
-            local ghost = cell and cell:findGhost(real.id)
-            if ghost then ghost:applyOutbox(outbox) end
-        else
-            self.app:send(info.app, "ghost_sync", self.space.spaceId, info.cellKey, real.id, outbox)
         end
     end
 end

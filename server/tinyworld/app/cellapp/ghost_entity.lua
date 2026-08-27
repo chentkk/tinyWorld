@@ -22,6 +22,28 @@ function GhostEntity:ctor(def, id, kind, space, cell, realId, x, y)
     self.pendingEvents = {}
 end
 
+-- Ghost -> Real RPC: ghost 持 realApp / realCellKey 直接定位真身
+function GhostEntity:sendReal(method, data)
+    if self.realApp == self.cell.app.appId then
+        local cell = self.space:getCell(self.realCellKey)
+        local real = cell and cell:get(self.realId)
+        if real and real[method] then real[method](real, data) end
+    else
+        self.cell.app:send(self.realApp, "real_rpc",
+            self.space.spaceId, self.realCellKey, self.realId, method, data)
+    end
+end
+
+function GhostEntity:callReal(method, data)
+    if self.realApp == self.cell.app.appId then
+        local cell = self.space:getCell(self.realCellKey)
+        local real = cell and cell:get(self.realId)
+        if real and real[method] then return real[method](real, data) end
+    end
+    return self.cell.app:call(self.realApp, "real_rpc",
+        self.space.spaceId, self.realCellKey, self.realId, method, data)
+end
+
 function GhostEntity:applyOutbox(outbox)
     outbox = outbox or {}
 

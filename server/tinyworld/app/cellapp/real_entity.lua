@@ -57,6 +57,37 @@ function RealEntity:addGhost(ghostInfo)
     self.ghosts[ghostInfo.key] = ghostInfo
 end
 
+-- Real -> Ghost RPC: 把 outbox 同步给所有关联 ghost。
+-- 本地 ghost 直接应用, 远端 ghost 通过 cellapp 服务的 ghost_sync 消息应用。
+function RealEntity:sendGhostEach(outbox)
+    for _, info in pairs(self.ghosts) do
+        if info.sameApp then
+            local cell = self.space:getCell(info.cellKey)
+            local ghost = cell and cell:findGhost(self.id)
+            if ghost then ghost:applyOutbox(outbox) end
+        else
+            self.cell.app:send(info.app, "ghost_sync",
+                self.space.spaceId, info.cellKey, self.id, outbox)
+        end
+    end
+end
+
+-- 与所有 ghost 的同步 rpc 调用(需要返回值时)
+function RealEntity:callGhostEach(method, data)
+    local results = {}
+    for _, info in pairs(self.ghosts) do
+        if info.sameApp then
+            local cell = self.space:getCell(info.cellKey)
+            local ghost = cell and cell:findGhost(self.id)
+            results[#results + 1] = ghost and ghost[method] and ghost[method](ghost, data)
+        else
+            results[#results + 1] = self.cell.app:call(info.app, "ghost_rpc",
+                self.space.spaceId, info.cellKey, self.id, method, data)
+        end
+    end
+    return results
+end
+
 function RealEntity:removeGhost(key)
     self.ghosts[key] = nil
 end

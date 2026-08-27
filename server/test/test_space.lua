@@ -75,7 +75,7 @@ assert(real.cell.info.id == "1:0")
 -- Real -> Ghost: cell 内广播用 real.outbox
 real:set("x", 140)
 real.outbox = { aroundProps = { x = 140 } }
-oldCell:applyOutboxToGhosts(real, real.outbox)
+real:sendGhostEach(real.outbox)
 foundGhost = nil
 for _, e in pairs(oldCell.entities) do
     if e.isGhost and e.realId == real.id then foundGhost = e end
