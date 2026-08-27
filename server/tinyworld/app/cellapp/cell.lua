@@ -15,6 +15,7 @@ function Cell:ctor(cellInfo, app)
     self.entities = {}
     self.aoi = aoiMod.Aoi.new(app.spaceConfig.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
+    self.battleEvents = {}
 end
 
 function Cell:key()
@@ -132,6 +133,22 @@ function Cell:tick(dt)
             end
             entity:clearClientDirty()
         end
+    end
+
+    -- 4. 战斗一次性事件最后冲刷, 保证在 entity add / prop 之后
+    self:flushBattleEvents()
+end
+
+function Cell:flushBattleEvents()
+    local events = self.battleEvents
+    self.battleEvents = {}
+
+    for _, event in ipairs(events) do
+        local origin = event.origin
+        if origin.kind == "Player" and origin.isReal and origin.baseApp then
+            self.app:sendToClient(origin, event.msg)
+        end
+        self:sendToAround(origin, event.msg)
     end
 end
 

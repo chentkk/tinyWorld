@@ -49,16 +49,14 @@ end
 function CombatSync:push(method, data)
     local entity = self.entity
     local cell = entity.cell
-    if not cell or not cell.app then return end
+    if not cell then return end
 
-    local msg = { t = "RPC", n = method, d = data }
-
-    -- 自己: 血量等属性同步之外, 还需要播放伤害数字
-    if entity.kind == "Player" then
-        cell.app:sendToClient(entity, msg)
-    end
-    -- 周围所有玩家
-    cell:sendToAround(entity, msg)
+    -- 事件排队, 由 cell 在视野 / entity add 之后再统一冲刷,
+    -- 避免 modifier 通知先于 object add 到达客户端。
+    cell.battleEvents[#cell.battleEvents + 1] = {
+        origin = entity,
+        msg = { t = "RPC", n = method, d = data },
+    }
 end
 
 M.CombatSync = CombatSync
