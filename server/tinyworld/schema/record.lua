@@ -9,6 +9,7 @@ function Record.new(def, host)
     self.def = def
     self.host = host
     self.rows = {}
+    self.order = {}
     self.dirty = {}
     return self
 end
@@ -32,6 +33,7 @@ function Record:add(data)
     if self.rows[key] then return nil end
 
     self.rows[key] = row
+    self.order[#self.order + 1] = key
     if self.def.sync ~= "none" then
         self.dirty[#self.dirty + 1] = { type = "add", key = key, data = self:syncData(row) }
     end
@@ -44,6 +46,9 @@ function Record:remove(key)
     if not row then return false end
 
     self.rows[key] = nil
+    for i, k in ipairs(self.order) do
+        if k == key then table.remove(self.order, i) break end
+    end
     if self.def.sync ~= "none" then self.dirty[#self.dirty + 1] = { type = "remove", key = key } end
     if self.host.onRecordChange then self.host:onRecordChange(self, { type = "remove", key = key }) end
     return true
@@ -73,7 +78,10 @@ end
 
 function Record:rowsList()
     local out = {}
-    for _, row in pairs(self.rows) do out[#out + 1] = row end
+    for _, key in ipairs(self.order) do
+        local row = self.rows[key]
+        if row then out[#out + 1] = row end
+    end
     return out
 end
 
