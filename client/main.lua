@@ -3,6 +3,10 @@
 -- 本地 entity 接收同步、WASD 移动(本地模拟 + Reconciliation)、
 -- 绘制 cell / ghost 边界, 展示通用视图(背包、装备栏)界面。
 
+-- 客户端与服务器共用同一份 tinyworld/combat 与 game/scripts
+package.path = "../server/?.lua;../server/?/init.lua;" .. package.path
+require("tinyworld.combat.env").setIsServer(false)
+
 local net = require "src.net"
 local dbg = require "src.debuglog"
 local entities = require "src.entities"

@@ -76,6 +76,7 @@ function cmd.init(spaceId, worldAddr)
     selfApp.appId = skynet.self()
     selfApp.world = worldAddr
 
+    require("tinyworld.combat.env").setIsServer(true)
     local gameInit = require "game.init"
     gameInit.registerCellDefs()
 

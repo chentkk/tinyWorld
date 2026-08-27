@@ -290,6 +290,7 @@ function cmd.call_base(playerId, name, data)
 end
 
 local function init()
+    require("tinyworld.combat.env").setIsServer(true)
     gameInit = require "game.init"
     gameInit.registerDefs()
 
