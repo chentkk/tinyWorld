@@ -39,7 +39,9 @@ function LocalSpace:tick(dt)
         cell:tick(dt)
     end
 
-    -- 迁移与 ghost 维护放在 tick 尾部, 避免遍历中修改 cell
+    -- Real -> Ghost 同步: 收集 real 脏属性, 广播给关联 ghost。
+    -- ghost 收到后仅在下一 tick 通过 cell:buildGhostOutbox 下发给观察者。
+    -- 迁移与 ghost 维护也放在 tick 尾部, 避免遍历中修改 cell
     for _, cell in ipairs(self.cells) do
         for _, entity in pairs(cell.entities) do
             if entity.isReal then

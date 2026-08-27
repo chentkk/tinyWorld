@@ -4,7 +4,7 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local tests = {
-    "test_proto", "test_schema", "test_space", "test_loadbalancer", "test_combat",
+    "test_proto", "test_schema", "test_space", "test_loadbalancer", "test_combat", "test_ghost_sync",
 }
 
 for _, name in ipairs(tests) do
