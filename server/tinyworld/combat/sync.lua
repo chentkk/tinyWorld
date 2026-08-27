@@ -53,12 +53,8 @@ function CombatSync:push(method, data)
     local cell = entity.cell
     if not cell then return end
 
-    -- 事件排队, 由 cell 在视野 / entity add 之后再统一冲刷,
-    -- 避免 modifier 通知先于 object add 到达客户端。
-    cell.battleEvents[#cell.battleEvents + 1] = {
-        origin = entity,
-        msg = { t = "RPC", n = method, d = data },
-    }
+    -- cell 负责排队与冲刷, sync 不直接访问 cell 内部结构
+    cell:postEvent(entity, { t = "RPC", n = method, d = data })
 end
 
 M.CombatSync = CombatSync

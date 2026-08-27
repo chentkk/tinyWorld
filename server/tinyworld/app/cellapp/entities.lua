@@ -50,6 +50,7 @@ function RealEntity:ctor(def, id, kind, space, cell, x, y)
     self.lastMigrateTime = 0
     self.baseApp = nil
     self.readyForSync = false
+    self.pendingEvents = {}
     self.extra = {}
 end
 
