@@ -5,6 +5,7 @@
 -- 不再有 sendToAround / 每实体重复 AOI 查询。
 
 local class = require "tinyworld.core.class"
+local log = require "tinyworld.core.log"
 local aoiMod = require "tinyworld.app.cellapp.aoi"
 local entityMsg = require "tinyworld.app.cellapp.entity_msg"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
@@ -315,23 +316,48 @@ function Cell:collectGhostPeers(real)
 end
 
 -- 为 neighbor cell 有玩家的地方维护 real 的 ghost
+function Cell:ghostLog(fmt, ...)
+    log.info("[ghost][cell " .. tostring(self.info and self.info.id) .. "] " .. fmt, ...)
+end
+
 function Cell:ensureGhosts()
-    local space = self.space
     for _, real in pairs(self.entities) do
         if real.isReal and not real.migrating then
-            for _, neighbor in ipairs(space.config:neighbors(self.info)) do
-                self:ensureGhostIn(real, neighbor)
+            self:pruneGhosts(real)
+
+            for _, neighbor in ipairs(self.space.config:neighbors(self.info)) do
+                if neighbor.id ~= self.info.id and neighbor:ghostContains(real.x, real.y) then
+                    self:ensureGhostIn(real, neighbor)
+                end
             end
         end
     end
 end
 
-function Cell:neighborNeedsGhost(neighborInfo)
-    if neighborInfo.appId == self.app.appId then
-        local cell = self.space:getCell(neighborInfo.id)
-        return cell ~= nil and cell.playerCount > 0
+-- 实体移出某 cell 的 ghost_rect -> 销毁那里的 ghost
+function Cell:pruneGhosts(real)
+    for key, info in pairs(real.ghosts) do
+        local cellInfo = self.space.config.byCoord[info.cellKey]
+        if cellInfo and not cellInfo:ghostContains(real.x, real.y) then
+            self:destroyGhost(real, key, info)
+        end
     end
-    return true
+end
+
+function Cell:destroyGhost(real, key, info)
+    if info.app == self.app.appId then
+        local cell = self.space:getCell(info.cellKey)
+        local ghost = cell and cell:findGhost(real.id)
+        if ghost then
+            cell:removeEntity(ghost)
+            self:ghostLog("destroy local ghost real=%d cell=%s", real.id, info.cellKey)
+        end
+    else
+        self.app:send(info.app, "ghost_destroy", self.space.spaceId, info.cellKey, real.id)
+        self:ghostLog("request destroy remote ghost real=%d app=%d cell=%s",
+            real.id, info.app, info.cellKey)
+    end
+    real.ghosts[key] = nil
 end
 
 function Cell:ensureGhostIn(real, neighborInfo)
@@ -340,23 +366,26 @@ function Cell:ensureGhostIn(real, neighborInfo)
 
     if neighborInfo.appId == self.app.appId then
         local target = self.space:getCell(neighborInfo.id)
-        if not target or target.playerCount == 0 then return end
+        if not target then return end
 
         local ghost = target:buildGhost(real)
         ghost.realApp = self.app.appId
+        ghost.realCellKey = self.info.id
         target:addEntity(ghost)
         real:addGhost({ key = key, app = self.app.appId, cellKey = neighborInfo.id, sameApp = true })
+        self:ghostLog("create local ghost real=%d cell=%s ghostId=%d",
+            real.id, neighborInfo.id, ghost.id)
         return
     end
 
-    local snapshot = real:ghostSnapshot()
     local ok = self.app:call(neighborInfo.appId, "ghost_create", self.space.spaceId, neighborInfo.id, {
         realId = real.id, kind = real.kind, x = real.x, y = real.y,
-        snapshot = snapshot, fromApp = self.app.appId,
+        snapshot = real:ghostSnapshot(), fromApp = self.app.appId,
         ownerCellKey = self.info.id, promote = false,
     })
     if ok then
         real:addGhost({ key = key, app = neighborInfo.appId, cellKey = neighborInfo.id })
+        self:ghostLog("create remote ghost real=%d app=%d cell=%s", real.id, neighborInfo.appId, neighborInfo.id)
     end
 end
 
@@ -385,6 +414,8 @@ function Cell:leaveWitness(real)
     real:addGhost({ key = real.id .. "@" .. self.info.id, app = self.app.appId,
         cellKey = self.info.id, sameApp = true })
     real.witnessCellKey = self.info.id
+    self:ghostLog("create witness ghost real=%d cell=%s ghostId=%d",
+        real.id, self.info.id, witness.id)
 end
 
 -- 把本 cell 内 real 的 ghost 脏属性广播出去
@@ -401,9 +432,6 @@ end
 function Cell:upsertRemoteGhost(req)
     local ghost = self:findGhost(req.realId)
     if ghost then return true end
-
-    -- 非迁移请求仅在 cell 有玩家时创建
-    if not req.promote and self.playerCount == 0 then return false end
 
     local def = defs.get(req.kind)
     if not def then return false end
@@ -424,6 +452,8 @@ end
 function Cell:promoteGhost(realId, req)
     local ghost = self:findGhost(realId)
     if not ghost then return false end
+    self:ghostLog("destroy ghost(consumed by migration) real=%d ghostId=%d",
+        realId, ghost.id)
 
     local real = RealEntity.new(ghost.def, realId, ghost.kind, self.space, self, ghost.x, ghost.y)
     real.props:load(ghost.props:dump())
@@ -438,6 +468,7 @@ function Cell:promoteGhost(realId, req)
 
     self:removeEntity(ghost)
     self:addEntity(real)
+    self:ghostLog("promote real=%d cell=%s", real.id, self.info.id)
     self.app:notifyEntityMoved(real)
     return true
 end

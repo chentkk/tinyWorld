@@ -19,6 +19,7 @@ function SpaceConfig.compile(config, defaultAppIds)
     self.balance = config.balance or { enabled = false, strategy = 2 }
     self.hysteresis = config.hysteresis or math.max(2, self.cellSize * 0.08)
     self.minMigrateInterval = config.minMigrateInterval or 1.0
+    self.ghostRange = config.ghostRange or math.min(self.cellSize, self.aoiRange)
     self.appIds = config.cellApps or defaultAppIds or { 1 }
 
     self.cols = math.max(1, math.ceil(self.width / self.cellSize))
@@ -54,6 +55,9 @@ function SpaceConfig.compile(config, defaultAppIds)
     end
 
     self.bounds = { x1 = 0, y1 = 0, x2 = self.width, y2 = self.height }
+    for _, info in ipairs(self.cells) do
+        info:setGhostRange(self.ghostRange, self.bounds)
+    end
     return self
 end
 

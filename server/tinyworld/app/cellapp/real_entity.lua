@@ -54,6 +54,7 @@ function RealEntity:onPropChange(name, value, mode, source)
 end
 
 function RealEntity:addGhost(ghostInfo)
+    ghostInfo.key = ghostInfo.key or (self.id .. "@" .. ghostInfo.cellKey)
     self.ghosts[ghostInfo.key] = ghostInfo
 end
 
@@ -61,7 +62,7 @@ end
 -- 本地 ghost 直接应用, 远端 ghost 通过 cellapp 服务的 ghost_sync 消息应用。
 function RealEntity:sendGhostEach(outbox)
     for _, info in pairs(self.ghosts) do
-        if info.sameApp then
+        if info.app == self.cell.app.appId then
             local cell = self.space:getCell(info.cellKey)
             local ghost = cell and cell:findGhost(self.id)
             if ghost then ghost:applyOutbox(outbox) end
@@ -76,7 +77,7 @@ end
 function RealEntity:callGhostEach(method, data)
     local results = {}
     for _, info in pairs(self.ghosts) do
-        if info.sameApp then
+        if info.app == self.cell.app.appId then
             local cell = self.space:getCell(info.cellKey)
             local ghost = cell and cell:findGhost(self.id)
             results[#results + 1] = ghost and ghost[method] and ghost[method](ghost, data)

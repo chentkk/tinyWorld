@@ -140,7 +140,8 @@ function love.update(dt)
         end
         if dx ~= 0 or dy ~= 0 then
             local inv = 1 / math.sqrt(dx * dx + dy * dy)
-            move.push(myEntity, dx * inv, dy * inv, dt)
+            local moveDt = autoMove and 0.2 or dt
+            move.push(myEntity, dx * inv, dy * inv, moveDt)
         elseif #move.pending > 0 then
             move.stop()
         end
