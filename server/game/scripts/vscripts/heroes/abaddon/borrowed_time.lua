@@ -28,13 +28,13 @@ function ability_borrowed_time:startCooldown()
 end
 
 function modifier_ability_borrowed_time_passive:OnIntervalThink()
-    local caster = self.caster
+    local caster = self:GetCaster()
     local hp = caster:get("hp") or 0
     local maxHp = caster:get("maxHp") or 1
-    local pct = tonumber(self.ability.data.threshold_pct) or 30
+    local pct = tonumber(self:GetAbility():GetSpecialValueFor("threshold_pct")) or 30
 
-    if hp / maxHp * 100 < pct and self.ability:IsReady() then
-        self.ability:cast(caster)
+    if hp / maxHp * 100 < pct and self:GetAbility():IsReady() then
+        self:GetAbility():cast(caster)
     end
 end
 
