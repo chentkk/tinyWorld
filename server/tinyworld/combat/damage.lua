@@ -21,13 +21,21 @@ function M.dealDamage(attacker, target, amount, damageType, sourceAbility)
     damageType = damageType or M.DAMAGE_TYPE.PHYSICAL
     if amount <= 0 or not target or not target.def then return 0 end
 
-    -- modifier 钩子: 护盾 / 免伤 / 伤害转治疗等统一在 modifier 层处理
+    -- modifier 钩子: 对齐 example 的 GetModifierIncomingDamage_Percentage(data)
+    local incomingData = {
+        attacker = attacker,
+        damage = amount,
+        damage_type = damageType,
+        ability = sourceAbility,
+    }
     for _, mod in ipairs(target.modifiers or {}) do
-        if mod.OnDamageReceived then
-            amount = mod:OnDamageReceived(attacker, amount, damageType) or 0
+        if mod.GetModifierIncomingDamage_Percentage then
+            local pct = mod:GetModifierIncomingDamage_Percentage(incomingData) or 0
+            amount = amount * (1 + pct / 100)
         end
     end
-    if amount == 0 then return 0 end
+    amount = math.floor(amount)
+    if amount <= 0 then return 0 end
 
     local hp = target:get("hp") or 0
     if amount < 0 then

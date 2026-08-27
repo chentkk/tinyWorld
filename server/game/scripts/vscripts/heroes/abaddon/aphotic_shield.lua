@@ -11,22 +11,24 @@ function ability_aphotic_shield:OnSpellStart()
     local target = self.target or self.caster
     target:addModifier("modifier_abaddon_aphotic_shield_lua", self, {
         duration = tonumber(self.data.duration),
+        absorb = tonumber(self.data.damageAbsorb),
     })
 end
 
-function modifier_abaddon_aphotic_shield_lua:OnCreated(params)
-    self.absorb = tonumber(self.ability.data.damageAbsorb) or 0
+function modifier_abaddon_aphotic_shield_lua:OnCreated(data)
+    self.absorb = data.absorb
+    self.absorbAmount = 0
+    self.parent = self:GetParent()
 end
 
-function modifier_abaddon_aphotic_shield_lua:OnRefresh(params)
-    self.absorb = tonumber(self.ability.data.damageAbsorb) or self.absorb
+function modifier_abaddon_aphotic_shield_lua:OnRefresh(data)
+    self.absorb = data.absorb
+    self.parent = self:GetParent()
 end
 
-function modifier_abaddon_aphotic_shield_lua:OnDamageReceived(attacker, amount, damageType)
-    if self.absorb <= 0 then return amount end
-    local blocked = math.min(self.absorb, amount)
-    self.absorb = self.absorb - blocked
-    if self.absorb <= 0 then self:destroy() end
-    return amount - blocked
+function modifier_abaddon_aphotic_shield_lua:GetModifierIncomingDamage_Percentage(data)
+    self.absorbAmount = self.absorbAmount + data.damage
+    if self.absorbAmount > self.absorb then self:Destroy() end
+    return -100
 end
 

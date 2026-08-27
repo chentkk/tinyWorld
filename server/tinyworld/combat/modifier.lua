@@ -7,21 +7,28 @@ local class = require "tinyworld.core.class"
 
 local Modifier = class.makeClass("Modifier")
 
-function Modifier:ctor(caster, ability, duration)
-    self.caster = caster
+function Modifier:ctor(parent, ability, params)
+    params = params or {}
+    self.parent = parent
     self.ability = ability
-    self.duration = duration
+    self.caster = ability and ability.caster
+    self.duration = params.duration
     self.elapsed = 0
     self.destroyed = false
     self.stack = 1
     self.intervalThink = tonumber(ability and ability.data and ability.data.intervalThink) or 0
+    self._params = params
 end
 
 -- 以下生命周期回调由具体逻辑脚本覆盖
-function Modifier:OnCreated(params) end
-function Modifier:OnRefresh(params) end
+function Modifier:OnCreated(data) end
+function Modifier:OnRefresh(data) end
 function Modifier:OnDestroy() end
 function Modifier:OnIntervalThink() end
+
+function Modifier:GetCaster() return self.caster end
+function Modifier:GetParent() return self.parent end
+function Modifier:GetAbility() return self.ability end
 
 function Modifier:GetModifierName()
     return self._name or "modifier"

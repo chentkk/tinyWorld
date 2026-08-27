@@ -33,9 +33,7 @@ function M.apply(unit)
         if type(mod) == "string" then
             local cls = _G[mod]
             if not cls then return nil end
-            local duration = (params and params.duration) or
-                (ability and ability.data and ability.data.duration)
-            mod = cls.new(self, ability, duration)
+            mod = cls.new(self, ability, params)
         end
 
         if not mod.owner then mod.owner = self end
@@ -43,14 +41,14 @@ function M.apply(unit)
         local name = mod:GetModifierName()
         for _, old in ipairs(self.modifiers) do
             if old:GetModifierName() == name then
-                old:refresh({})
+old:refresh({})
                 self:emit("combat_modifier_refresh", name, old.stack)
                 return old
             end
         end
 
         self.modifiers[#self.modifiers + 1] = mod
-        mod:OnCreated({})
+        mod:OnCreated(mod._params or {})
         self:emit("combat_modifier_add", name, mod.duration, mod.stack)
         return mod
     end

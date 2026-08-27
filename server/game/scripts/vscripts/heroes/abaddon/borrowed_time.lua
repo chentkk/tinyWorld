@@ -38,7 +38,7 @@ function modifier_ability_borrowed_time_passive:OnIntervalThink()
     end
 end
 
-function modifier_abaddon_borrowed_time_lua_active:OnDamageReceived(attacker, amount, damageType)
-    return -amount -- 转化为治疗
+function modifier_abaddon_borrowed_time_lua_active:GetModifierIncomingDamage_Percentage(data)
+    return -100 -- 回光返照期间受伤害转为 0, 实际治疗由业务结算
 end
 
