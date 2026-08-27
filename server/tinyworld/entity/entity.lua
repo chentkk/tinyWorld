@@ -43,7 +43,10 @@ function Entity:ctor(def, id, kind)
 
     rawset(self, "components", {})
     rawset(self, "event", event.EventBus.new())
-    rawset(self, "visibleList", {})
+
+    -- AOI 视野表: 以服务器实体 id 为索引。clientId 只是为了特定客户端显示,
+    -- 由下发消息统一转换(objectAddMsg / objectRemoveMsg / cell 消息)。
+    rawset(self, "visibleEntities", {})
 end
 
 -- 元表: entity.level = 10 等价于 entity.props:set("level", 10)

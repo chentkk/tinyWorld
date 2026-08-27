@@ -173,29 +173,30 @@ end
 function Cell:updatePlayerVisibility(player)
     local visible = {}
     local range = self.app.spaceConfig.aoiRange
+
     for _, other in pairs(self.entities) do
         if other.id ~= player.id then
             local dx = other.x - player.x
             local dy = other.y - player.y
             if dx * dx + dy * dy <= range * range then
-                visible[other.clientId] = other
+                visible[other.id] = other
             end
         end
     end
 
-    -- visibleList 保存 entity 引用(而非 true), 这样才能区分
-    -- 同一个 clientId 在下一帧是否变成了不同实体(如 real -> ghost / ghost 重入)
-    for clientId, other in pairs(visible) do
-        if player.visibleList[clientId] ~= other then
-            player.visibleList[clientId] = other
+    player.visibleEntities = player.visibleEntities or {}
+
+    for id, other in pairs(visible) do
+        if player.visibleEntities[id] ~= other then
+            player.visibleEntities[id] = other
             self:sendToSelf(player, entities.objectAddMsg(other))
         end
     end
 
-    for clientId in pairs(player.visibleList) do
-        if not visible[clientId] then
-            player.visibleList[clientId] = nil
-            self:sendToSelf(player, { t = "object", n = "remove", d = { entityId = clientId } })
+    for id, old in pairs(player.visibleEntities) do
+        if not visible[id] then
+            player.visibleEntities[id] = nil
+            self:sendToSelf(player, entities.objectRemoveMsg(old))
         end
     end
 end
