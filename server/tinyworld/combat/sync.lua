@@ -30,6 +30,14 @@ function CombatSync:onCreate()
         })
     end)
 
+    entity:on("combat_cast", function(_, ability, target)
+        self:push("onSpellCast", {
+            entityId = entity.clientId,
+            abilityName = ability and ability:GetAbilityName(),
+            targetId = target and (target.clientId or target.id),
+        })
+    end)
+
     -- modifier 状态统一由 modifiers_view 同步, 不再发一次性 RPC
 end
 

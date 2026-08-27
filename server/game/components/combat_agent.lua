@@ -49,6 +49,7 @@ function CombatAgent:onCastAbility(d)
     if not ability:IsReady() then return reply(3, "ability not ready") end
 
     ability:cast(target)
+    self.entity:emit("combat_cast", ability, target)
     return { code = 0, msg = "cast ok" }
 end
 
