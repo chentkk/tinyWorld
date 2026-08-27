@@ -8,10 +8,10 @@ ability_aphotic_shield = Ability.extend("ability_aphotic_shield")
 modifier_abaddon_aphotic_shield_lua = Modifier.extend("modifier_abaddon_aphotic_shield_lua")
 
 function ability_aphotic_shield:OnSpellStart()
-    local target = self.target or self.caster
+    local target = self:GetCursorTarget() or self:GetCaster()
     target:addModifier("modifier_abaddon_aphotic_shield_lua", self, {
-        duration = tonumber(self.data.duration),
-        absorb = tonumber(self.data.damageAbsorb),
+        duration = tonumber(self:GetSpecialValueFor("duration")),
+        absorb = tonumber(self:GetSpecialValueFor("damageAbsorb")),
     })
 end
 

@@ -13,13 +13,13 @@ function ability_borrowed_time:GetIntrinsicModifierName()
 end
 
 function ability_borrowed_time:OnChannelStart()
-    self.caster:addModifier("modifier_abaddon_borrowed_time_lua_active", self, {
-        duration = tonumber(self.data.duration),
+    self:GetCaster():addModifier("modifier_abaddon_borrowed_time_lua_active", self, {
+        duration = tonumber(self:GetSpecialValueFor("duration")),
     })
 end
 
 function ability_borrowed_time:OnChannelFinish()
-    local active = self.caster:hasModifier("modifier_abaddon_borrowed_time_lua_active")
+    local active = self:GetCaster():hasModifier("modifier_abaddon_borrowed_time_lua_active")
     if active then active:destroy() end
 end
 

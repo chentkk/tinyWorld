@@ -23,6 +23,22 @@ function Ability:ctor(caster, data)
     self.elapsed = 0
 end
 
+function Ability:GetCaster()
+    return self.caster
+end
+
+function Ability:GetCursorTarget()
+    return self.target
+end
+
+function Ability:GetAbilityName()
+    return self.data and self.data.name
+end
+
+function Ability:GetSpecialValueFor(key)
+    return self.data and self.data[key]
+end
+
 function Ability:GetCastRange()
     return tonumber(self.data.castRange or self.data.AbilityCastRange) or 100
 end
