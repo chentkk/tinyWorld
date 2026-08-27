@@ -4,11 +4,14 @@
 -- 由上层同步系统(如 buff 视图)统一推给客户端, 战斗框架不直接处理网络。
 
 local class = require "tinyworld.core.class"
+local nextId = 0
 
 local Modifier = class.makeClass("Modifier")
 
 function Modifier:ctor(parent, ability, params)
     params = params or {}
+    nextId = nextId + 1
+    self.uid = nextId
     self.parent = parent
     self.ability = ability
     self.caster = ability and ability.caster

@@ -109,17 +109,21 @@ function Cell:buildOutbox(entity)
         aroundProps = entity:collectClientProps(false),
         recordOps = {},
         viewOps = {},
+        selfViewOps = {},
         events = entity.pendingEvents,
     }
 
     for name, rec in pairs(entity.records) do
-        local ops = rec:flushSync()
-        if ops and #ops > 0 then outbox.recordOps[name] = ops end
+        local flush = rec:flushSync()
+        if flush and #flush.ops > 0 then outbox.recordOps[name] = flush.ops end
     end
 
     for name, cont in pairs(entity.containers) do
-        local ops = cont:flushSync()
-        if ops and #ops > 0 then outbox.viewOps[name] = ops end
+        local flush = cont:flushSync()
+        if flush and #flush.ops > 0 then
+            if cont.def.selfOnly then outbox.selfViewOps[name] = flush.ops
+            else outbox.viewOps[name] = flush.ops end
+        end
     end
 
     entity.pendingEvents = {}
@@ -206,6 +210,13 @@ function Cell:deliverToPlayer(player)
         end
         self:sendProp(player, player, selfOutbox.selfProps)
 
+        -- 自己也能看到自身 around views(如 modifiers_view)
+        for name, ops in pairs(selfOutbox.viewOps or {}) do
+            self:sendViewOps(player, player, name, ops)
+        end
+        for name, ops in pairs(selfOutbox.selfViewOps or {}) do
+            self:sendViewOps(player, player, name, ops)
+        end
         for _, event in ipairs(selfOutbox.events or {}) do
             self.app:sendToClient(player, event)
         end

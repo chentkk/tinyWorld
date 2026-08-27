@@ -11,6 +11,7 @@ function ContainerDef.new(def)
     local self = setmetatable({}, ContainerDef)
     self.name = def.name
     self.persist = def.persist and true or false
+    self.selfOnly = def.selfOnly and true or false -- abilities_view 只同步自己
     self.viewSchema = PropertySchema.new(def.viewProps or {})
     self.childSchema = PropertySchema.new(def.childProps or {})
 

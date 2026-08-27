@@ -32,6 +32,45 @@ end
 
 M.snapshot = M.modifiersSnapshot
 
+-- 把 modifier / ability 状态同步到通用 View(只写有变化的值, 减少 ops)
+function M.syncCombatViews(unit, dt)
+    if not unit.getContainer then return end
+
+    local modifiersView = unit:getContainer("modifiers_view")
+    if modifiersView and modifiersView:isViewOpened() then
+        local seen = {}
+        for _, mod in ipairs(unit.modifiers or {}) do
+            local id = mod.uid
+            local remaining = mod.duration and math.max(0, mod.duration - mod.elapsed) or 0
+            if not modifiersView:has(id) then
+                modifiersView:add({ id = id, name = mod:GetModifierName(),
+                    stack = mod.stack, duration = mod.duration, remaining = remaining })
+            else
+                modifiersView:setChildProp(id, "stack", mod.stack)
+                modifiersView:setChildProp(id, "remaining", math.floor(remaining * 10) / 10)
+            end
+            seen[id] = true
+        end
+        for id in pairs(modifiersView.children) do
+            if not seen[id] then modifiersView:remove(id) end
+        end
+    end
+
+    local abilitiesView = unit:getContainer("abilities_view")
+    if abilitiesView and abilitiesView:isViewOpened() then
+        for _, ability in ipairs(unit.abilities or {}) do
+            local id = ability:GetAbilityName()
+            if id and not abilitiesView:has(id) then
+                abilitiesView:add({ id = id, level = ability.level or 1,
+                    cooldownLeft = ability.cooldownLeft or 0, state = ability.state or "ready" })
+            else
+                abilitiesView:setChildProp(id, "cooldownLeft", ability.cooldownLeft)
+                abilitiesView:setChildProp(id, "state", ability.state)
+            end
+        end
+    end
+end
+
 function M.apply(unit)
     if unit.combatApplied then return unit end
     unit.combatApplied = true
@@ -54,7 +93,7 @@ function M.apply(unit)
         local name = mod:GetModifierName()
         for _, old in ipairs(self.modifiers) do
             if old:GetModifierName() == name then
-old:refresh({})
+                old:refresh({})
                 self:emit("combat_modifier_refresh", name, old.stack)
                 return old
             end

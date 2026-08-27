@@ -26,6 +26,7 @@ end
 function CombatAgent:onTick(dt)
     if self.entity.combatApplied then
         self.entity:updateCombat(dt)
+        combatUnit.syncCombatViews(self.entity, dt)
     end
 end
 

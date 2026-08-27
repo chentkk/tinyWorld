@@ -122,6 +122,12 @@ function M.setupCellEntity(real, data)
 
     -- 数据同步压力测试(属性)
     real:addComponent("cell_sync_stress", require "game.components.sync_stress")
+
+    -- 战斗状态视图: 观察者看 modifiers, 自己看 abilities
+    local modifiersView = real:getContainer("modifiers_view")
+    if modifiersView then modifiersView:openView("modifiers") end
+    local abilitiesView = real:getContainer("abilities_view")
+    if abilitiesView then abilitiesView:openView("abilities") end
 end
 
 return M
