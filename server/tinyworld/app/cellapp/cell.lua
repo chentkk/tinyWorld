@@ -1,7 +1,8 @@
 -- tinyworld/app/cellapp/cell.lua
--- 运行时 cell: 管理落入该 cell 的 real / ghost 实体、网格 AOI,
--- 并统一负责向周边玩家下发变更(属性 / 表格 / 视图 / 战斗事件)。
--- 每个实体每 tick 只做一次 AOI 查询, 下游复用同一份 around 列表。
+-- 运行时 cell: 管理 cell 内 real / ghost 实体与网格 AOI。
+-- 同步模型: 每个实体每 tick 把自身变更打包一次(outbox),
+-- 然后以玩家(观察者)为视角, 从 visibleEntities 里取对应 outbox 发送。
+-- 不再有 sendToAround / 每实体重复 AOI 查询。
 
 local class = require "tinyworld.core.class"
 local aoiMod = require "tinyworld.app.cellapp.aoi"
@@ -58,88 +59,11 @@ function Cell:postEvent(entity, data)
     entity.pendingEvents[#entity.pendingEvents + 1] = data
 end
 
--- 一次 AOI 查询并过滤出周围 player, 供一次 tick 内多个 flush 复用
-function Cell:queryAround(entity)
-    local around = {}
-    for _, other in ipairs(self.aoi:query(entity.x, entity.y)) do
-        if other ~= entity and other.kind == "Player" and other.isReal and other.baseApp then
-            around[#around + 1] = other
-        end
-    end
-    return around
-end
-
-function Cell:sendToAround(around, data)
-    for _, player in ipairs(around) do
-        self.app:sendToClient(player, data)
-    end
-end
-
-function Cell:sendToSelf(player, data)
-    self.app:sendToClient(player, data)
-end
-
--- 幽灵在下个 tick 把 real 同步来的变更发给周边
-function Cell:flushGhostSync(ghost)
-    local staged = ghost:collectStage()
-    if not next(staged) then return end
-
-    local data = { t = "prop", n = "props", d = { entityId = ghost.clientId } }
-    for k, v in pairs(staged) do data.d[k] = v end
-    self:sendToAround(self:queryAround(ghost), data)
-end
-
--- 一个 real 实体的一轮全部下行: 属性 / 表格 / 视图 / 战斗事件
-function Cell:flushRealSync(entity)
-    local around = self:queryAround(entity)
-
-    local props = entity:collectClientProps(false)
-    if next(props) then
-        local data = { t = "prop", n = "props", d = { entityId = entity.clientId } }
-        for k, v in pairs(props) do data.d[k] = v end
-        self:sendToAround(around, data)
-    end
-
-    for _, rec in pairs(entity.records) do
-        local flush = rec:flushSync()
-        if flush then
-            self:sendToAround(around, { t = "record", n = flush.name,
-                d = { entityId = entity.clientId, ops = flush.ops } })
-        end
-    end
-
-    for _, cont in pairs(entity.containers) do
-        local flush = cont:flushSync()
-        if flush then
-            self:sendToAround(around, { t = "view", n = flush.name,
-                d = { entityId = entity.clientId, ops = flush.ops } })
-        end
-    end
-
-    for _, event in ipairs(entity.pendingEvents) do
-        self:sendToAround(around, event)
-        if entity.kind == "Player" then
-            self:sendToSelf(entity, event)
-        end
-    end
-    entity.pendingEvents = {}
-end
-
--- player 自身独占数据(如位置 reconciliation)单独下发
-function Cell:flushSelfSync(player)
-    local props = player:collectClientProps(true)
-    if not next(props) then return end
-
-    local data = { t = "prop", n = "props", d = { entityId = player.clientId } }
-    for k, v in pairs(props) do data.d[k] = v end
-    if player.lastMoveSeq then data.d.seq = player.lastMoveSeq end
-    self:sendToSelf(player, data)
-end
-
 function Cell:tick(dt)
     self:updateEntities(dt)
-    self:updatePlayerVisibilities()
-    self:flushAll()
+    self:updateVisibilities()
+    self:buildOutboxes()
+    self:deliverOutboxes()
 end
 
 function Cell:updateEntities(dt)
@@ -148,7 +72,7 @@ function Cell:updateEntities(dt)
     end
 end
 
-function Cell:updatePlayerVisibilities()
+function Cell:updateVisibilities()
     for _, player in pairs(self.entities) do
         if player.isReal and player.kind == "Player" then
             self:updatePlayerVisibility(player)
@@ -156,16 +80,131 @@ function Cell:updatePlayerVisibilities()
     end
 end
 
-function Cell:flushAll()
+-- 把一个 real 实体的本轮变更打入 outbox(只在这里 flush / collect 一次)
+function Cell:buildRealOutbox(entity)
+    local outbox = { events = {} }
+
+    outbox.selfProps = entity:collectClientProps(true)
+    outbox.aroundProps = entity:collectClientProps(false)
+
+    outbox.recordOps = {}
+    for name, rec in pairs(entity.records) do
+        local ops = rec:flushSync()
+        if ops and #ops > 0 then
+            outbox.recordOps[name] = ops
+        end
+    end
+
+    outbox.viewOps = {}
+    for name, cont in pairs(entity.containers) do
+        local ops = cont:flushSync()
+        if ops and #ops > 0 then
+            outbox.viewOps[name] = ops
+        end
+    end
+
+    outbox.events = entity.pendingEvents
+    entity.pendingEvents = {}
+    entity:clearClientDirty()
+
+    entity.outbox = outbox
+end
+
+function Cell:buildGhostOutbox(entity)
+    local stage = entity:collectStage()
+    local outbox = { aroundProps = stage, events = {} }
+    entity.outbox = outbox
+end
+
+function Cell:buildOutboxes()
     for _, entity in pairs(self.entities) do
         if entity.isReal then
-            self:flushRealSync(entity)
-            if entity.kind == "Player" then
-                self:flushSelfSync(entity)
-            end
-            entity:clearClientDirty()
+            self:buildRealOutbox(entity)
         elseif entity.isGhost then
-            self:flushGhostSync(entity)
+            self:buildGhostOutbox(entity)
+        end
+    end
+end
+
+function Cell:sendProp(player, entity, props)
+    if not props or not next(props) then return end
+
+    local data = { t = "prop", n = "props", d = { entityId = entity.clientId or entity.id } }
+    for k, v in pairs(props) do data.d[k] = v end
+    self.app:sendToClient(player, data)
+end
+
+-- 以 player 为观察者, 取目标实体 outbox 中属于 around 的部分发送
+function Cell:sendEntityAroundTo(player, entity)
+    local outbox = entity.outbox
+    if not outbox then return end
+
+    if entity.isReal then
+        self:sendProp(player, entity, outbox.aroundProps)
+    elseif entity.isGhost then
+        self:sendGhostViewProp(player, entity, outbox.aroundProps)
+    end
+
+    for name, ops in pairs(outbox.recordOps or {}) do
+        self:sendRecordOps(player, entity, name, ops)
+    end
+
+    for name, ops in pairs(outbox.viewOps or {}) do
+        self:sendViewOps(player, entity, name, ops)
+    end
+
+    for _, event in ipairs(outbox.events or {}) do
+        self.app:sendToClient(player, event)
+    end
+end
+
+-- ghost 的属性包不需要 seq, 数据直接放进 props message
+function Cell:sendGhostViewProp(player, entity, stage)
+    if not stage or not next(stage) then return end
+
+    local data = { t = "prop", n = "props", d = { entityId = entity.clientId or entity.id } }
+    for k, v in pairs(stage) do data.d[k] = v end
+    self.app:sendToClient(player, data)
+end
+
+function Cell:sendRecordOps(player, entity, name, ops)
+    self.app:sendToClient(player, { t = "record", n = name,
+        d = { entityId = entity.clientId or entity.id, ops = ops } })
+end
+
+function Cell:sendViewOps(player, entity, name, ops)
+    self.app:sendToClient(player, { t = "view", n = name,
+        d = { entityId = entity.clientId or entity.id, ops = ops } })
+end
+
+function Cell:deliverOutboxes()
+    for _, player in pairs(self.entities) do
+        if player.isReal and player.kind == "Player" then
+            self:deliverToPlayer(player)
+        end
+    end
+end
+
+function Cell:deliverToPlayer(player)
+    player.visibleEntities = player.visibleEntities or {}
+
+    -- 自己: 自身属性包 + 自己的战斗事件
+    local selfOutbox = player.outbox
+    if selfOutbox then
+        if selfOutbox.selfProps and player.lastMoveSeq then
+            selfOutbox.selfProps.seq = player.lastMoveSeq
+        end
+        self:sendProp(player, player, selfOutbox.selfProps)
+
+        for _, event in ipairs(selfOutbox.events or {}) do
+            self.app:sendToClient(player, event)
+        end
+    end
+
+    -- 我看到的所有实体: 把它们的 around 包发给我
+    for _, target in pairs(player.visibleEntities) do
+        if target.outbox then
+            self:sendEntityAroundTo(player, target)
         end
     end
 end
@@ -189,14 +228,14 @@ function Cell:updatePlayerVisibility(player)
     for id, other in pairs(visible) do
         if player.visibleEntities[id] ~= other then
             player.visibleEntities[id] = other
-            self:sendToSelf(player, entities.objectAddMsg(other))
+            self.app:sendToClient(player, entities.objectAddMsg(other))
         end
     end
 
     for id, old in pairs(player.visibleEntities) do
         if not visible[id] then
             player.visibleEntities[id] = nil
-            self:sendToSelf(player, entities.objectRemoveMsg(old))
+            self.app:sendToClient(player, entities.objectRemoveMsg(old))
         end
     end
 end
