@@ -32,47 +32,41 @@ end
 
 M.snapshot = M.modifiersSnapshot
 
-local function round2(n)
-    n = tonumber(n) or 0
-    return math.floor(n * 100 + 0.5) / 100
+local function syncOneView(view, objects, seen)
+    for _, object in ipairs(objects) do
+        local data = object:viewData()
+        local id = data.id
+
+        if not view:has(id) then
+            view:add(data)
+        else
+            for name, value in pairs(data) do
+                view:setChildProp(id, name, value)
+            end
+        end
+        seen[id] = true
+    end
+
+    for id in pairs(view.children) do
+        if not seen[id] then
+            view:remove(id)
+        end
+    end
 end
 
--- 把 modifier / ability 状态同步到通用 View(只写有变化的值, 减少 ops)
+-- 把 modifier / ability 状态同步到对应 View。
+-- 字段由对象自身 viewData 提供, 通用层不识别具体字段。
 function M.syncCombatViews(unit, dt)
     if not unit.getContainer then return end
 
     local modifiersView = unit:getContainer("modifiers_view")
     if modifiersView and modifiersView:isViewOpened() then
-        local seen = {}
-        for _, mod in ipairs(unit.modifiers or {}) do
-            local id = mod.uid
-            local remaining = mod.duration and math.max(0, mod.duration - mod.elapsed) or 0
-            if not modifiersView:has(id) then
-                modifiersView:add({ id = id, name = mod:GetModifierName(),
-                    stack = mod.stack, duration = round2(mod.duration), remaining = round2(remaining) })
-            else
-                modifiersView:setChildProp(id, "stack", mod.stack)
-                modifiersView:setChildProp(id, "remaining", round2(remaining))
-            end
-            seen[id] = true
-        end
-        for id in pairs(modifiersView.children) do
-            if not seen[id] then modifiersView:remove(id) end
-        end
+        syncOneView(modifiersView, unit.modifiers or {}, {})
     end
 
     local abilitiesView = unit:getContainer("abilities_view")
     if abilitiesView and abilitiesView:isViewOpened() then
-        for _, ability in ipairs(unit.abilities or {}) do
-            local id = ability:GetAbilityName()
-            if id and not abilitiesView:has(id) then
-                abilitiesView:add({ id = id, level = ability.level or 1,
-                    cooldownLeft = round2(ability.cooldownLeft or 0), state = ability.state or "ready" })
-            else
-                abilitiesView:setChildProp(id, "cooldownLeft", round2(ability.cooldownLeft))
-                abilitiesView:setChildProp(id, "state", ability.state)
-            end
-        end
+        syncOneView(abilitiesView, unit.abilities or {}, {})
     end
 end
 

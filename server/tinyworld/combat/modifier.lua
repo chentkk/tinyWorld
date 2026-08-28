@@ -6,6 +6,12 @@
 local class = require "tinyworld.core.class"
 local nextId = 0
 
+local function round2(n)
+    n = tonumber(n) or 0
+    return math.floor(n * 100 + 0.5) / 100
+end
+
+
 local Modifier = class.makeClass("Modifier")
 
 function Modifier:ctor(parent, ability, params)
@@ -35,6 +41,18 @@ function Modifier:GetAbility() return self.ability end
 
 function Modifier:GetModifierName()
     return self._name or "modifier"
+end
+
+-- 对象自身提供视图字段: 通用层不再知道 modifier 有哪些字段
+function Modifier:viewData()
+    local remaining = self.duration and math.max(0, self.duration - self.elapsed) or 0
+    return {
+        id = self.uid,
+        name = self:GetModifierName(),
+        stack = self.stack,
+        duration = round2(self.duration),
+        remaining = round2(remaining),
+    }
 end
 
 function Modifier:IsPurgable()
