@@ -195,8 +195,8 @@ modifier/ability 状态同步：
 ## 6. 测试与验证
 
 ```bash
-cd /root/test/testv3
- 或做 server/ 下# 或做 server/ 下
+cd /root/test/testv3/server
+lua test/run_all.lua
 ```
 
 已有测试：
