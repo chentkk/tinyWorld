@@ -115,7 +115,7 @@ bag.capacity = 16 -- 直接写
 
 ### 2.3 实体同步模型（Real/Ghost 与 cell）
 
-一个 cell 内有两种实体：
+一个 cell 内有两种实体（**这是固定的设计，不要合并/统一**）：
 - `RealEntity`：真身，只有 home cell 保存权威对象
 - `GhostEntity`：别的 cell 中 real 的投影
 
@@ -216,7 +216,6 @@ love 需要 xvfb（本环境已安装）。
 - 不要把业务写进 tinyworld；tinyworld 是通用框架。
 - 不要打印大段代码；函数简洁、早 return、避免嵌套。
 - 老的 `viewProps/childProps/setChildProp` 等已废弃，不要新增/恢复。
-- role-merge（同一 CellEntity 复用为 real/ghost）暂时放弃，后续明确要求再做。
 - `playerId` 作为玩家 cell entityId；monster/projectile 用 `nextId()`。
 
 ## 8. 当前状态
@@ -230,11 +229,10 @@ love 需要 xvfb（本环境已安装）。
 
 ## 9. 建议继续开发方向
 
-1. 彻底合并 RealEntity / GhostEntity 为统一 CellEntity role 对象（之前暂停）
-2. 完善 baseapp 时长/组件 tick 的生命周期与 player 下线保存
-3. 客户端接入 vscripts/IsServer 共享逻辑
-4. 技能 index 改为 abilityName 驱动，避免顺序依赖
-5. 增强 AOI 网格与跨 cell 推送验证
+1. 完善 baseapp 时长/组件 tick 的生命周期与 player 下线保存
+2. 客户端接入 vscripts/IsServer 共享逻辑
+3. 技能 index 改为 abilityName 驱动，避免顺序依赖
+4. 增强 AOI 网格与跨 cell 推送验证
 
 ## 10. 新会话提示词
 
@@ -243,6 +241,9 @@ love 需要 xvfb（本环境已安装）。
 ---
 
 请阅读 /root/test/testv3/PROJECT_HANDOFF.md。
-按文档理解 tinyWorld 项目。遵循文档中的设计约束，不要恢复已废弃的 viewProps/childProps/setChildProp 等旧接口。
-先跑 `cd /root/test/testv3/server && lua test/run_all.lua` 确认基线，再告诉我你理解的核心架构和下一步建议。不要动代码，只读代码、跑测试、报告理解。
+按文档理解 tinyWorld 项目。遵循文档中的设计约束：
+- 不要恢复已废弃的 viewProps/childProps/setChildProp 等旧接口。
+- RealEntity / GhostEntity 是固定设计，不要合并/统一，也不要提出合并方案。
+- 不要动代码。
+先跑 `cd /root/test/testv3/server && lua test/run_all.lua` 确认基线，再报告你理解的核心架构和下一步建议。
 ---
