@@ -22,7 +22,7 @@ local def = compileDef({
     },
     containers = {
         { name = "bag", persist = true,
-          viewProps = { { name = "capacity", type = "number", sync = "all", default = 8 } },
+          props = { { name = "capacity", type = "number", sync = "all", default = 8 } },
           childProps = { { name = "id", type = "number" }, { name = "itemId", type = "number", sync = "all" },
                          { name = "count", type = "number", sync = "all", default = 1 } } },
     },

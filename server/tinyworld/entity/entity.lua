@@ -259,7 +259,11 @@ function Entity:dump()
 
     local containers = {}
     for name, cont in pairs(self.containers) do
-        containers[name] = { viewProps = cont.viewProps, children = cont:dump() }
+        local contRecords = {}
+        for recName, rec in pairs(cont.records or {}) do
+            contRecords[recName] = rec:dump()
+        end
+        containers[name] = { props = cont.props, records = contRecords, children = cont:dump() }
     end
 
     return { props = props, records = records, containers = containers }
@@ -279,7 +283,13 @@ function Entity:load(data)
     for name, cont in pairs(self.containers) do
         local saved = data.containers and data.containers[name]
         if saved then
-            cont.viewProps = saved.viewProps
+            cont.props = saved.props or {}
+            for recName, rows in pairs(saved.records or {}) do
+                local rec = cont.records and cont.records[recName]
+                if rec then
+                    for _, row in pairs(rows) do rec:add(row) end
+                end
+            end
             cont:load(saved.children)
         end
     end

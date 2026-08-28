@@ -6,7 +6,7 @@ local itemDef = require "game.def.container.item_def"
 return {
     name = "bag",
     persist = true,
-    viewProps = {
+    props = {
         { name = "capacity", type = "number", sync = "all", default = 32 },
     },
     childDef = itemDef,

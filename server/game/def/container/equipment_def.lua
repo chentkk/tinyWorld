@@ -6,6 +6,6 @@ local equipmentItemDef = require "game.def.container.equipment_item_def"
 return {
     name = "equipment",
     persist = true,
-    viewProps = {},
+    props = {},
     childDef = equipmentItemDef,
 }

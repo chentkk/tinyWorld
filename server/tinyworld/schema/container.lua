@@ -37,8 +37,14 @@ function Container.new(def, host)
     self.def = def
     self.host = host
     self.children = {}
-    self.viewProps = nil
-    self.viewSchema = def.viewSchema
+    self.props = {}
+    self.propsSchema = def.propsSchema
+    self.records = {}
+
+    for _, rdef in ipairs(def.recordDefs) do
+        self.records[rdef.name] = Record.new(rdef, self)
+    end
+
     self.viewId = nil
     self.dirty = {}
     self.isView = false
@@ -67,15 +73,12 @@ function Container:closeView()
 end
 
 function Container:setViewProp(name, value)
-    local prop = self.viewProps or {}
-
-    value = self.viewSchema:coerce(name, value)
-    if prop[name] == value then
+    value = self.propsSchema:coerce(name, value)
+    if self.props[name] == value then
         return
     end
 
-    prop[name] = value
-    self.viewProps = prop
+    self.props[name] = value
 
     if self.isView then
         self.dirty[#self.dirty + 1] = { type = "view", data = { [name] = value } }
@@ -86,7 +89,7 @@ function Container:setViewProp(name, value)
 end
 
 function Container:getViewProp(name)
-    return self.viewProps and self.viewProps[name]
+    return self.props[name]
 end
 
 function Container:add(data)

@@ -6,6 +6,6 @@ local modifierDef = require "game.def.modifier.modifier_def"
 return {
     name = "modifiers_view",
     persist = false,
-    viewProps = {},
+    props = {},
     childDef = modifierDef,
 }

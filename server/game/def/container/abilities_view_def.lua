@@ -7,6 +7,6 @@ return {
     name = "abilities_view",
     persist = false,
     selfOnly = true,
-    viewProps = {},
+    props = {},
     childDef = abilityDef,
 }
