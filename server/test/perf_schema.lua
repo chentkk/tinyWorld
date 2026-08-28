@@ -16,7 +16,12 @@ local def = compileDef({
     },
     containers = {
         { name = "bag", persist = false,
-          childProps = { { name = "id", type = "number" }, { name = "v", type = "number", sync = "all" } } },
+          childDef = {
+              props = {
+                  { name = "id", type = "number" },
+                  { name = "v", type = "number", sync = "all" },
+              },
+          } },
     },
 })
 

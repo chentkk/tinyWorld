@@ -31,23 +31,68 @@ end
 local Container = {}
 Container.__index = Container
 
-function Container.new(def, host)
-    local self = setmetatable({}, Container)
-
-    self.def = def
-    self.host = host
-    self.children = {}
-    self.props = {}
-    self.propsSchema = def.propsSchema
-    self.records = {}
-
-    for _, rdef in ipairs(def.recordDefs) do
-        self.records[rdef.name] = Record.new(rdef, self)
+-- 子对象/容器自身属性直接读写的辅助
+local function setContainerProp(self, name, value)
+    local props = rawget(self, "props")
+    value = rawget(self, "propsSchema"):coerce(name, value)
+    if props[name] == value then
+        return
     end
 
-    self.viewId = nil
-    self.dirty = {}
-    self.isView = false
+    props[name] = value
+
+    if rawget(self, "isView") then
+        local dirty = rawget(self, "dirty")
+        dirty[#dirty + 1] = { type = "view", data = { [name] = value } }
+    end
+    local host = rawget(self, "host")
+    if host and host.onContainerPersist then
+        host:onContainerPersist(self)
+    end
+end
+
+function Container.new(def, host)
+    local self = {}
+
+    local meta = {
+        __index = function(_, key)
+            local raw = rawget(self, key)
+            if raw ~= nil then
+                return raw
+            end
+
+            local props = rawget(self, "props")
+            local schema = rawget(self, "propsSchema")
+            if schema and schema:get(key) then
+                return props[key]
+            end
+            return Container[key]
+        end,
+        __newindex = function(_, key, value)
+            local schema = rawget(self, "propsSchema")
+            if schema and schema:get(key) then
+                setContainerProp(self, key, value)
+                return
+            end
+            rawset(self, key, value)
+        end,
+    }
+    self = setmetatable(self, meta)
+
+    rawset(self, "def", def)
+    rawset(self, "host", host)
+    rawset(self, "children", {})
+    rawset(self, "props", {})
+    rawset(self, "propsSchema", def.propsSchema)
+    rawset(self, "records", {})
+
+    for _, rdef in ipairs(def.recordDefs) do
+        rawget(self, "records")[rdef.name] = Record.new(rdef, self)
+    end
+
+    rawset(self, "viewId", nil)
+    rawset(self, "dirty", {})
+    rawset(self, "isView", false)
 
     return self
 end
@@ -70,26 +115,6 @@ function Container:closeView()
     self.isView = false
     self.viewId = nil
     self.dirty = {}
-end
-
-function Container:setViewProp(name, value)
-    value = self.propsSchema:coerce(name, value)
-    if self.props[name] == value then
-        return
-    end
-
-    self.props[name] = value
-
-    if self.isView then
-        self.dirty[#self.dirty + 1] = { type = "view", data = { [name] = value } }
-    end
-    if self.host and self.host.onContainerPersist then
-        self.host:onContainerPersist(self)
-    end
-end
-
-function Container:getViewProp(name)
-    return self.props[name]
 end
 
 function Container:add(data)

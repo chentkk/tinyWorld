@@ -94,7 +94,7 @@ function GhostEntity:applyViewOps(name, ops)
                 for k, v in pairs(op.data or {}) do child[k] = v end
             end
         elseif op.type == "view" then
-            for k, v in pairs(op.data or {}) do cont:setViewProp(k, v) end
+            for k, v in pairs(op.data or {}) do cont[k] = v end
         end
     end
 end

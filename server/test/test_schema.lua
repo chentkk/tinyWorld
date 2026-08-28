@@ -23,8 +23,13 @@ local def = compileDef({
     containers = {
         { name = "bag", persist = true,
           props = { { name = "capacity", type = "number", sync = "all", default = 8 } },
-          childProps = { { name = "id", type = "number" }, { name = "itemId", type = "number", sync = "all" },
-                         { name = "count", type = "number", sync = "all", default = 1 } } },
+          childDef = {
+              props = {
+                  { name = "id", type = "number" },
+                  { name = "itemId", type = "number", sync = "all" },
+                  { name = "count", type = "number", sync = "all", default = 1 },
+              },
+          } },
     },
 })
 
@@ -57,7 +62,7 @@ local bag = e:getContainer("bag")
 bag:openView("1")
 bag:add({ id = 1, itemId = 1001, count = 3 })
 bag:get(1).count = 2
-bag:setViewProp("capacity", 16)
+bag.capacity = 16
 bag:add({ id = 2, itemId = 2002 })
 bag:remove(2)
 local vops = bag:collectSync()
