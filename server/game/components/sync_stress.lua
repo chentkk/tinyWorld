@@ -3,7 +3,6 @@
 -- 挂在 baseentity 上随机操作表格/容器, 用于验证全链路同步。
 
 local component = require "tinyworld.entity.component"
-local log = require "tinyworld.core.log"
 
 local SyncStress = component.extend("SyncStress")
 
@@ -37,38 +36,41 @@ end
 
 function SyncStress:onTickBase()
     local entity = self.entity
-    log.info("stress base tick step=%d tasks=%d bagCount=%d",
-        self.step, entity:getRecord("current_tasks"):count(),
-        entity:getContainer("bag"):count())
 
-    -- 表格: current_tasks 随机 add / update / remove
+    -- 表格: current_tasks 随机 add / 直接修改 / remove
     local tasks = entity:getRecord("current_tasks")
     local op1 = self.step % 3
+
     if op1 == 0 then
         tasks:add({ taskid = 900 + self.step, state = 0, progress = 0 })
-    elseif op1 == 1 then
-        local rows = tasks:rowsList()
-        if rows[1] then
-            tasks:update(tasks.def:keyOf(rows[1]), { progress = self.step })
-        end
     else
         local rows = tasks:rowsList()
-        if rows[1] then tasks:remove(tasks.def:keyOf(rows[1])) end
+        if rows[1] then
+            local key = tasks.def:keyOf(rows[1]:data())
+            if op1 == 1 then
+                rows[1].progress = rows[1].progress + 1
+            else
+                tasks:remove(key)
+            end
+        end
     end
 
-    -- 容器/视图: bag 随机 add / set / remove
+    -- 容器/视图: bag 随机 add / 直接修改 / remove
     local bag = entity:getContainer("bag")
     local op2 = self.step % 3
+
     if op2 == 0 then
         local id = 2000 + self.step
         bag:add({ id = id, slot = id, itemId = 7000 + self.step, count = self.step % 5 + 1 })
-    elseif op2 == 1 then
-        for id, child in pairs(bag.children) do
-            bag:setChildProp(id, "count", child.props.count + 1)
-            break
-        end
     else
-        for id in pairs(bag.children) do bag:remove(id) break end
+        local id, child = next(bag.children)
+        if child then
+            if op2 == 1 then
+                child.count = child.count + 1
+            else
+                bag:remove(id)
+            end
+        end
     end
 end
 
