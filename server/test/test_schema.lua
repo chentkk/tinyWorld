@@ -55,7 +55,10 @@ assert(tasks:get("101").progress == 3)
 tasks["101"].progress = 5
 assert(tasks:findOne("taskid", 101).progress == 5)
 local ops = tasks:collectSync()
-assert(ops[1].type == "add" and ops[3] and ops[3].type == "set")
+-- 同一 flush 周期内, 行字段 set 合并到该行已有 op, 不再单独 set
+assert(#ops == 2)
+assert(ops[1].type == "add" and ops[2].type == "add")
+assert(ops[2].data.progress == 5)
 
 -- container: 视图 op 类型覆盖 add/remove/set/view
 local bag = e:getContainer("bag")

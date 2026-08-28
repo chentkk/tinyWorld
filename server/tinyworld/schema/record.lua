@@ -26,9 +26,48 @@ function Record.new(def, host)
     rawset(self, "host", host)
     rawset(self, "rows", {})
     rawset(self, "order", {})
-    rawset(self, "dirty", {})
+    rawset(self, "dirty", {})      -- 待同步 op 数组(按 key 合并后仍有序)
+    rawset(self, "dirtyIndex", {}) -- key -> dirty 数组下标
 
     return self
+end
+
+-- 移除 idx 位置的 op, 用末位元素填补空洞, 保持 dirty 数组密集
+local function compactDirty(self, idx)
+    local dirty = rawget(self, "dirty")
+    local index = rawget(self, "dirtyIndex")
+    local removed = dirty[idx]
+
+    local last = dirty[#dirty]
+    if last and last ~= removed then
+        dirty[idx] = last
+        dirty[#dirty] = nil
+        index[last.key] = idx
+    else
+        dirty[#dirty] = nil
+    end
+    if removed and removed.key then
+        index[removed.key] = nil
+    end
+    return removed
+end
+
+local function discardOp(self, key)
+    local index = rawget(self, "dirtyIndex")
+    local idx = index[key]
+    if idx then
+        return compactDirty(self, idx)
+    end
+end
+
+local function appendOp(self, op)
+    local dirty = rawget(self, "dirty")
+    local index = rawget(self, "dirtyIndex")
+    local idx = #dirty + 1
+    dirty[idx] = op
+    if op.key then
+        index[op.key] = idx
+    end
 end
 
 function Record:add(data)
@@ -45,12 +84,21 @@ function Record:add(data)
     rawget(self, "order")[#rawget(self, "order") + 1] = key
 
     if self.def.sync ~= "none" then
-        local dirty = rawget(self, "dirty")
-        dirty[#dirty + 1] = {
-            type = "add",
-            key = key,
-            data = self:syncData(row),
-        }
+        local index = rawget(self, "dirtyIndex")
+        local pendingIdx = index[key]
+        local pending = pendingIdx and rawget(self, "dirty")[pendingIdx]
+        if pending and pending.type == "add" then
+            pending.data = self:syncData(row)
+        else
+            if pending and pending.type == "remove" then
+                discardOp(self, key)
+            end
+            appendOp(self, {
+                type = "add",
+                key = key,
+                data = self:syncData(row),
+            })
+        end
     end
     if self.host and self.host.onRecordChange then
         self.host:onRecordChange(self, { type = "add", key = key })
@@ -76,8 +124,17 @@ function Record:remove(key)
     end
 
     if self.def.sync ~= "none" then
-        local dirty = rawget(self, "dirty")
-        dirty[#dirty + 1] = { type = "remove", key = key }
+        local index = rawget(self, "dirtyIndex")
+        local pendingIdx = index[key]
+        local pending = pendingIdx and rawget(self, "dirty")[pendingIdx]
+        if pending and pending.type == "add" then
+            discardOp(self, key)
+        else
+            if pending then
+                discardOp(self, key)
+            end
+            appendOp(self, { type = "remove", key = key })
+        end
     end
     if self.host and self.host.onRecordChange then
         self.host:onRecordChange(self, { type = "remove", key = key })
@@ -148,18 +205,26 @@ function Record:findOne(field, value)
     end
 end
 
--- ChildObject 写回入口: 行字段变化 -> 生成 set op
+-- ChildObject 写回入口: 行字段变化 -> 合并到该行当前待同步 op。
+-- 同一 flush 周期内同一行只保留一个 op, 最终字段覆盖中间值。
 function Record:onChildPropChange(child, name, value)
+    local key = child:id()
+
     if self.def.sync ~= "none" then
-        local dirty = rawget(self, "dirty")
-        dirty[#dirty + 1] = {
-            type = "set",
-            key = child:id(),
-            data = { [name] = value },
-        }
+        local index = rawget(self, "dirtyIndex")
+        local pending = index[key] and rawget(self, "dirty")[index[key]]
+        if pending then
+            pending.data[name] = value
+        else
+            appendOp(self, {
+                type = "set",
+                key = key,
+                data = { [name] = value },
+            })
+        end
     end
     if self.host and self.host.onRecordChange then
-        self.host:onRecordChange(self, { type = "set", key = child:id() })
+        self.host:onRecordChange(self, { type = "set", key = key })
     end
 end
 
@@ -177,6 +242,7 @@ end
 function Record:collectSync()
     local dirty = rawget(self, "dirty")
     rawset(self, "dirty", {})
+    rawset(self, "dirtyIndex", {})
     return dirty
 end
 
