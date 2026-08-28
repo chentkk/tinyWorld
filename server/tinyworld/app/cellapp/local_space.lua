@@ -8,9 +8,9 @@ local cellMod = require "tinyworld.app.cellapp.cell"
 
 local LocalSpace = class.makeClass("LocalSpace")
 
-function LocalSpace:ctor(app, config, cells)
-    self.app = app
-    config = config or (app and app.spaceConfig)
+function LocalSpace:ctor(host, config, cells)
+    self.host = host
+    config = config or (host and host.spaceConfig)
     self.config = config
     self.id = config and config.id
     self.bounds = (config and config.bounds)
@@ -24,7 +24,7 @@ function LocalSpace:ctor(app, config, cells)
 end
 
 function LocalSpace:addLocalCell(cellInfo)
-    local cell = cellMod.new(cellInfo, self.app, self)
+    local cell = cellMod.new(cellInfo, self.host, self)
     self.cells[#self.cells + 1] = cell
     self.byKey[cellInfo.id] = cell
     return cell

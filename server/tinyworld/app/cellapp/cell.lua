@@ -21,9 +21,9 @@ local defs = require "tinyworld.entity.defs"
 
 local Cell = class.makeClass("Cell")
 
-function Cell:ctor(cellInfo, app, space)
+function Cell:ctor(cellInfo, host, space)
     self.info = cellInfo
-    self.app = app
+    self.host = host
     self.space = space
     self.entities = {}
     self.players = {}
@@ -147,7 +147,7 @@ function Cell:sendProp(player, entity, props)
 
     local data = { t = "prop", n = "props", d = { entityId = entity.clientId or entity.id } }
     for k, v in pairs(props) do data.d[k] = v end
-    self.app:sendToClient(player, data)
+    self.host:sendToClient(player, data)
 end
 
 -- 以 player 为观察者, 取目标实体 outbox 中属于 around 的部分发送
@@ -170,7 +170,7 @@ function Cell:sendEntityAroundTo(player, entity)
     end
 
     for _, event in ipairs(outbox.events or {}) do
-        self.app:sendToClient(player, event)
+        self.host:sendToClient(player, event)
     end
 end
 
@@ -180,16 +180,16 @@ function Cell:sendGhostViewProp(player, entity, stage)
 
     local data = { t = "prop", n = "props", d = { entityId = entity.clientId or entity.id } }
     for k, v in pairs(stage) do data.d[k] = v end
-    self.app:sendToClient(player, data)
+    self.host:sendToClient(player, data)
 end
 
 function Cell:sendRecordOps(player, entity, name, ops)
-    self.app:sendToClient(player, { t = "record", n = name,
+    self.host:sendToClient(player, { t = "record", n = name,
         d = { entityId = entity.clientId or entity.id, ops = ops } })
 end
 
 function Cell:sendViewOps(player, entity, name, ops)
-    self.app:sendToClient(player, { t = "view", n = name,
+    self.host:sendToClient(player, { t = "view", n = name,
         d = { entityId = entity.clientId or entity.id, ops = ops } })
 end
 
@@ -218,7 +218,7 @@ function Cell:deliverToPlayer(player)
             self:sendViewOps(player, player, name, ops)
         end
         for _, event in ipairs(selfOutbox.events or {}) do
-            self.app:sendToClient(player, event)
+            self.host:sendToClient(player, event)
         end
     end
 
@@ -252,14 +252,14 @@ function Cell:updatePlayerVisibility(player)
     for id, other in pairs(visible) do
         if player.visibleEntities[id] ~= other then
             player.visibleEntities[id] = other
-            self.app:sendToClient(player, entityMsg.objectAddMsg(other))
+            self.host:sendToClient(player, entityMsg.objectAddMsg(other))
         end
     end
 
     for id, old in pairs(player.visibleEntities) do
         if not visible[id] then
             player.visibleEntities[id] = nil
-            self.app:sendToClient(player, entityMsg.objectRemoveMsg(old))
+            self.host:sendToClient(player, entityMsg.objectRemoveMsg(old))
         end
     end
 end
@@ -273,7 +273,7 @@ function Cell:shouldMigrate(real, ideal)
     if real.y - ideal.y < cfg.hysteresis then return false end
     if ideal.y + ideal.h - real.y < cfg.hysteresis then return false end
 
-    return self.app:now() - real.lastMigrateTime >= cfg.minMigrateInterval
+    return self.host:now() - real.lastMigrateTime >= cfg.minMigrateInterval
 end
 
 function Cell:checkMigrations()
@@ -295,7 +295,7 @@ end
 -- 目标 cell 在本 cellapp: 直接换 cell 并留 witness
 -- 目标 cell 在别的 cellapp: 走远端迁移协议(消息边界仍是 app 收发)
 function Cell:migrateEntity(real, ideal)
-    real.lastMigrateTime = self.app:now()
+    real.lastMigrateTime = self.host:now()
 
     local target = self.space:getCell(ideal.id)
     if target then
@@ -313,9 +313,9 @@ function Cell:migrateRemote(real, ideal)
     real.migrating = true
     local snapshot = real:ghostSnapshot()
 
-    local ok = self.app:call(ideal.appId, "ghost_create", self.space.spaceId, ideal.id, {
+    local ok = self.host:call(ideal.appId, "ghost_create", self.space.spaceId, ideal.id, {
         realId = real.id, kind = real.kind, x = real.x, y = real.y,
-        snapshot = snapshot, fromApp = self.app.appId,
+        snapshot = snapshot, fromApp = self.host.appId,
         ownerCellKey = self.info.id, promote = true,
     })
     if not ok then
@@ -328,8 +328,8 @@ function Cell:migrateRemote(real, ideal)
 
     local peers = self:collectGhostPeers(real)
     self:reparentOldGhosts(real, ideal, peers)
-    self.app:send(ideal.appId, "ghost_promote", self.space.spaceId, ideal.id, real.id, {
-        fromApp = self.app.appId,
+    self.host:send(ideal.appId, "ghost_promote", self.space.spaceId, ideal.id, real.id, {
+        fromApp = self.host.appId,
         witnessCellKey = real.cell.info.id,
         peers = peers,
         baseApp = real.baseApp,
@@ -342,7 +342,7 @@ end
 -- 迁移前显式通知所有旧 ghost: real 换到新的 app/cell
 function Cell:reparentOldGhosts(real, ideal, peers)
     for _, peer in ipairs(peers) do
-        if peer.app == self.app.appId then
+        if peer.app == self.host.appId then
             local cell = self.space:getCell(peer.cellKey)
             local ghost = cell and cell:findGhost(real.id)
             if ghost then
@@ -351,7 +351,7 @@ function Cell:reparentOldGhosts(real, ideal, peers)
                     real.id, ghost.id, ideal.appId, ideal.id)
             end
         else
-            self.app:send(peer.app, "ghost_reparent", self.space.spaceId,
+            self.host:send(peer.app, "ghost_reparent", self.space.spaceId,
                 peer.cellKey, real.id, ideal.appId, ideal.id)
             self:ghostLog("request reparent ghost real=%d app=%d cell=%s -> app=%d cell=%s",
                 real.id, peer.app, peer.cellKey, ideal.appId, ideal.id)
@@ -363,7 +363,7 @@ function Cell:collectGhostPeers(real)
     local peers = {}
     for _, info in pairs(real.ghosts) do
         local ghostId
-        if info.app == self.app.appId then
+        if info.app == self.host.appId then
             local cell = self.space:getCell(info.cellKey)
             local ghost = cell and cell:findGhost(real.id)
             ghostId = ghost and ghost.id
@@ -406,7 +406,7 @@ function Cell:pruneGhosts(real)
 end
 
 function Cell:destroyGhost(real, key, info)
-    if info.app == self.app.appId then
+    if info.app == self.host.appId then
         local cell = self.space:getCell(info.cellKey)
         local ghost = cell and cell:findGhost(real.id)
         if ghost then
@@ -414,7 +414,7 @@ function Cell:destroyGhost(real, key, info)
             self:ghostLog("destroy local ghost real=%d cell=%s", real.id, info.cellKey)
         end
     else
-        self.app:send(info.app, "ghost_destroy", self.space.spaceId, info.cellKey, real.id)
+        self.host:send(info.app, "ghost_destroy", self.space.spaceId, info.cellKey, real.id)
         self:ghostLog("request destroy remote ghost real=%d app=%d cell=%s",
             real.id, info.app, info.cellKey)
     end
@@ -425,23 +425,23 @@ function Cell:ensureGhostIn(real, neighborInfo)
     local key = real.id .. "@" .. neighborInfo.id
     if real.ghosts[key] then return end
 
-    if neighborInfo.appId == self.app.appId then
+    if neighborInfo.appId == self.host.appId then
         local target = self.space:getCell(neighborInfo.id)
         if not target then return end
 
         local ghost = target:buildGhost(real)
-        ghost.realApp = self.app.appId
+        ghost.realApp = self.host.appId
         ghost.realCellKey = self.info.id
         target:addEntity(ghost)
-        real:addGhost({ key = key, app = self.app.appId, cellKey = neighborInfo.id, sameApp = true })
+        real:addGhost({ key = key, app = self.host.appId, cellKey = neighborInfo.id, sameApp = true })
         self:ghostLog("create local ghost real=%d cell=%s ghostId=%d",
             real.id, neighborInfo.id, ghost.id)
         return
     end
 
-    local ok = self.app:call(neighborInfo.appId, "ghost_create", self.space.spaceId, neighborInfo.id, {
+    local ok = self.host:call(neighborInfo.appId, "ghost_create", self.space.spaceId, neighborInfo.id, {
         realId = real.id, kind = real.kind, x = real.x, y = real.y,
-        snapshot = real:ghostSnapshot(), fromApp = self.app.appId,
+        snapshot = real:ghostSnapshot(), fromApp = self.host.appId,
         ownerCellKey = self.info.id, promote = false,
     })
     if ok then
@@ -453,7 +453,7 @@ end
 -- 在本 cell 构造一个 real 的 ghost
 function Cell:buildGhost(real)
     local def = defs.get(real.kind) or real.def
-    local ghost = GhostEntity.new(def, self.app:nextId(), real.kind, self.space, self, real.id, real.x, real.y)
+    local ghost = GhostEntity.new(def, self.host:nextId(), real.kind, self.space, self, real.id, real.x, real.y)
     ghost.props:load(real.props:dump())
     ghost.props:collectSync() -- 初始属性随 object add 下发, 不再作为变更重复广播
     return ghost
@@ -470,9 +470,9 @@ end
 -- 本 cell 内留下 witness ghost(同 app 迁移用)
 function Cell:leaveWitness(real)
     local witness = self:buildGhost(real)
-    witness.realApp = self.app.appId
+    witness.realApp = self.host.appId
     self:addEntity(witness)
-    real:addGhost({ key = real.id .. "@" .. self.info.id, app = self.app.appId,
+    real:addGhost({ key = real.id .. "@" .. self.info.id, app = self.host.appId,
         cellKey = self.info.id, sameApp = true })
     real.witnessCellKey = self.info.id
     self:ghostLog("create witness ghost real=%d cell=%s ghostId=%d",
@@ -503,7 +503,7 @@ function Cell:upsertRemoteGhost(req)
     local def = defs.get(req.kind)
     if not def then return false end
 
-    ghost = GhostEntity.new(def, self.app:nextId(), req.kind, self.space, self, req.realId, req.x, req.y)
+    ghost = GhostEntity.new(def, self.host:nextId(), req.kind, self.space, self, req.realId, req.x, req.y)
     if req.snapshot and req.snapshot.props then
         ghost.props:load(req.snapshot.props)
     end
@@ -539,7 +539,7 @@ function Cell:promoteGhost(realId, req)
     self:removeEntity(ghost)
     self:addEntity(real)
     self:ghostLog("promote real=%d cell=%s", real.id, self.info.id)
-    self.app:notifyEntityMoved(real)
+    self.host:notifyEntityMoved(real)
     return real
 end
 

@@ -14,49 +14,49 @@ local entityMsg = require "tinyworld.app.cellapp.entity_msg"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
 
 local cmd = {}
-local selfApp = setmetatable({}, { __index = cmd })
-selfApp.appId = nil
-selfApp.world = nil
-selfApp.spaces = {}  -- spaceId -> LocalSpace; 一个 cellapp 可运行多个 space
-selfApp.reals = {}
-selfApp.addrs = {} -- appId -> addr
+local cellapp = setmetatable({}, { __index = cmd })
+cellapp.appId = nil
+cellapp.world = nil
+cellapp.spaces = {}  -- spaceId -> LocalSpace; 一个 cellapp 可运行多个 space
+cellapp.reals = {}
+cellapp.addrs = {} -- appId -> addr
 
 -- 取本 app 某空间里的本地 cell(多数命令按 spaceId 定位)
 local function getLocalCell(spaceId, cellKey)
-    local space = selfApp.spaces[spaceId]
+    local space = cellapp.spaces[spaceId]
     return space and space:getCell(cellKey)
 end
 
-function selfApp:now()
+function cellapp:now()
     return skynet.time()
 end
 
-function selfApp:nextId()
-    return util.makeEntityId(selfApp.appId)
+function cellapp:nextId()
+    return util.makeEntityId(cellapp.appId)
 end
 
-function selfApp:call(appId, command, ...)
-    local addr = selfApp.addrs[appId]
+function cellapp:call(appId, command, ...)
+    local addr = cellapp.addrs[appId]
     if not addr then
-        addr = skynet.call(selfApp.world, "lua", "cellapp_addr", appId)
-        selfApp.addrs[appId] = addr
+        addr = skynet.call(cellapp.world, "lua", "cellapp_addr", appId)
+        cellapp.addrs[appId] = addr
     end
     if not addr then return nil end
     return skynet.call(addr, "lua", command, ...)
 end
 
-function selfApp:send(appId, command, ...)
-    local addr = selfApp.addrs[appId]
+function cellapp:send(appId, command, ...)
+    local addr = cellapp.addrs[appId]
     if not addr then
-        addr = skynet.call(selfApp.world, "lua", "cellapp_addr", appId)
-        selfApp.addrs[appId] = addr
+        addr = skynet.call(cellapp.world, "lua", "cellapp_addr", appId)
+        cellapp.addrs[appId] = addr
     end
     if addr then
         skynet.send(addr, "lua", command, ...)
     end
 end
 
-function selfApp:sendToClient(player, msg)
+function cellapp:sendToClient(player, msg)
     if player.baseApp then
         msg.playerId = player.playerId or player.clientId
         log.debug("cellapp sendToClient entity=%s playerId=%s t=%s",
@@ -67,21 +67,20 @@ function selfApp:sendToClient(player, msg)
     end
 end
 
-function selfApp:notifyEntityMoved(real)
+function cellapp:notifyEntityMoved(real)
     -- 跨 cellapp 迁移完成后回调
-    log.info("entity %s promoted on app %d", real.clientId, selfApp.appId)
+    log.info("entity %s promoted on app %d", real.clientId, cellapp.appId)
 end
 
 -- 注册一个真身实体(供业务查找)
-function selfApp:indexReal(real)
-    selfApp.reals[real.id .. "@" .. real.cell.info.id] = real
+function cellapp:indexReal(real)
+    cellapp.reals[real.id .. "@" .. real.cell.info.id] = real
 end
 
 function cmd.init(registryAddr, index, gameConfig)
     index = index or 1
-    selfApp.appId = skynet.self()
-    selfApp.world = skynet.call(registryAddr, "lua", "query", "world")
-    assert(selfApp.world, "world not registered")
+    cellapp.world = skynet.call(registryAddr, "lua", "query", "world")
+    assert(cellapp.world, "world not registered")
 
     skynet.call(registryAddr, "lua", "register", "cellapp." .. index, skynet.self())
 
@@ -93,32 +92,32 @@ function cmd.init(registryAddr, index, gameConfig)
     end
     defs.registerList(entityDefs.cell and entityDefs.cell.defs)
 
-    local ret = skynet.call(selfApp.world, "lua", "cellapp_register", skynet.self())
+    local ret = skynet.call(cellapp.world, "lua", "cellapp_register", skynet.self())
     if not ret then
         log.fatal("register cellapp fail")
         skynet.exit()
         return
     end
 
-    selfApp.appId = ret.appId
-    selfApp.addrs = {}
+    cellapp.appId = ret.appId
+    cellapp.addrs = {}
     for appId, addr in pairs(ret.allAddrs or {}) do
-        selfApp.addrs[appId] = addr
+        cellapp.addrs[appId] = addr
     end
-    selfApp.addrs[ret.appId] = skynet.self()
+    cellapp.addrs[ret.appId] = skynet.self()
 
     skynet.fork(function()
         local frameTime = 0.1
         local frame = 0
         while true do
             local t1 = skynet.time()
-            local dt = skynet.time() - (selfApp.lastTickTime or skynet.time())
-            selfApp.lastTickTime = skynet.time()
+            local dt = skynet.time() - (cellapp.lastTickTime or skynet.time())
+            cellapp.lastTickTime = skynet.time()
             local step = dt > frameTime * 2 and frameTime or dt
 
             -- 本 cellapp 上运行的每个 space 独立 tick
             local realBySpace = {}
-            for spaceId, space in pairs(selfApp.spaces) do
+            for spaceId, space in pairs(cellapp.spaces) do
                 space:tick(step)
                 local realCount = 0
                 for _, cell in ipairs(space.cells) do
@@ -135,8 +134,8 @@ function cmd.init(registryAddr, index, gameConfig)
                     local cpu = 0
                     local used = skynet.time() - t1
                     if frameTime > 0 then cpu = used / frameTime end
-                    skynet.send(selfApp.world, "lua", "cellapp_report",
-                        selfApp.appId, spaceId, realCount, cpu)
+                    skynet.send(cellapp.world, "lua", "cellapp_report",
+                        cellapp.appId, spaceId, realCount, cpu)
                 end
             end
             skynet.sleep(10) -- 0.1s = 10 * 0.01s
@@ -150,17 +149,17 @@ end
 -- world 创建 space 后下发本 app 负责的 cells。
 -- 空间切分由 world 根据 spaceDef 完成, 本服务只重建一个几何一致的本地视图,
 -- 并把 world 分配的 appId 回填到 cell 上。
-function cmd.bind_cells(spaceId, spaceDef, cells)
+function cmd.bind_cells(spaceId, spaceDef, cellAssignments, cells)
     local SpaceConfig = require "tinyworld.space.space"
     local config = SpaceConfig.compile(spaceDef)
-    for _, cellInfo in ipairs(cells or {}) do
-        local info = config.byCellId[cellInfo.id]
-        if info then info.appId = cellInfo.appId end
+    for cellId, appId in pairs(cellAssignments or {}) do
+        local info = config.byCellId[cellId]
+        if info then info.appId = appId end
     end
 
-    local space = LocalSpace.new(selfApp, config, cells)
-    selfApp.spaces[spaceId] = space
-    log.info("cellapp %d bound space %s cells=%d", selfApp.appId, spaceId, #cells)
+    local space = LocalSpace.new(cellapp, config, cells)
+    cellapp.spaces[spaceId] = space
+    log.info("cellapp %d bound space %s cells=%d", cellapp.appId, spaceId, #cells)
     return true
 end
 
@@ -174,8 +173,8 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
 
     -- 玩家 cell entity 使用 playerId(全服唯一), 其他对象(怪物/projectile)使用 app 分配 id
     local playerId = data and data.playerId
-    local entityId = playerId or selfApp:nextId()
-    local space = selfApp.spaces[spaceId]
+    local entityId = playerId or cellapp:nextId()
+    local space = cellapp.spaces[spaceId]
     local real = RealEntity.new(def, entityId, kind, space, cell)
     real.playerId = playerId
     real.cellInitData = data and data.initData
@@ -195,7 +194,7 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     real:openViews(def.cellOpenViews)
 
     cell:addEntity(real)
-    selfApp:indexReal(real)
+    cellapp:indexReal(real)
     real.readyForSync = true
 
     local info = entityMsg.entitySpawnInfo(real)
@@ -215,7 +214,7 @@ end
 
 -- 供 baseapp 存盘前取 cell 侧最新属性(坐标等)
 function cmd.get_entity(spaceId, entityId)
-    local space = selfApp.spaces[spaceId]
+    local space = cellapp.spaces[spaceId]
     for _, cell in ipairs(space and space.cells or {}) do
         local e = cell:get(entityId)
         if e then
@@ -226,7 +225,7 @@ function cmd.get_entity(spaceId, entityId)
 end
 
 function cmd.find_entity(spaceId, entityId)
-    local space = selfApp.spaces[spaceId]
+    local space = cellapp.spaces[spaceId]
     for _, cell in ipairs(space and space.cells or {}) do
         local e = cell:get(entityId)
         if e then return cell.info.id end

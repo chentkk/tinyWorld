@@ -77,13 +77,19 @@ function cmd.create_space(spaceId)
     local ok, byApp = CellAllocator.distribute(config, appIds)
     if not ok then return nil, byApp end
 
+    -- 每个 cellapp 都需要完整的 cell -> appId 映射来重建本地空间视图
+    local assignments = {}
+    for _, info in ipairs(config.cells) do
+        assignments[info.id] = info.appId
+    end
+
     local space = ServerSpace.new(def, config)
     spaces[spaceId] = space
 
     for appId, cells in pairs(byApp) do
         local reg = cellapps[appId]
         if reg and reg.addr then
-            skynet.call(reg.addr, "lua", "bind_cells", spaceId, def, cells)
+            skynet.call(reg.addr, "lua", "bind_cells", spaceId, def, assignments, cells)
             log.info("space %s assigned %d cells to cellapp %d", spaceId, #cells, appId)
         else
             log.warn("space %s: cellapp %d not registered", spaceId, appId)

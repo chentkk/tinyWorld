@@ -62,7 +62,7 @@ end
 -- 本地 ghost 直接应用, 远端 ghost 通过 cellapp 服务的 ghost_sync 消息应用。
 function RealEntity:sendGhostEach(outbox)
     for _, info in pairs(self.ghosts) do
-        if info.app == self.cell.app.appId then
+        if info.app == self.cell.host.appId then
             local cell = self.space:getCell(info.cellKey)
             local ghost = cell and cell:findGhost(self.id)
             if ghost then
@@ -70,7 +70,7 @@ function RealEntity:sendGhostEach(outbox)
                 cell:ghostLog("local ghost apply outbox real=%d ghost=%d", self.id, ghost.id)
             end
         else
-            self.cell.app:send(info.app, "ghost_sync",
+            self.cell.host:send(info.app, "ghost_sync",
                 self.space.spaceId, info.cellKey, self.id, outbox)
         end
     end
@@ -80,12 +80,12 @@ end
 function RealEntity:callGhostEach(method, data)
     local results = {}
     for _, info in pairs(self.ghosts) do
-        if info.app == self.cell.app.appId then
+        if info.app == self.cell.host.appId then
             local cell = self.space:getCell(info.cellKey)
             local ghost = cell and cell:findGhost(self.id)
             results[#results + 1] = ghost and ghost[method] and ghost[method](ghost, data)
         else
-            results[#results + 1] = self.cell.app:call(info.app, "ghost_rpc",
+            results[#results + 1] = self.cell.host:call(info.app, "ghost_rpc",
                 self.space.spaceId, info.cellKey, self.id, method, data)
         end
     end
