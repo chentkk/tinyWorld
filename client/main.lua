@@ -24,6 +24,7 @@ local account = (arg and arg[2]) or "test1"
 local autoQuitAfter = tonumber(arg and arg[3])
 local autoMove = (arg and arg[4] == "automove") or false
 local autoCast = (arg and arg[5] == "cast") or false
+local castIndex = tonumber(arg and arg[6]) or 3
 local didCast = false
 local testTimer = 0
 
@@ -154,14 +155,14 @@ function love.update(dt)
     end
 
     if autoCast and state == "world" and myEntity and not didCast then
-        didCast = true
         local targetId
         for id, e in pairs(entities.list) do
             if e.entityId ~= net.selfId then targetId = e.entityId break end
         end
         if targetId then
-            net.enqueue("RPC", "onCastAbility", { index = 3, targetId = targetId })
-            dbg.write("cast ability index=3 target=%s", tostring(targetId))
+            didCast = true
+            net.enqueue("RPC", "onCastAbility", { index = castIndex, targetId = targetId })
+            dbg.write("cast ability index=%d target=%s", castIndex, tostring(targetId))
         end
     end
 
