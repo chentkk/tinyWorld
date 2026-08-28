@@ -32,45 +32,6 @@ end
 
 M.snapshot = M.modifiersSnapshot
 
-local function syncOneView(view, objects, seen)
-    for _, object in ipairs(objects) do
-        local data = object:viewData()
-        local id = data.id
-
-        if not view:has(id) then
-            view:add(data)
-        else
-            local child = view:get(id)
-            for name, value in pairs(data) do
-                child[name] = value
-            end
-        end
-        seen[id] = true
-    end
-
-    for id in pairs(view.children) do
-        if not seen[id] then
-            view:remove(id)
-        end
-    end
-end
-
--- 把 modifier / ability 状态同步到对应 View。
--- 字段由对象自身 viewData 提供, 通用层不识别具体字段。
-function M.syncCombatViews(unit, dt)
-    if not unit.getContainer then return end
-
-    local modifiersView = unit:getContainer("modifiers_view")
-    if modifiersView and modifiersView:isViewOpened() then
-        syncOneView(modifiersView, unit.modifiers or {}, {})
-    end
-
-    local abilitiesView = unit:getContainer("abilities_view")
-    if abilitiesView and abilitiesView:isViewOpened() then
-        syncOneView(abilitiesView, unit.abilities or {}, {})
-    end
-end
-
 function M.apply(unit)
     if unit.combatApplied then return unit end
     unit.combatApplied = true
