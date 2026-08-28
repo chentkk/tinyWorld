@@ -33,6 +33,12 @@ function cmd.exec(sql)
     return skynet.call(db, "lua", "exec", sql)
 end
 
+function cmd.quote(str)
+    assert(#dbs > 0, "no db service")
+    local db = pickDb(tostring(str))
+    return skynet.call(db, "lua", "quote", str)
+end
+
 function cmd.init(registryAddr, gameConfig)
     registry = registryAddr
 

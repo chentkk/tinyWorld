@@ -24,6 +24,18 @@ function cmd.exec(sql)
     return mysql:query(sql)
 end
 
+-- 供 framework store 安全拼接字符串(特别是二进制 bin 数据)
+function cmd.quote(str)
+    if not mysql then return nil, "db not ready" end
+    if mode == "mock" then
+        str = tostring(str)
+        return "'" .. (str:gsub("'", "''"):gsub("\0", "\\0")) .. "'"
+    end
+
+    str = tostring(str)
+    return mysql.quote_sql_str(str)
+end
+
 local function init()
     if mode == "mock" then
         mockdb = require "tinyworld.core.mockdb"

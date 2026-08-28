@@ -10,10 +10,11 @@ local proto = require "tinyworld.core.proto"
 local msgUtil = require "tinyworld.net.msg"
 local defs = require "tinyworld.entity.defs"
 local BaseEntity = require "tinyworld.app.baseapp.baseentity"
+local PlayerStore = require "tinyworld.app.baseapp.player_store"
 
 local cmd = {}
 local sessions = {} -- connId -> session
-local playerData = nil
+local playerStore = nil
 local registry
 local dbmgrAddr
 local worldAddr
@@ -24,6 +25,10 @@ end
 
 local function dbExec(sql)
     return skynet.call(dbmgrAddr, "lua", "exec", sql)
+end
+
+local function dbQuote(str)
+    return skynet.call(dbmgrAddr, "lua", "quote", str)
 end
 
 local function sendToClient(session, msg)
@@ -88,20 +93,14 @@ end
 -- ACCOUNT 阶段处理
 local function accountCharacterList(session)
     local accountId = session.accountId
-    local rows = dbQuery(string.format("SELECT * FROM players WHERE account_id=%d", accountId))
-    local characters = {}
-    for _, row in ipairs(rows or {}) do
-        characters[#characters + 1] = row
-    end
+    local characters = playerStore:listCharacters(accountId)
     replyAccount(session, "characterList", { code = 0, characters = characters })
 end
 
 local function accountCreateCharacter(session, d)
     local accountId = session.accountId
     local name = d.name or ("hero" .. accountId)
-    local ret = dbExec(string.format(
-        "INSERT INTO players (account_id,name,level,hp,max_hp,mp,max_mp,gold,scene,x,y) VALUES (%d,'%s',1,100,100,100,100,0,'main',10,10)",
-        accountId, name))
+    local ret = playerStore:createCharacter(accountId, name)
     if not ret then
         replyAccount(session, "createCharacter", { code = 1, msg = "create fail" })
         return
@@ -118,7 +117,7 @@ local function enterWorld(entity, session)
         return
     end
 
-    local cellData = playerData.buildCellData(entity)
+    local cellData = playerStore:buildCellData(entity)
     local spawn = skynet.call(info.appAddr, "lua", "spawn_entity", info.spaceId, info.cell.id,
         "Player", { x = spawnX, y = spawnY, playerId = entity.id, initData = cellData }, skynet.self())
     if not spawn then
@@ -137,14 +136,12 @@ end
 
 local function accountSelectCharacter(session, d)
     local playerId = tonumber(d.playerId)
-    local rows = dbQuery(string.format("SELECT * FROM players WHERE id=%d", playerId))
-    local row = rows and rows[1]
-    if not row then
+    if not playerStore:characterRow(playerId) then
         replyAccount(session, "selectCharacter", { code = 1, msg = "player not found", playerId = d.playerId })
         return
     end
 
-    local data = playerData.load(playerId)
+    local data = playerStore:load(playerId)
     local def = defs.get("Player")
     local entity = BaseEntity.new(def, playerId, "Player", session)
     entity:load(data)
@@ -263,7 +260,7 @@ function cmd.client_disconnect(connId)
         end
     end
 
-    pcall(playerData.save, entity.id, dumpData)
+    pcall(function() return playerStore:save(entity.id, dumpData) end)
     entity:onDestroy()
     sessions[connId] = nil
     log.info("session closed %s playerId=%d saved", connId, entity.id)
@@ -306,8 +303,11 @@ function cmd.init(registryAddr, index, gameConfig)
     end
     defs.registerList(entityDefs.base and entityDefs.base.defs)
 
-    playerData = require "game.player.player_data"
-    playerData.setDbAddr(dbmgrAddr)
+    playerStore = PlayerStore.new({
+        query = dbQuery,
+        exec = dbExec,
+        quote = dbQuote,
+    }, gameConfig and gameConfig.playerStore)
 
     skynet.call(registry, "lua", "register", "baseapp." .. index, skynet.self())
 
