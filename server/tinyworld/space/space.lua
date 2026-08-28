@@ -1,79 +1,157 @@
 -- tinyworld/space/space.lua
--- Space 通用定义: 空间尺寸、cell 网格划分、邻居关系与 cell 归属。
--- world 侧使用 ServerSpace 保存完整信息, cellapp 侧使用 LocalSpace 管理本地 cell。
+-- Space 通用定义: 空间几何、cell 切分、邻居关系与 cell 归属分配。
+-- 支持两种切分模式:
+--   * auto  : 按 cellSize(或 cellCols/cellRows) 等分整张地图
+--   * manual: 配置中直接给出每个 cell 的矩形 {id, x, y, w, h}
+-- cell 的 appId 不在配置中指定, 由 world 运行时决定后传入分配。
 
 local CellInfo = require "tinyworld.space.cell_info"
-local util = require "tinyworld.core.util"
 
 local SpaceConfig = {}
 SpaceConfig.__index = SpaceConfig
 
--- config: { id, width, height, cellSize, aoiRange, balance, cellApps }
+local function clampInt(n, default)
+    n = tonumber(n)
+    if not n or n <= 0 then return default end
+    return math.floor(n)
+end
+
+-- 两个轴对齐矩形是否接触或相交
+local function rectsTouch(a, b)
+    local ax2 = a.x + a.w
+    local ay2 = a.y + a.h
+    local bx2 = b.x + b.w
+    local by2 = b.y + b.h
+    return a.x <= bx2 and ax2 >= b.x and a.y <= by2 and ay2 >= b.y
+end
+
+-- 把一个 cell 归属到 appId(轮询分配)
+local function distributeAppIds(cells, appIds)
+    local ids = appIds or {}
+    if #ids == 0 then ids = { 1 } end
+    for i, info in ipairs(cells) do
+        info.appId = ids[((i - 1) % #ids) + 1]
+    end
+end
+
+-- config: { id, width, height, aoiRange, ghostRange,
+--           cellSize | cellCols+cellRows | cells = { {id,x,y,w,h}, ... } }
 function SpaceConfig.compile(config, defaultAppIds)
     local self = setmetatable({}, SpaceConfig)
-    self.id = config.id or "main"
-    self.width = config.width or 200
-    self.height = config.height or 200
-    self.cellSize = config.cellSize or 40
-    self.aoiRange = config.aoiRange or 60
-    self.balance = config.balance or { enabled = false, strategy = 2 }
-    self.hysteresis = config.hysteresis or math.max(2, self.cellSize * 0.08)
-    self.minMigrateInterval = config.minMigrateInterval or 1.0
-    self.ghostRange = config.ghostRange or math.min(self.cellSize, self.aoiRange)
-    self.appIds = config.cellApps or defaultAppIds or { 1 }
 
-    self.cols = math.max(1, math.ceil(self.width / self.cellSize))
-    self.rows = math.max(1, math.ceil(self.height / self.cellSize))
+    self.id = config.id or "main"
+    self.width = tonumber(config.width) or 200
+    self.height = tonumber(config.height) or 200
+    self.aoiRange = tonumber(config.aoiRange) or 60
+
+    self.balance = config.balance or { enabled = false, strategy = 2 }
+    self.minMigrateInterval = tonumber(config.minMigrateInterval) or 1.0
 
     self.cells = {}
-    self.byCoord = {}
-    local assigned = {}
+    self.byCoord = {} -- 兼容旧称呼, 实际是 cellId -> CellInfo
 
-    local function ref(i)
-        if assigned[i] then return assigned[i] end
-        assigned[i] = self.appIds[((i - 1) % #self.appIds) + 1]
-        return assigned[i]
-    end
+    local appIds = config.cellApps or defaultAppIds or {}
+    self.appIds = appIds
 
-    for cy = 0, self.rows - 1 do
-        for cx = 0, self.cols - 1 do
-            local x = cx * self.cellSize
-            local y = cy * self.cellSize
-            local w = math.min(self.cellSize, self.width - x)
-            local h = math.min(self.cellSize, self.height - y)
-            local idx = self.cols * cy + cx + 1
-            local appId
-            if config.cells then
-                appId = config.cells[cx .. ":" .. cy] or ref(idx)
-            else
-                appId = ref(idx)
-            end
-            local info = CellInfo.new(cx, cy, x, y, w, h, appId)
+    if config.cells and #config.cells > 0 then
+        -- 手动切分: 配置定义每个 cell 的矩形
+        self.mode = "manual"
+        self.cellSize = config.cellSize
+        for i, cellDef in ipairs(config.cells) do
+            assert(cellDef.id, "manual cell missing id")
+            assert(tonumber(cellDef.x) ~= nil, "manual cell missing x: " .. tostring(cellDef.id))
+            assert(tonumber(cellDef.y) ~= nil, "manual cell missing y: " .. tostring(cellDef.id))
+            assert(tonumber(cellDef.w) and tonumber(cellDef.w) > 0, "manual cell bad w: " .. tostring(cellDef.id))
+            assert(tonumber(cellDef.h) and tonumber(cellDef.h) > 0, "manual cell bad h: " .. tostring(cellDef.id))
+
+            local info = CellInfo.new(nil, nil, tonumber(cellDef.x), tonumber(cellDef.y),
+                tonumber(cellDef.w), tonumber(cellDef.h), nil, cellDef.id)
+            info.id = cellDef.id
             self.cells[#self.cells + 1] = info
             self.byCoord[info.id] = info
         end
+    else
+        -- 自动切分: cellSize 与 cellCols/cellRows 二选一, 都不给则整图一个 cell
+        self.mode = "auto"
+        local cols, rows
+        if config.cellCols or config.cellRows then
+            cols = clampInt(config.cellCols, 1)
+            rows = clampInt(config.cellRows, 1)
+            self.cellCols = cols
+            self.cellRows = rows
+            self.cellSize = nil
+        else
+            local cellSize = tonumber(config.cellSize)
+            cellSize = (cellSize and cellSize > 0) and cellSize or math.max(self.width, self.height)
+            self.cellSize = cellSize
+            cols = math.max(1, math.ceil(self.width / cellSize))
+            rows = math.max(1, math.ceil(self.height / cellSize))
+        end
+
+        self.cols = cols
+        self.rows = rows
+        for cy = 0, rows - 1 do
+            for cx = 0, cols - 1 do
+                local x = cx * (self.width / cols)
+                local y = cy * (self.height / rows)
+                local w = (cx == cols - 1) and (self.width - x) or (self.width / cols)
+                local h = (cy == rows - 1) and (self.height - y) or (self.height / rows)
+                local info = CellInfo.new(cx, cy, x, y, w, h, nil)
+                self.cells[#self.cells + 1] = info
+                self.byCoord[info.id] = info
+            end
+        end
     end
+
+    -- cellSize 可能是自动模式, 也可能是手动模式未填写; 统一回退为配置值
+    self.cellSize = config.cellSize
+
+    self.ghostRange = tonumber(config.ghostRange)
+        or tonumber(self.cellSize) or math.min(self.width, self.height)
+    self.hysteresis = tonumber(config.hysteresis) or 2
 
     self.bounds = { x1 = 0, y1 = 0, x2 = self.width, y2 = self.height }
     for _, info in ipairs(self.cells) do
         info:setGhostRange(self.ghostRange, self.bounds)
     end
+
+    distributeAppIds(self.cells, appIds)
     return self
 end
 
+-- 坐标落点: 自动模式按网格, 手动模式按矩形包含
 function SpaceConfig:cellAt(x, y)
-    if x < 0 or y < 0 or x >= self.width or y >= self.height then
-        return self.byCoord[(self.cols - 1) .. ":" .. (self.rows - 1)]
+    if self.mode == "manual" then
+        for _, info in ipairs(self.cells) do
+            if x >= info.x and x < info.x + info.w and y >= info.y and y < info.y + info.h then
+                return info
+            end
+        end
+        -- 地图外: 退回第一个 cell, 由迁移逻辑做边界抑制
+        return self.cells[1]
     end
-    local cx = math.floor(x / self.cellSize)
-    local cy = math.floor(y / self.cellSize)
+
+    x = math.min(math.max(x, 0), self.width - 1)
+    y = math.min(math.max(y, 0), self.height - 1)
+    local cx = math.floor(x / (self.width / self.cols))
+    local cy = math.floor(y / (self.height / self.rows))
     cx = math.min(cx, self.cols - 1)
     cy = math.min(cy, self.rows - 1)
     return self.byCoord[cx .. ":" .. cy]
 end
 
+-- 邻居: 自动模式走网格邻居, 手动模式返回所有其他 cell
 function SpaceConfig:neighbors(cellInfo)
     local out = {}
+    if self.mode == "manual" then
+        for _, other in ipairs(self.cells) do
+            if other.id ~= cellInfo.id and rectsTouch(other.ghostRect, cellInfo.ghostRect) then
+                out[#out + 1] = other
+            end
+        end
+        return out
+    end
+
     for dy = -1, 1 do
         for dx = -1, 1 do
             if dx ~= 0 or dy ~= 0 then

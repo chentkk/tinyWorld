@@ -13,18 +13,17 @@ local BaseEntity = require "tinyworld.app.baseapp.baseentity"
 
 local cmd = {}
 local sessions = {} -- connId -> session
-local gameInit = nil
-
-local function svc(name)
-    return skynet.getenv("addr_" .. name)
-end
+local playerData = nil
+local registry
+local dbmgrAddr
+local worldAddr
 
 local function dbQuery(sql)
-    return skynet.call(svc("dbmgr"), "lua", "query", sql)
+    return skynet.call(dbmgrAddr, "lua", "query", sql)
 end
 
 local function dbExec(sql)
-    return skynet.call(svc("dbmgr"), "lua", "exec", sql)
+    return skynet.call(dbmgrAddr, "lua", "exec", sql)
 end
 
 local function sendToClient(session, msg)
@@ -113,13 +112,13 @@ end
 local function enterWorld(entity, session)
     local spawnX = entity:get("x") or 10
     local spawnY = entity:get("y") or 10
-    local info = skynet.call(svc("world"), "lua", "spawn_info", "main", spawnX, spawnY)
+    local info = skynet.call(worldAddr, "lua", "spawn_info", "main", spawnX, spawnY)
     if not info then
         replyAccount(session, "selectCharacter", { code = 1, msg = "no spawn info", playerId = entity.id })
         return
     end
 
-    local cellData = gameInit.buildCellData(entity)
+    local cellData = playerData.buildCellData(entity)
     local spawn = skynet.call(info.appAddr, "lua", "spawn_entity", info.spaceId, info.cell.id,
         "Player", { x = spawnX, y = spawnY, playerId = entity.id, initData = cellData }, skynet.self())
     if not spawn then
@@ -145,7 +144,7 @@ local function accountSelectCharacter(session, d)
         return
     end
 
-    local data = gameInit.loadPlayer(playerId)
+    local data = playerData.load(playerId)
     local def = defs.get("Player")
     local entity = BaseEntity.new(def, playerId, "Player", session)
     entity:load(data)
@@ -153,7 +152,8 @@ local function accountSelectCharacter(session, d)
     entity:onCreate()
     session.entity = entity
 
-    gameInit.setupBaseEntity(entity)
+    entity:setupComponents(entity.def.baseComponents)
+    entity:openViews(entity.def.baseOpenViews)
     enterWorld(entity, session)
 end
 
@@ -163,7 +163,7 @@ local function handleAccount(session, msg)
     if fn == "characterList" then
         accountCharacterList(session)
     elseif fn == "spaceInfo" then
-        local info = skynet.call(svc("world"), "lua", "query_space", "main")
+        local info = skynet.call(worldAddr, "lua", "query_space", "main")
         if info then replyAccount(session, "spaceInfo", info) end
     elseif fn == "createCharacter" then
         accountCreateCharacter(session, d)
@@ -263,7 +263,7 @@ function cmd.client_disconnect(connId)
         end
     end
 
-    pcall(gameInit.savePlayer, entity.id, dumpData)
+    pcall(playerData.save, entity.id, dumpData)
     entity:onDestroy()
     sessions[connId] = nil
     log.info("session closed %s playerId=%d saved", connId, entity.id)
@@ -289,10 +289,27 @@ function cmd.call_base(playerId, name, data)
     end
 end
 
-local function init()
+function cmd.init(registryAddr, index, gameConfig)
+    registry = registryAddr
+    index = index or 1
+
+    dbmgrAddr = skynet.call(registry, "lua", "query", "dbmgr")
+    worldAddr = skynet.call(registry, "lua", "query", "world")
+    assert(dbmgrAddr, "dbmgr not registered")
+    assert(worldAddr, "world not registered")
+
     require("tinyworld.combat.env").setIsServer(true)
-    gameInit = require "game.init"
-    gameInit.registerDefs()
+
+    local entityDefs = gameConfig and gameConfig.entityDefs or {}
+    for _, bootModule in ipairs(entityDefs.base and entityDefs.base.boot or {}) do
+        require(bootModule)
+    end
+    defs.registerList(entityDefs.base and entityDefs.base.defs)
+
+    playerData = require "game.player.player_data"
+    playerData.setDbAddr(dbmgrAddr)
+
+    skynet.call(registry, "lua", "register", "baseapp." .. index, skynet.self())
 
     -- 驱动 baseentity 组件(onTick), 同步压力测试组件的表格/容器变更
     skynet.fork(function()
@@ -308,8 +325,8 @@ local function init()
         end
     end)
 
-    log.info("baseapp ready")
+    log.info("baseapp ready index=%d", index)
 end
 
-service.startService("baseapp", init, cmd)
+service.startService("baseapp", nil, cmd)
 return cmd

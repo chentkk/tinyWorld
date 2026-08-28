@@ -8,6 +8,7 @@ local log = require "tinyworld.core.log"
 
 local file
 local path
+local registry
 
 local function openFile()
     path = skynet.getenv("log_dir") or "./"
@@ -36,9 +37,13 @@ function cmd.write(connId, kind, msgType, name, data)
     file:flush()
 end
 
-local function init()
+function cmd.init(registryAddr)
+    registry = registryAddr
     file = openFile()
+
+    local addr = skynet.self()
+    skynet.call(registry, "lua", "register", "log", addr)
     log.info("logservice ready, path=%s", path)
 end
 
-service.startService("logservice", init, cmd)
+service.startService("logservice", nil, cmd)

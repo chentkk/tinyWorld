@@ -72,15 +72,23 @@ function selfApp:indexReal(real)
     selfApp.reals[real.id .. "@" .. real.cell.info.id] = real
 end
 
-function cmd.init(spaceId, worldAddr)
+function cmd.init(registryAddr, index, gameConfig)
+    index = index or 1
     selfApp.appId = skynet.self()
-    selfApp.world = worldAddr
+    selfApp.world = skynet.call(registryAddr, "lua", "query", "world")
+    assert(selfApp.world, "world not registered")
+
+    skynet.call(registryAddr, "lua", "register", "cellapp." .. index, skynet.self())
 
     require("tinyworld.combat.env").setIsServer(true)
-    local gameInit = require "game.init"
-    gameInit.registerCellDefs()
 
-    local ret = skynet.call(worldAddr, "lua", "cellapp_register", spaceId, skynet.self())
+    local entityDefs = gameConfig and gameConfig.entityDefs or {}
+    for _, bootModule in ipairs(entityDefs.cell and entityDefs.cell.boot or {}) do
+        require(bootModule)
+    end
+    defs.registerList(entityDefs.cell and entityDefs.cell.defs)
+
+    local ret = skynet.call(selfApp.world, "lua", "cellapp_register", skynet.self())
     if not ret then
         log.fatal("register cellapp fail")
         skynet.exit()
@@ -88,34 +96,13 @@ function cmd.init(spaceId, worldAddr)
     end
 
     selfApp.appId = ret.appId
-    selfApp.space = ret.space
     selfApp.addrs = {}
     for appId, addr in pairs(ret.allAddrs or {}) do
         selfApp.addrs[appId] = addr
     end
     selfApp.addrs[ret.appId] = skynet.self()
 
-    local spaceModule = require(skynet.getenv("space_config") or "game.config.spaces")
-    local rawConf
-    for _, s in ipairs(spaceModule.spaces) do
-        if s.id == spaceId then rawConf = s end
-    end
-    rawConf = rawConf or { id = spaceId }
-
-    local SpaceConfig = require "tinyworld.space.space"
-    selfApp.spaceConfig = SpaceConfig.compile(rawConf, spaceModule.defaultCellApps)
-
-    local localSpace = LocalSpace.new(selfApp)
-    for _, cellInfo in ipairs(ret.cells) do
-        localSpace:addLocalCell({
-            cx = cellInfo.cx, cy = cellInfo.cy,
-            x = cellInfo.x, y = cellInfo.y,
-            w = cellInfo.w, h = cellInfo.h,
-            appId = cellInfo.appId,
-            id = cellInfo.id,
-        })
-    end
-    selfApp.localSpace = localSpace
+    selfApp.localSpace = LocalSpace.new(selfApp)
 
     skynet.fork(function()
         local frameTime = 0.1
@@ -124,16 +111,12 @@ function cmd.init(spaceId, worldAddr)
             local t1 = skynet.time()
             local dt = skynet.time() - (selfApp.lastTickTime or skynet.time())
             selfApp.lastTickTime = skynet.time()
-            localSpace:tick(dt > frameTime * 2 and frameTime or dt)
-            if gameInit and gameInit.onCellAppTick then
-                gameInit.onCellAppTick(dt > frameTime * 2 and frameTime or dt)
-            end
-
+            selfApp.localSpace:tick(dt > frameTime * 2 and frameTime or dt)
             -- 定期上报负载: real 数量 + 每帧 cpu(平滑)
             frame = frame + 1
             if frame % 10 == 0 then
                 local realCount = 0
-                for _, cell in ipairs(localSpace.cells) do
+                for _, cell in ipairs(selfApp.localSpace.cells) do
                     for _, e in pairs(cell.entities) do
                         if e.isReal then realCount = realCount + 1 end
                     end
@@ -141,14 +124,29 @@ function cmd.init(spaceId, worldAddr)
                 local cpu = 0
                 local used = skynet.time() - t1
                 if frameTime > 0 then cpu = used / frameTime end
-                skynet.send(worldAddr, "lua", "cellapp_report", ret.appId, spaceId, realCount, cpu)
+                if selfApp.spaceId then
+                    skynet.send(selfApp.world, "lua", "cellapp_report",
+                        selfApp.appId, selfApp.spaceId, realCount, cpu)
+                end
             end
             skynet.sleep(10) -- 0.1s = 10 * 0.01s
         end
     end)
 
-    log.info("cellapp %d ready, cells=%d", ret.appId, #localSpace.cells)
+    log.info("cellapp %d ready, cells=0 (waiting for space binding)", ret.appId)
     return { appId = ret.appId }
+end
+
+-- world 创建 space 后下发本 app 负责的 cells
+function cmd.bind_cells(spaceId, spaceDef, appIds, cells)
+    local SpaceConfig = require "tinyworld.space.space"
+    selfApp.space = SpaceConfig.compile(spaceDef, appIds)
+    selfApp.spaceConfig = selfApp.space
+    selfApp.spaceId = spaceId
+
+    selfApp.localSpace:bind(selfApp.space, cells)
+    log.info("cellapp %d bound space %s cells=%d", selfApp.appId, spaceId, #cells)
+    return true
 end
 
 -- 业务层真正创建真身实体
@@ -177,17 +175,16 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     end
     real.props:load(spawnProps)
     real:onCreate()
-    require("game.init").setupCellEntity(real, data or {})
+    real:setupComponents(def.cellComponents)
+    real:openViews(def.cellOpenViews)
 
     cell:addEntity(real)
     selfApp:indexReal(real)
     real.readyForSync = true
 
-    local combatUnit = require "tinyworld.combat.unit"
-    local props = entityMsg.clientProps(real)
-    local modifiers = combatUnit.modifiersSnapshot(real)
-    return { entityId = entityId, cellKey = cellKey, kind = kind, props = props,
-             modifiers = modifiers }
+    local info = entityMsg.entitySpawnInfo(real)
+    info.cellKey = cellKey
+    return info
 end
 
 function cmd.call_cell_rpc(spaceId, entityId, cellKey, name, data)
@@ -232,8 +229,9 @@ function cmd.ghost_promote(spaceId, cellKey, realId, req)
     local real = cell:promoteGhost(realId, req)
     if not real then return false end
 
-    -- 迁移后重新绑定 baseApp 并重建 cell 侧组件(移动 / 战斗同步等)
-    require("game.init").setupCellEntity(real, { initData = real.cellInitData })
+    -- 迁移后重新装配 cell 侧组件(移动 / 战斗同步等)
+    real:setupComponents(real.def.cellComponents)
+    real:openViews(real.def.cellOpenViews)
     real.readyForSync = true
 
     if real.baseApp then

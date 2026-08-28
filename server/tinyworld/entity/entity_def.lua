@@ -23,5 +23,11 @@ return function(defModuleOrTable)
     for _, cd in ipairs(def.containers or {}) do
         def.containerDefs[#def.containerDefs + 1] = ContainerDef.new(cd)
     end
+
+    -- 组件/视图装配配置(由 def 文件声明的数据, 不包含业务逻辑)
+    def.baseComponents = def.baseComponents or {}
+    def.baseOpenViews = def.baseOpenViews or {}
+    def.cellComponents = def.cellComponents or {}
+    def.cellOpenViews = def.cellOpenViews or {}
     return def
 end

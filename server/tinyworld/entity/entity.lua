@@ -119,6 +119,31 @@ function Entity:getComponent(name)
     return self.components[name]
 end
 
+-- 按 def 配置装配组件: componentsConfig = { {name="move", module="game.components.move"}, ... }
+function Entity:setupComponents(componentsConfig)
+    for _, conf in ipairs(componentsConfig or {}) do
+        local modulePath
+        local name
+        if type(conf) == "string" then
+            modulePath = conf
+            name = modulePath:match("([^%.]+)$") or modulePath
+        else
+            modulePath = conf.module
+            name = conf.name or modulePath:match("([^%.]+)$")
+        end
+        assert(modulePath, "component config missing module")
+        self:addComponent(name, require(modulePath))
+    end
+end
+
+-- 打开 def 配置中声明的容器视图
+function Entity:openViews(viewNames)
+    for _, viewName in ipairs(viewNames or {}) do
+        local cont = self.containers[viewName]
+        if cont then cont:openView(viewName) end
+    end
+end
+
 function Entity:eachComponent(fn)
     for name, comp in pairs(self.components) do
         fn(name, comp)

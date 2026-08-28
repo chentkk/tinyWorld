@@ -1,27 +1,20 @@
--- game/init.lua
--- 游戏侧挂载点: 注册对象定义、加载 / 保存玩家数据、
--- 组装 baseentity / cellentity 组件。框架通过这些钩子感知
--- 不同对象使用了哪些组件与定义。
+-- game/player/player_data.lua
+-- 玩家数据的 db 读取 / 打包 / 保存。纯数据访问, 不包含实体装配逻辑。
 
-local defs = require "tinyworld.entity.defs"
 local bin = require "tinyworld.core.bin"
 local M = {}
 
-function M.registerDefs()
-    defs.register("Player", "game.def.player.player_def")
-end
+local dbAddr
 
-function M.registerCellDefs()
-    defs.register("Player", "game.def.player.cell_player_def")
-    require "game.scripts.vscripts.abilities" -- 注册能力工厂(只能做一次)
+function M.setDbAddr(addr)
+    dbAddr = addr
 end
 
 local function findDb()
-    local skynet = require "skynet"
-    return skynet.getenv("addr_dbmgr")
+    return dbAddr
 end
 
-function M.loadPlayer(playerId)
+function M.load(playerId)
     local skynet = require "skynet"
     local data = {
         props = { id = playerId },
@@ -30,6 +23,7 @@ function M.loadPlayer(playerId)
                 { name = "ability_aphotic_shield" },
                 { name = "ability_borrowed_time" },
                 { name = "ability_mist_coil" },
+                { name = "ability_blood_harvest" },
             },
         },
         containers = {},
@@ -70,10 +64,11 @@ function M.loadPlayer(playerId)
     return data
 end
 
-function M.savePlayer(playerId, dump)
+function M.save(playerId, dump)
+    local skynet = require "skynet"
     local body = bin.packEntity(dump)
     if not findDb() then return end
-    local skynet = require "skynet"
+
     local rows = skynet.call(findDb(), "lua", "query",
         string.format("SELECT player_id FROM player_bin WHERE player_id=%d", playerId))
     if rows and rows[1] then
@@ -86,48 +81,12 @@ function M.savePlayer(playerId, dump)
 end
 
 -- cell 初始化数据: baseapp 从玩家数据中提取, 交给 cell 创建对象时使用。
--- 技能属于玩家数据, 由 baseapp 加载, cellapp 不做技能数据来源。
 function M.buildCellData(entity)
     local abilities = {}
     for _, row in ipairs(entity:getRecord("abilities"):rowsList()) do
         abilities[#abilities + 1] = row.name
     end
     return { abilities = abilities }
-end
-
--- baseapp 侧组件的装配: 框架借此知道玩家使用了哪些组件
-function M.setupBaseEntity(entity)
-    entity:addComponent("bag", require "game.components.bag")
-    entity:addComponent("equipment", require "game.components.equipment")
-    entity:addComponent("task", require "game.components.task")
-
-    local bag = entity:getContainer("bag")
-    if bag then bag:openView("bag") end
-    local equipment = entity:getContainer("equipment")
-    if equipment then equipment:openView("equipment") end
-
-    -- 数据同步压力测试(表格/容器)
-    entity:addComponent("base_sync_stress", require "game.components.sync_stress")
-end
-
--- cellapp 侧组件的装配
-function M.setupCellEntity(real, data)
-    real:addComponent("move", require "game.components.move")
-
-    -- 战斗一次性事件(伤害/治疗/modifier) -> 客户端 rpc 广播(自己 + 周围玩家)
-    real:addComponent("combat_sync", require "tinyworld.combat.sync")
-
-    -- 客户端释放技能与战斗驱动
-    real:addComponent("combat_agent", require "game.components.combat_agent")
-
-    -- 数据同步压力测试(属性)
-    real:addComponent("cell_sync_stress", require "game.components.sync_stress")
-
-    -- 战斗状态视图: 观察者看 modifiers, 自己看 abilities
-    local modifiersView = real:getContainer("modifiers_view")
-    if modifiersView then modifiersView:openView("modifiers") end
-    local abilitiesView = real:getContainer("abilities_view")
-    if abilitiesView then abilitiesView:openView("abilities") end
 end
 
 return M

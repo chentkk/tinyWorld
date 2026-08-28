@@ -1,0 +1,19 @@
+""
+{
+    "ability_blood_harvest"
+    {
+        "ScriptFile"            "heroes/vampire/blood_harvest"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "NO_TARGET"
+        "AbilityType"           "ultimate"
+        "AbilityCastPoint"      "0.3"
+        "AbilityCooldown"       "10.0"
+        "AbilityCastRange"      "200"
+        "radius"                "80"
+        "damage"                "120"
+        "healAmount"            "80"
+        "bleedDuration"         "6.0"
+        "tickInterval"          "1.0"
+        "tickDamage"            "15"
+    }
+}

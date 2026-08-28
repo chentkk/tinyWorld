@@ -19,9 +19,11 @@ local gateId = 1
 local baseApps = {}
 local baseAppCount = 1
 local seqRound = 0
+local logAddr
+local loginAddr
 
 local function writeLog(connId, kind, msgType, name, data)
-    pcall(skynet.send, skynet.getenv("addr_log"), "lua", "write", connId, kind, msgType, name, data or "")
+    pcall(skynet.send, logAddr, "lua", "write", connId, kind, msgType, name, data or "")
 end
 
 local function pickBaseApp()
@@ -64,7 +66,7 @@ end
 local function handleAuth(conn, msg)
     writeLog(conn.connId, "recv", "AUTH", "auth", msgUtil.logData(msg.d))
 
-    local accountId = skynet.call(skynet.getenv("addr_login"), "lua", "auth_token", msg.d.token)
+    local accountId = skynet.call(loginAddr, "lua", "auth_token", msg.d.token)
     if not accountId then
         sendBody(conn, "AUTH", "auth_fail", "code=1 msg=bad token",
             proto.encode(msgUtil.new("AUTH", "auth_fail", { code = 1, msg = "bad token" })))
@@ -111,14 +113,23 @@ local function reader(conn)
     closeConn(conn)
 end
 
-local function init(port, id)
-    gateId = id or tonumber(skynet.getenv("gate_id")) or 1
+function cmd.init(registryAddr, port, id)
+    gateId = id or 1
+
+    logAddr = skynet.call(registryAddr, "lua", "query", "log")
+    loginAddr = skynet.call(registryAddr, "lua", "query", "login")
+    assert(logAddr, "log not registered")
+    assert(loginAddr, "login not registered")
+
     baseAppCount = tonumber(skynet.getenv("baseapp_count")) or 1
     for i = 1, baseAppCount do
-        baseApps[i] = skynet.getenv("baseapp_" .. i)
+        baseApps[i] = skynet.call(registryAddr, "lua", "query", "baseapp." .. i)
+        assert(baseApps[i], "baseapp." .. i .. " not registered")
     end
 
-    port = tonumber(port) or skynet.getenv and tonumber(skynet.getenv("gate_port")) or 8000
+    skynet.call(registryAddr, "lua", "register", "gate." .. gateId, skynet.self())
+
+    port = tonumber(port) or 8000
     local listenFd = socket.listen("0.0.0.0", port)
     socket.start(listenFd, function(fd, addr)
         socket.start(fd)
@@ -141,7 +152,6 @@ local function init(port, id)
     log.info("gate %d listening on %d", gateId, port)
 end
 
-cmd.init = init
 
 service.startService("gate", nil, cmd)
 return cmd

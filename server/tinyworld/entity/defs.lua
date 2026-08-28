@@ -17,6 +17,14 @@ function M.get(kind)
     return M.registry[kind]
 end
 
+-- 按配置清单批量注册: list = { {kind="Player", module="game.def.player.player_def"}, ... }
+function M.registerList(list)
+    for _, item in ipairs(list or {}) do
+        assert(item.kind, "def list item missing kind")
+        M.register(item.kind, item.module)
+    end
+end
+
 function M.each(fn)
     for kind, def in pairs(M.registry) do
         fn(kind, def)

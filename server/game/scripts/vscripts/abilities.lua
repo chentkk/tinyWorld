@@ -23,6 +23,7 @@ local npcPath = {
     ability_borrowed_time = "game/scripts/npc/heroes/abaddon/borrowed_time.txt",
     ability_mist_coil = "game/scripts/npc/heroes/abaddon/mist_coil.txt",
     ability_curse_of_avernus = "game/scripts/npc/heroes/abaddon/curse_of_avernus.txt",
+    ability_blood_harvest = "game/scripts/npc/heroes/vampire/blood_harvest.txt",
 }
 
 function registry.create(caster, abilityName)

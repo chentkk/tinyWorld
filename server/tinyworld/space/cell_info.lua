@@ -5,7 +5,7 @@ local class = require "tinyworld.core.class"
 
 local CellInfo = class.makeClass("CellInfo")
 
-function CellInfo:ctor(cx, cy, x, y, w, h, appId)
+function CellInfo:ctor(cx, cy, x, y, w, h, appId, id)
     self.cx = cx
     self.cy = cy
     self.x = x
@@ -13,7 +13,7 @@ function CellInfo:ctor(cx, cy, x, y, w, h, appId)
     self.w = w
     self.h = h
     self.appId = appId
-    self.id = cx .. ":" .. cy
+    self.id = id or (cx ~= nil and cy ~= nil and (cx .. ":" .. cy)) or nil
     self.ghostRange = 0
     self.ghostRect = { x = x, y = y, w = w, h = h }
 end

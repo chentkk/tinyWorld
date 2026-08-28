@@ -14,7 +14,7 @@ local dbmgr
 local tokens = {}
 
 local function dbQuery(sql)
-    return skynet.call(skynet.getenv("addr_dbmgr"), "lua", "query", sql)
+    return skynet.call(dbmgr, "lua", "query", sql)
 end
 
 local function queryAccountByName(name)
@@ -48,8 +48,11 @@ local function login(name, password)
     return { code = 0, token = issueToken(accountId), accountId = accountId }
 end
 
-local function init()
-    dbmgr = {}
+function cmd.init(registryAddr)
+    dbmgr = skynet.call(registryAddr, "lua", "query", "dbmgr")
+    assert(dbmgr, "dbmgr not registered")
+
+    skynet.call(registryAddr, "lua", "register", "login", skynet.self())
 
     local httpd = require "http.httpd"
     local urllib = require "http.url"
@@ -85,4 +88,4 @@ local function init()
     log.info("login http listening on %d", port)
 end
 
-service.startService("login", init, cmd)
+service.startService("login", nil, cmd)

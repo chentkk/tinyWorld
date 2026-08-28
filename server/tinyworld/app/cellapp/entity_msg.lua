@@ -28,4 +28,15 @@ function M.objectRemoveMsg(entity)
     return { t = "object", n = "remove", d = { entityId = entity.clientId or entity.id } }
 end
 
+-- spawn 之后回给 baseapp 的初始快照。object add 与 spawn 共用同一份展示数据,
+-- 避免在命令处理中散落实体表现逻辑。
+function M.entitySpawnInfo(entity)
+    return {
+        entityId = entity.clientId or entity.id,
+        kind = entity.kind,
+        props = clientProps(entity),
+        modifiers = combatUnit.modifiersSnapshot(entity),
+    }
+end
+
 return M
