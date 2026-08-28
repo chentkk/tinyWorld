@@ -1,7 +1,7 @@
 -- tinyworld/combat/unit.lua
 -- 战斗单位扩展: 管理 modifier 与 ability, 驱动每帧 update。
--- modifier 的增删刷通过事件(combat_modifier_add/remove/refresh)通知,
--- 由上层同步(如 buff view)决定如何下发, 战斗核心不碰网络。
+-- modifier/ability 的增删与状态变化会像普通容器一样直接写入对应视图,
+-- 由 buildOutbox 统一 flush, 战斗核心不碰网络。
 
 local M = {}
 
@@ -31,6 +31,32 @@ function M.modifiersSnapshot(unit)
 end
 
 M.snapshot = M.modifiersSnapshot
+
+local function combatView(unit, viewName)
+    if not unit.getContainer then return nil end
+    local cont = unit:getContainer(viewName)
+    if cont and cont:isViewOpened() then
+        return cont
+    end
+end
+
+local function syncObjectToView(unit, viewName, object)
+    if not object then return end
+    local cont = combatView(unit, viewName)
+    if not cont then return end
+
+    local data = object:viewData()
+    local id = data.id
+    if not cont:has(id) then
+        cont:add(data)
+        return
+    end
+
+    local child = cont:get(id)
+    for name, value in pairs(data) do
+        child[name] = value
+    end
+end
 
 function M.apply(unit)
     if unit.combatApplied then return unit end
@@ -62,6 +88,7 @@ function M.apply(unit)
 
         self.modifiers[#self.modifiers + 1] = mod
         mod:OnCreated(mod._params or {})
+        syncObjectToView(self, "modifiers_view", mod)
         self:emit("combat_modifier_add", name, mod.duration, mod.stack)
         return mod
     end
@@ -70,6 +97,8 @@ function M.apply(unit)
         for i, old in ipairs(self.modifiers) do
             if old == mod then
                 table.remove(self.modifiers, i)
+                local cont = combatView(self, "modifiers_view")
+                if cont then cont:remove(mod.uid) end
                 self:emit("combat_modifier_remove", mod:GetModifierName())
                 return mod
             end
@@ -86,10 +115,16 @@ function M.apply(unit)
 
     function unit:updateCombat(dt)
         for i, mod in ipairs(self.modifiers) do
-            if mod then mod:update(dt) end
+            if mod then
+                mod:update(dt)
+                syncObjectToView(self, "modifiers_view", mod)
+            end
         end
         for i, ab in ipairs(self.abilities) do
-            if ab then ab:update(dt) end
+            if ab then
+                ab:update(dt)
+                syncObjectToView(self, "abilities_view", ab)
+            end
         end
     end
 
@@ -99,6 +134,7 @@ function M.apply(unit)
             local ability = M.createAbility(self, abilityName)
             if ability then
                 self.abilities[#self.abilities + 1] = ability
+                syncObjectToView(self, "abilities_view", ability)
             end
         end
         return self.abilities

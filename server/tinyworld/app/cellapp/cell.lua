@@ -113,9 +113,6 @@ function Cell:buildOutbox(entity)
         events = entity.pendingEvents,
     }
 
-    -- 动态 view(combat 状态等)在出包阶段统一 diff
-    entity:resolveDynamicViews()
-
     for name, rec in pairs(entity.records) do
         local flush = rec:flushSync()
         if flush and #flush.ops > 0 then outbox.recordOps[name] = flush.ops end

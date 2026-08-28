@@ -21,14 +21,6 @@ function CombatAgent:onCreate()
         names[#names + 1] = abilityName
     end
     self.entity:loadAbilities(names)
-
-    -- 战斗状态视图由 outbox 阶段统一 diff, 组件只注册数据源
-    self.entity:registerDynamicView("modifiers_view", function(unit)
-        return unit.modifiers or {}
-    end)
-    self.entity:registerDynamicView("abilities_view", function(unit)
-        return unit.abilities or {}
-    end)
 end
 
 function CombatAgent:onTick(dt)

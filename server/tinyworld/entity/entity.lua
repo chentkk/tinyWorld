@@ -39,7 +39,6 @@ function Entity:ctor(def, id, kind)
     })
 
     rawset(self, "components", {})
-    rawset(self, "dynamicViews", {})
     rawset(self, "event", event.new())
 
     -- AOI 视野表: 以服务器实体 id 为索引。clientId 只是为了特定客户端显示,
@@ -134,48 +133,6 @@ function Entity:setupComponents(componentsConfig)
         end
         assert(modulePath, "component config missing module")
         self:addComponent(name, require(modulePath))
-    end
-end
-
--- 注册一个跟随实体状态变化的动态视图:
--- source(entity) 返回当前应展示的对象数组, 每个对象需提供 viewData()
-function Entity:registerDynamicView(containerName, source)
-    self.dynamicViews[#self.dynamicViews + 1] = {
-        container = containerName,
-        source = source,
-    }
-end
-
--- 在 outbox 构建阶段统一 diff 动态视图到容器, 生成 add/set/remove op
-function Entity:resolveDynamicViews()
-    for _, entry in ipairs(self.dynamicViews) do
-        local cont = self.containers[entry.container]
-        if not cont or not cont:isViewOpened() then
-            goto continue
-        end
-
-        local seen = {}
-        for _, object in ipairs(entry.source(self) or {}) do
-            local data = object:viewData()
-            local id = data.id
-
-            if not cont:has(id) then
-                cont:add(data)
-            else
-                local child = cont:get(id)
-                for name, value in pairs(data) do
-                    child[name] = value
-                end
-            end
-            seen[id] = true
-        end
-
-        for id in pairs(cont.children) do
-            if not seen[id] then
-                cont:remove(id)
-            end
-        end
-        ::continue::
     end
 end
 
