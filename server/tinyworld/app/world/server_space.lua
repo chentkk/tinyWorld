@@ -20,7 +20,7 @@ end
 -- 选择出生 cell: 配置指定 spawnCell 优先, 否则按坐标网格
 function ServerSpace:chooseSpawnCell(x, y)
     if self.config.spawnCell then
-        return self.config.byCoord[self.config.spawnCell]
+        return self.config.byCellId[self.config.spawnCell]
     end
     return self.config:cellAt(x, y)
 end

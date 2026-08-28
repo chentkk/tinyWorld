@@ -398,7 +398,7 @@ end
 -- 实体移出某 cell 的 ghost_rect -> 销毁那里的 ghost
 function Cell:pruneGhosts(real)
     for key, info in pairs(real.ghosts) do
-        local cellInfo = self.space.config.byCoord[info.cellKey]
+        local cellInfo = self.space.config.byCellId[info.cellKey]
         if cellInfo and not cellInfo:ghostContains(real.x, real.y) then
             self:destroyGhost(real, key, info)
         end

@@ -48,7 +48,7 @@ function SpaceConfig.compile(config, defaultAppIds)
     self.minMigrateInterval = tonumber(config.minMigrateInterval) or 1.0
 
     self.cells = {}
-    self.byCoord = {} -- 兼容旧称呼, 实际是 cellId -> CellInfo
+    self.byCellId = {} -- cellId -> CellInfo
 
     local appIds = config.cellApps or defaultAppIds or {}
     self.appIds = appIds
@@ -68,7 +68,7 @@ function SpaceConfig.compile(config, defaultAppIds)
                 tonumber(cellDef.w), tonumber(cellDef.h), nil, cellDef.id)
             info.id = cellDef.id
             self.cells[#self.cells + 1] = info
-            self.byCoord[info.id] = info
+            self.byCellId[info.id] = info
         end
     else
         -- 自动切分: cellSize 与 cellCols/cellRows 二选一, 都不给则整图一个 cell
@@ -98,7 +98,7 @@ function SpaceConfig.compile(config, defaultAppIds)
                 local h = (cy == rows - 1) and (self.height - y) or (self.height / rows)
                 local info = CellInfo.new(cx, cy, x, y, w, h, nil)
                 self.cells[#self.cells + 1] = info
-                self.byCoord[info.id] = info
+                self.byCellId[info.id] = info
             end
         end
     end
@@ -137,7 +137,7 @@ function SpaceConfig:cellAt(x, y)
     local cy = math.floor(y / (self.height / self.rows))
     cx = math.min(cx, self.cols - 1)
     cy = math.min(cy, self.rows - 1)
-    return self.byCoord[cx .. ":" .. cy]
+    return self.byCellId[cx .. ":" .. cy]
 end
 
 -- 邻居: 自动模式走网格邻居, 手动模式返回所有其他 cell
@@ -156,7 +156,7 @@ function SpaceConfig:neighbors(cellInfo)
         for dx = -1, 1 do
             if dx ~= 0 or dy ~= 0 then
                 local key = (cellInfo.cx + dx) .. ":" .. (cellInfo.cy + dy)
-                local n = self.byCoord[key]
+                local n = self.byCellId[key]
                 if n then out[#out + 1] = n end
             end
         end
