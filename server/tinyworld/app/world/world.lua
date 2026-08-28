@@ -9,6 +9,7 @@ local service = require "tinyworld.core.service"
 local log = require "tinyworld.core.log"
 local ServerSpace = require "tinyworld.app.world.server_space"
 local SpaceConfig = require "tinyworld.space.space"
+local CellAllocator = require "tinyworld.app.world.cell_allocator"
 local LoadBalancer = require "tinyworld.app.world.load_balancer"
 
 local cmd = {}
@@ -71,21 +72,18 @@ function cmd.create_space(spaceId)
     local appIds = pickAppsForSpace()
     if #appIds == 0 then return nil, "no cellapp registered" end
 
-    local config = SpaceConfig.compile(def, appIds)
+    -- 1) SpaceConfig 只切分 cell, 2) world 侧运行时分配 cellapp
+    local config = SpaceConfig.compile(def)
+    local ok, byApp = CellAllocator.distribute(config, appIds)
+    if not ok then return nil, byApp end
+
     local space = ServerSpace.new(def, config)
     spaces[spaceId] = space
-
-    -- 把本 app 负责的 cells 下发给对应 cellapp
-    local byApp = {}
-    for _, info in ipairs(config.cells) do
-        byApp[info.appId] = byApp[info.appId] or {}
-        byApp[info.appId][#byApp[info.appId] + 1] = info
-    end
 
     for appId, cells in pairs(byApp) do
         local reg = cellapps[appId]
         if reg and reg.addr then
-            skynet.call(reg.addr, "lua", "bind_cells", spaceId, def, appIds, cells)
+            skynet.call(reg.addr, "lua", "bind_cells", spaceId, def, cells)
             log.info("space %s assigned %d cells to cellapp %d", spaceId, #cells, appId)
         else
             log.warn("space %s: cellapp %d not registered", spaceId, appId)

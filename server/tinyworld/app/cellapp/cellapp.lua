@@ -17,10 +17,15 @@ local cmd = {}
 local selfApp = setmetatable({}, { __index = cmd })
 selfApp.appId = nil
 selfApp.world = nil
-selfApp.space = nil
-selfApp.localSpace = nil
+selfApp.spaces = {}  -- spaceId -> LocalSpace; 一个 cellapp 可运行多个 space
 selfApp.reals = {}
 selfApp.addrs = {} -- appId -> addr
+
+-- 取本 app 某空间里的本地 cell(多数命令按 spaceId 定位)
+local function getLocalCell(spaceId, cellKey)
+    local space = selfApp.spaces[spaceId]
+    return space and space:getCell(cellKey)
+end
 
 function selfApp:now()
     return skynet.time()
@@ -102,8 +107,6 @@ function cmd.init(registryAddr, index, gameConfig)
     end
     selfApp.addrs[ret.appId] = skynet.self()
 
-    selfApp.localSpace = LocalSpace.new(selfApp)
-
     skynet.fork(function()
         local frameTime = 0.1
         local frame = 0
@@ -111,47 +114,59 @@ function cmd.init(registryAddr, index, gameConfig)
             local t1 = skynet.time()
             local dt = skynet.time() - (selfApp.lastTickTime or skynet.time())
             selfApp.lastTickTime = skynet.time()
-            selfApp.localSpace:tick(dt > frameTime * 2 and frameTime or dt)
-            -- 定期上报负载: real 数量 + 每帧 cpu(平滑)
-            frame = frame + 1
-            if frame % 10 == 0 then
+            local step = dt > frameTime * 2 and frameTime or dt
+
+            -- 本 cellapp 上运行的每个 space 独立 tick
+            local realBySpace = {}
+            for spaceId, space in pairs(selfApp.spaces) do
+                space:tick(step)
                 local realCount = 0
-                for _, cell in ipairs(selfApp.localSpace.cells) do
+                for _, cell in ipairs(space.cells) do
                     for _, e in pairs(cell.entities) do
                         if e.isReal then realCount = realCount + 1 end
                     end
                 end
-                local cpu = 0
-                local used = skynet.time() - t1
-                if frameTime > 0 then cpu = used / frameTime end
-                if selfApp.spaceId then
+                realBySpace[spaceId] = realCount
+            end
+
+            frame = frame + 1
+            if frame % 10 == 0 then
+                for spaceId, realCount in pairs(realBySpace) do
+                    local cpu = 0
+                    local used = skynet.time() - t1
+                    if frameTime > 0 then cpu = used / frameTime end
                     skynet.send(selfApp.world, "lua", "cellapp_report",
-                        selfApp.appId, selfApp.spaceId, realCount, cpu)
+                        selfApp.appId, spaceId, realCount, cpu)
                 end
             end
             skynet.sleep(10) -- 0.1s = 10 * 0.01s
         end
     end)
 
-    log.info("cellapp %d ready, cells=0 (waiting for space binding)", ret.appId)
+    log.info("cellapp %d ready (waiting for space binding)", ret.appId)
     return { appId = ret.appId }
 end
 
--- world 创建 space 后下发本 app 负责的 cells
-function cmd.bind_cells(spaceId, spaceDef, appIds, cells)
+-- world 创建 space 后下发本 app 负责的 cells。
+-- 空间切分由 world 根据 spaceDef 完成, 本服务只重建一个几何一致的本地视图,
+-- 并把 world 分配的 appId 回填到 cell 上。
+function cmd.bind_cells(spaceId, spaceDef, cells)
     local SpaceConfig = require "tinyworld.space.space"
-    selfApp.space = SpaceConfig.compile(spaceDef, appIds)
-    selfApp.spaceConfig = selfApp.space
-    selfApp.spaceId = spaceId
+    local config = SpaceConfig.compile(spaceDef)
+    for _, cellInfo in ipairs(cells or {}) do
+        local info = config.byCellId[cellInfo.id]
+        if info then info.appId = cellInfo.appId end
+    end
 
-    selfApp.localSpace:bind(selfApp.space, cells)
+    local space = LocalSpace.new(selfApp, config, cells)
+    selfApp.spaces[spaceId] = space
     log.info("cellapp %d bound space %s cells=%d", selfApp.appId, spaceId, #cells)
     return true
 end
 
 -- 业务层真正创建真身实体
 function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
-    local cell = selfApp.localSpace and selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     if not cell then return nil, "cell not local" end
 
     local def = defs.get(kind)
@@ -160,7 +175,8 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     -- 玩家 cell entity 使用 playerId(全服唯一), 其他对象(怪物/projectile)使用 app 分配 id
     local playerId = data and data.playerId
     local entityId = playerId or selfApp:nextId()
-    local real = RealEntity.new(def, entityId, kind, selfApp.localSpace, cell)
+    local space = selfApp.spaces[spaceId]
+    local real = RealEntity.new(def, entityId, kind, space, cell)
     real.playerId = playerId
     real.cellInitData = data and data.initData
     local x = data and data.x or cell.info.x + cell.info.w / 2
@@ -188,7 +204,7 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
 end
 
 function cmd.call_cell_rpc(spaceId, entityId, cellKey, name, data)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     if not cell then return nil, "cell not local" end
 
     local real = cell:get(entityId)
@@ -199,7 +215,8 @@ end
 
 -- 供 baseapp 存盘前取 cell 侧最新属性(坐标等)
 function cmd.get_entity(spaceId, entityId)
-    for _, cell in ipairs(selfApp.localSpace.cells) do
+    local space = selfApp.spaces[spaceId]
+    for _, cell in ipairs(space and space.cells or {}) do
         local e = cell:get(entityId)
         if e then
             return { cellKey = cell.info.id,
@@ -209,7 +226,8 @@ function cmd.get_entity(spaceId, entityId)
 end
 
 function cmd.find_entity(spaceId, entityId)
-    for _, cell in ipairs(selfApp.localSpace.cells) do
+    local space = selfApp.spaces[spaceId]
+    for _, cell in ipairs(space and space.cells or {}) do
         local e = cell:get(entityId)
         if e then return cell.info.id end
     end
@@ -217,13 +235,13 @@ end
 
 -- 内部: ghost 流程
 function cmd.ghost_create(spaceId, cellKey, req)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     if not cell then return false end
     return cell:upsertRemoteGhost(req)
 end
 
 function cmd.ghost_promote(spaceId, cellKey, realId, req)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     if not cell then return false end
 
     local real = cell:promoteGhost(realId, req)
@@ -242,23 +260,23 @@ function cmd.ghost_promote(spaceId, cellKey, realId, req)
 end
 
 function cmd.ghost_reparent(spaceId, cellKey, realId, realApp, realCellKey)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     local ghost = cell and cell:findGhost(realId)
     if ghost then ghost:reparent(realApp, realCellKey) end
 end
 
 function cmd.ghost_sync(spaceId, cellKey, realId, props)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     if cell then cell:applyRemoteGhostSync(realId, props) end
 end
 
 function cmd.ghost_destroy(spaceId, cellKey, realId)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     if cell then cell:destroyRemoteGhost(realId) end
 end
 
 function cmd.ghost_rpc(spaceId, cellKey, realId, name, data)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     local ghost = cell and cell:findGhost(realId)
     if ghost then
         return ghost:dispatchGhostRpc(name, data)
@@ -266,7 +284,7 @@ function cmd.ghost_rpc(spaceId, cellKey, realId, name, data)
 end
 
 function cmd.real_rpc(spaceId, cellKey, realId, name, data)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     local real = cell and cell:get(realId)
     if real and real.isReal then
         return real:dispatchRealRpc(name, data)
@@ -274,7 +292,7 @@ function cmd.real_rpc(spaceId, cellKey, realId, name, data)
 end
 
 function cmd.get_cell(spaceId, cellKey)
-    local cell = selfApp.localSpace:getCell(cellKey)
+    local cell = getLocalCell(spaceId, cellKey)
     if not cell then return nil end
     return { entities = util.count(cell.entities) }
 end

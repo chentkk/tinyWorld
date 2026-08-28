@@ -1,29 +1,23 @@
 -- tinyworld/app/cellapp/local_space.lua
--- 局部 space: 纯数据边界。
--- 只提供本 cellapp 上的 cell 集合与 space 公共数据。
+-- 局部 space: 某个 space 在本 cellapp 上的运行态。
+-- 只管理该 space 在本 app 上的 cell 集合与 space 公共数据(几何/AOI/bounds)。
 -- 一切行为(migration / ghost / 广播 / 视野)都在 Cell 或 cellapp 服务中。
--- space 公共配置由 world 创建 space 后下发, cellapp 不读取业务 space 配置。
 
 local class = require "tinyworld.core.class"
 local cellMod = require "tinyworld.app.cellapp.cell"
 
 local LocalSpace = class.makeClass("LocalSpace")
 
-function LocalSpace:ctor(app)
+function LocalSpace:ctor(app, config, cells)
     self.app = app
-    self.config = app and app.spaceConfig
-    self.spaceId = self.config and self.config.id
-    self.cells = {}
-    self.byKey = {}
-end
-
--- world 下发 space 配置与本 app 负责的 cells
-function LocalSpace:bind(config, cells)
+    config = config or (app and app.spaceConfig)
     self.config = config
-    self.spaceId = config and config.id or nil
-
+    self.id = config and config.id
+    self.bounds = (config and config.bounds)
+        or { x1 = 0, y1 = 0, x2 = (config and config.width) or 0, y2 = (config and config.height) or 0 }
     self.cells = {}
     self.byKey = {}
+
     for _, cellInfo in ipairs(cells or {}) do
         self:addLocalCell(cellInfo)
     end

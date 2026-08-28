@@ -9,7 +9,6 @@ local ServerSpace = class.makeClass("ServerSpace")
 function ServerSpace:ctor(config, compiledConfig)
     self.config = compiledConfig or config
     self.id = self.config.id
-    self.cellapps = self.config.appIds or {}
     self.started = false
 end
 

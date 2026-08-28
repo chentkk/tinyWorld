@@ -5,6 +5,7 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local SpaceConfig = require "tinyworld.space.space"
+local CellAllocator = require "tinyworld.app.world.cell_allocator"
 local LocalSpace = require "tinyworld.app.cellapp.local_space"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
 local defs = require "tinyworld.entity.defs"
@@ -20,7 +21,8 @@ defs.register("GhostDummy", {
 })
 
 local config = SpaceConfig.compile({ id = "ghost", width = 200, height = 200,
-    cellSize = 100, aoiRange = 40 }, { 1 })
+    cellSize = 100, aoiRange = 40 })
+CellAllocator.distribute(config, { 1 })
 
 local fake = {
     appId = 1,

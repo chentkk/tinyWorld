@@ -27,7 +27,7 @@ function Cell:ctor(cellInfo, app, space)
     self.space = space
     self.entities = {}
     self.players = {}
-    self.aoi = aoiMod.new(app.spaceConfig.aoiRange, cellInfo.w, cellInfo.h)
+    self.aoi = aoiMod.new(space.config.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
 end
 
@@ -235,7 +235,7 @@ end
 
 function Cell:updatePlayerVisibility(player)
     local visible = {}
-    local range = self.app.spaceConfig.aoiRange
+    local range = self.space.config.aoiRange
 
     for _, other in pairs(self.entities) do
         if other.id ~= player.id then

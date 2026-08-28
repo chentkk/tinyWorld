@@ -8,6 +8,7 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local SpaceConfig = require "tinyworld.space.space"
+local CellAllocator = require "tinyworld.app.world.cell_allocator"
 local LocalSpace = require "tinyworld.app.cellapp.local_space"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
 local defs = require "tinyworld.entity.defs"
@@ -32,7 +33,8 @@ local config = SpaceConfig.compile({
     cellSize = 100,
     minMigrateInterval = 0,
     hysteresis = 5,
-}, { 1, 2 })
+})
+CellAllocator.distribute(config, { 1, 2 })
 
 local localSpaces = {}
 local rebind = {}

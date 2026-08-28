@@ -3,7 +3,8 @@
 -- 支持两种切分模式:
 --   * auto  : 按 cellSize(或 cellCols/cellRows) 等分整张地图
 --   * manual: 配置中直接给出每个 cell 的矩形 {id, x, y, w, h}
--- cell 的 appId 不在配置中指定, 由 world 运行时决定后传入分配。
+-- cell 的 appId 不在配置中指定, 由 world 侧运行时分配(cell_allocator)。
+-- 本模块只负责几何切分, 不关心 cellapp。
 
 local CellInfo = require "tinyworld.space.cell_info"
 
@@ -25,18 +26,9 @@ local function rectsTouch(a, b)
     return a.x <= bx2 and ax2 >= b.x and a.y <= by2 and ay2 >= b.y
 end
 
--- 把一个 cell 归属到 appId(轮询分配)
-local function distributeAppIds(cells, appIds)
-    local ids = appIds or {}
-    if #ids == 0 then ids = { 1 } end
-    for i, info in ipairs(cells) do
-        info.appId = ids[((i - 1) % #ids) + 1]
-    end
-end
-
 -- config: { id, width, height, aoiRange, ghostRange,
 --           cellSize | cellCols+cellRows | cells = { {id,x,y,w,h}, ... } }
-function SpaceConfig.compile(config, defaultAppIds)
+function SpaceConfig.compile(config)
     local self = setmetatable({}, SpaceConfig)
 
     self.id = config.id or "main"
@@ -49,9 +41,6 @@ function SpaceConfig.compile(config, defaultAppIds)
 
     self.cells = {}
     self.byCellId = {} -- cellId -> CellInfo
-
-    local appIds = config.cellApps or defaultAppIds or {}
-    self.appIds = appIds
 
     if config.cells and #config.cells > 0 then
         -- 手动切分: 配置定义每个 cell 的矩形
@@ -115,7 +104,6 @@ function SpaceConfig.compile(config, defaultAppIds)
         info:setGhostRange(self.ghostRange, self.bounds)
     end
 
-    distributeAppIds(self.cells, appIds)
     return self
 end
 
