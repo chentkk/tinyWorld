@@ -21,7 +21,7 @@ function Bag:onMoveBagItem(d)
     local a = bag:get(d.fromId)
     if not a then return { code = 1, msg = "item not found" } end
 
-    bag:setChildProp(d.fromId, "slot", tonumber(d.toSlot) or a.props.slot)
+    a.slot = tonumber(d.toSlot) or a.slot
     return nil
 end
 

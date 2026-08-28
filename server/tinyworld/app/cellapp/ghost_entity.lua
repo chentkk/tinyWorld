@@ -89,7 +89,10 @@ function GhostEntity:applyViewOps(name, ops)
         if op.type == "add" then cont:add(op.data)
         elseif op.type == "remove" then cont:remove(op.id)
         elseif op.type == "set" then
-            for k, v in pairs(op.data or {}) do cont:setChildProp(op.id, k, v) end
+            local child = cont:get(op.id)
+            if child then
+                for k, v in pairs(op.data or {}) do child[k] = v end
+            end
         elseif op.type == "view" then
             for k, v in pairs(op.data or {}) do cont:setViewProp(k, v) end
         end

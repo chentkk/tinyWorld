@@ -40,8 +40,9 @@ local function syncOneView(view, objects, seen)
         if not view:has(id) then
             view:add(data)
         else
+            local child = view:get(id)
             for name, value in pairs(data) do
-                view:setChildProp(id, name, value)
+                child[name] = value
             end
         end
         seen[id] = true

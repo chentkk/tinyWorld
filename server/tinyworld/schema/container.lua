@@ -162,21 +162,6 @@ function Container:has(id)
     return self.children[id] ~= nil
 end
 
-function Container:setChildProp(id, name, value)
-    local child = self.children[id]
-    if not child then
-        return false
-    end
-
-    child.props[name] = value
-    return true
-end
-
-function Container:getChildProp(id, name)
-    local child = self.children[id]
-    return child and child.props[name]
-end
-
 -- ChildObject 属性写回的入口
 function Container:onChildPropChange(child, name, value)
     if self.isView then
@@ -189,11 +174,6 @@ function Container:onChildPropChange(child, name, value)
     if self.host and self.host.onContainerPersist then
         self.host:onContainerPersist(self)
     end
-end
-
-function Container:getChildRecord(id, name)
-    local child = self.children[id]
-    return child and child.records[name]
 end
 
 function Container:childFullData(child)
