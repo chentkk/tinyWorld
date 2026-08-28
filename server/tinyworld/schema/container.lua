@@ -3,6 +3,30 @@
 -- 提供 add/remove/get 与视图同步 op。
 
 local Record = require "tinyworld.schema.record"
+local ChildObject = require "tinyworld.schema.child_object"
+
+-- 包装子对象: 保留 props/records/id, 同时支持 obj.field = value
+local function makeChildProxy(child)
+    return setmetatable(child, {
+        __index = function(self, key)
+            if key == "props" then return rawget(self, "props") end
+            if key == "records" then return rawget(self, "records") end
+            if key == "id" then return rawget(self, "id") end
+
+            local props = rawget(self, "props")
+            return props[key]
+        end,
+        __newindex = function(self, key, value)
+            if key == "props" or key == "records" or key == "id" then
+                rawset(self, key, value)
+                return
+            end
+
+            local props = rawget(self, "props")
+            props[key] = value
+        end,
+    })
+end
 
 local Container = {}
 Container.__index = Container
@@ -76,26 +100,16 @@ function Container:add(data)
 
     local child = {
         id = id,
-        props = {},
+        props = ChildObject.new(self.def.childSchema, self, id, data),
         records = {},
     }
-
-    -- 用 childSchema 把默认值补齐
-    local childSchema = self.def.childSchema
-    for _, f in ipairs(childSchema.fields) do
-        local value = data[f.name]
-        if value ~= nil then
-            child.props[f.name] = childSchema:coerce(f.name, value)
-        elseif f.default ~= nil then
-            child.props[f.name] = f.default
-        end
-    end
 
     -- 子对象包含表格 Record
     for _, rdef in ipairs(self.def.childRecordDefs) do
         child.records[rdef.name] = Record.new(rdef, self)
     end
 
+    child = makeChildProxy(child)
     self.children[id] = child
 
     if self.isView then
@@ -151,29 +165,27 @@ function Container:setChildProp(id, name, value)
         return false
     end
 
-    value = self.def.childSchema:coerce(name, value)
-    if child.props[name] == value then
-        return false
-    end
     child.props[name] = value
-
-    if self.isView then
-        self.dirty[#self.dirty + 1] = {
-            type = "set",
-            id = id,
-            data = { [name] = value },
-        }
-    end
-    if self.host and self.host.onContainerPersist then
-        self.host:onContainerPersist(self)
-    end
-
     return true
 end
 
 function Container:getChildProp(id, name)
     local child = self.children[id]
     return child and child.props[name]
+end
+
+-- ChildObject 属性写回的入口
+function Container:onChildPropChange(child, name, value)
+    if self.isView then
+        self.dirty[#self.dirty + 1] = {
+            type = "set",
+            id = child:id(),
+            data = { [name] = value },
+        }
+    end
+    if self.host and self.host.onContainerPersist then
+        self.host:onContainerPersist(self)
+    end
 end
 
 function Container:getChildRecord(id, name)
@@ -184,7 +196,7 @@ end
 function Container:childFullData(child)
     local out = { id = child.id }
 
-    for k, v in pairs(child.props) do
+    for k, v in pairs(child.props:data()) do
         out[k] = v
     end
     for name, rec in pairs(child.records) do
