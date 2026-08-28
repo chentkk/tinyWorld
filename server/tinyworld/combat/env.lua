@@ -1,4 +1,4 @@
--- game/scripts/vscripts/combat/env.lua
+-- tinyworld/combat/env.lua
 -- 战斗环境: 客户端 / 服务器共用同一份逻辑, 由 IsServer() 区分。
 
 local M = {}

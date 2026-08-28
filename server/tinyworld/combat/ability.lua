@@ -1,4 +1,4 @@
--- game/scripts/vscripts/combat/ability.lua
+-- tinyworld/combat/ability.lua
 -- Ability 基类: 统一处理 立即释放 / 施法时间 / 持续施法 三种释放流程。
 
 local class = require "tinyworld.core.class"

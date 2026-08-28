@@ -22,7 +22,7 @@ function WeatherSystem:tick(dt)
     if self.timer < 10 then return end
 
     self.timer = 0
-    self.index = self.index % #M.WEATHERS + 1
+    self.index = self.index % #WEATHERS + 1
     self.event:emit("weather_change", self:current())
 end
 

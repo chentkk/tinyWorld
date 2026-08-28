@@ -1,4 +1,4 @@
--- tinyworld/app/cellapp.lua
+-- tinyworld/app/cellapp/cellapp.lua
 -- cellapp 服务: 一个 skynet 服务相当于 bigworld 的一个 cellapp。
 -- 内部通过局部 space(localspace) 管理运行在本 app 上的 cell, 主循环用
 -- skynet.fork 运行, 以 cell:tick(dt) 为主体更新。

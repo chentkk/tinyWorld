@@ -1,4 +1,4 @@
--- tinyworld/entity/baseentity.lua
+-- tinyworld/app/baseapp/baseentity.lua
 -- baseapp 上的玩家实体: 加载 db 数据, 处理客户端 rpc(带登录完成 middleware),
 -- 与 cellentity(real entity) 双向 rpc。
 
