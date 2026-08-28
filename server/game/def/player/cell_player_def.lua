@@ -1,8 +1,8 @@
 -- game/def/player/cell_player_def.lua
--- cell 上的玩家定义: 地图属性 + 战斗状态视图。
+-- cell 上的玩家定义: 地图属性 + 战斗状态视图容器。
 
-local modifiersView = require "game.def.modifier.modifier_view_def"
-local abilitiesView = require "game.def.ability.ability_view_def"
+local modifiersViewDef = require "game.def.container.modifiers_view_def"
+local abilitiesViewDef = require "game.def.container.abilities_view_def"
 
 return {
     name = "Player",
@@ -12,7 +12,7 @@ return {
     },
     records = {},
     containers = {
-        modifiersView,
-        abilitiesView,
+        modifiersViewDef,
+        abilitiesViewDef,
     },
 }

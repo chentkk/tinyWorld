@@ -1,15 +1,14 @@
--- game/def/modifier/modifier_view_def.lua
--- modifier 容器子对象定义: 观察者可看; key 使用独立唯一 id, 同名 modifier 可多个。
+-- game/def/modifier/modifier_def.lua
+-- modifier 对象定义: 结构同 player / monster 的 def, 使用 props。
 
 return {
-    name = "modifiers_view",
-    persist = false,
-    viewProps = {},
-    childProps = {
+    name = "modifier",
+    props = {
         { name = "id", type = "number" },
         { name = "name", type = "string", sync = "all" },
         { name = "stack", type = "number", sync = "all", default = 1 },
         { name = "duration", type = "number", sync = "all", default = 0 },
         { name = "remaining", type = "number", sync = "all", default = 0 },
     },
+    records = {},
 }

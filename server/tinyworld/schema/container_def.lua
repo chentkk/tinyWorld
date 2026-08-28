@@ -9,16 +9,24 @@ ContainerDef.__index = ContainerDef
 
 function ContainerDef.new(def)
     local self = setmetatable({}, ContainerDef)
+
     self.name = def.name
     self.persist = def.persist and true or false
-    self.selfOnly = def.selfOnly and true or false -- abilities_view 只同步自己
+    self.selfOnly = def.selfOnly and true or false
+
+    -- 子对象定义: 优先使用独立 childDef(与 player 同结构: props/records)
+    local childDef = def.childDef or {}
+    local childProps = def.childProps or childDef.props or {}
+    local childRecords = def.childRecords or childDef.records or {}
+
     self.viewSchema = PropertySchema.new(def.viewProps or {})
-    self.childSchema = PropertySchema.new(def.childProps or {})
+    self.childSchema = PropertySchema.new(childProps)
 
     self.childRecordDefs = {}
-    for _, rd in ipairs(def.childRecords or {}) do
+    for _, rd in ipairs(childRecords) do
         self.childRecordDefs[#self.childRecordDefs + 1] = RecordDef.new(rd)
     end
+
     return self
 end
 
