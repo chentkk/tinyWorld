@@ -8,11 +8,11 @@ local bin = require "tinyworld.core.bin"
 local M = {}
 
 function M.registerDefs()
-    defs.register("Player", "game.def.player_def")
+    defs.register("Player", "game.def.player.player_def")
 end
 
 function M.registerCellDefs()
-    defs.register("Player", "game.def.cell_player_def")
+    defs.register("Player", "game.def.player.cell_player_def")
     require "game.scripts.vscripts.abilities" -- 注册能力工厂(只能做一次)
 end
 
