@@ -36,7 +36,8 @@ caster.apply(unit)
 assert(unit.combatApplied)
 
 -- 注册能力工厂(与 cellapp init 一致), 再用 unit:loadAbilities 创建能力
-require "game.scripts.vscripts.abilities"
+local abilityLoader = require "tinyworld.combat.ability_loader"
+abilityLoader.setup(require "game.config.abilities")
 
 unit:loadAbilities({
     "ability_aphotic_shield",

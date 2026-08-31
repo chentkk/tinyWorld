@@ -1,5 +1,5 @@
--- game/scripts/vscripts/projectile_manager.lua
--- 投掷物管理工具(业务层)。技能脚本用它创建投掷物;
+-- tinyworld/combat/projectile_manager.lua
+-- 投掷物管理工具(战斗层)。技能脚本用它创建投掷物;
 -- 命中结果由 framework 回调 ability:OnProjectileHit, 具体技能决定效果。
 
 local M = {}

@@ -24,7 +24,8 @@ defs.register("BloodDummy", {
 })
 
 -- 注册技能工厂(与 cellapp 一致)
-require "game.scripts.vscripts.abilities"
+local abilityLoader = require "tinyworld.combat.ability_loader"
+abilityLoader.setup(require "game.config.abilities")
 
 local function newUnit(id, hp)
     local unit = Entity.new(defs.get("BloodDummy"), id, "BloodDummy")

@@ -90,6 +90,10 @@ function cmd.init(registryAddr, index, gameConfig)
     for _, bootModule in ipairs(entityDefs.cell and entityDefs.cell.boot or {}) do
         require(bootModule)
     end
+    if entityDefs.cell and entityDefs.cell.abilityConfig then
+        local abilityLoader = require "tinyworld.combat.ability_loader"
+        abilityLoader.setup(require(entityDefs.cell.abilityConfig))
+    end
     defs.registerList(entityDefs.cell and entityDefs.cell.defs)
 
     local ret = skynet.call(cellapp.world, "lua", "cellapp_register", skynet.self())

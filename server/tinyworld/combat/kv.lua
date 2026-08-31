@@ -1,5 +1,5 @@
--- game/scripts/vscripts/kv.lua
--- 极简 dota KV 解析器, 读取 npc/ 下的能力数据定义。
+-- tinyworld/combat/kv.lua
+-- 极简 dota KV 解析器, 读取 npc/ 能力数据定义。
 -- 支持 "DOTAAbilities" 外层块与按能力名切开内层数据。
 
 local kv = {}
@@ -38,7 +38,7 @@ local function parseBlock(body)
     return out
 end
 
--- path 形如 "game/scripts/npc/heroes/abaddon/abaddon_aphotic_shield.txt" 或 npaths
+-- path 形如 "game/scripts/npc/heroes/abaddon/aphotic_shield.txt"
 function kv.load(path, abilityName)
     local file = io.open(path, "r")
     if not file then return nil end

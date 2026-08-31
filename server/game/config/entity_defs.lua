@@ -11,9 +11,8 @@ return {
         },
     },
     cell = {
-        boot = {
-            "game.scripts.vscripts.abilities",
-        },
+        boot = {},
+        abilityConfig = "game.config.abilities",
         defs = {
             { kind = "Player", module = "game.def.player.cell_player_def" },
             { kind = "Projectile", module = "game.def.projectile.projectile_def" },
