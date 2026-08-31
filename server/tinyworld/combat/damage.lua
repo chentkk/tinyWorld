@@ -28,7 +28,9 @@ function M.dealDamage(attacker, target, amount, damageType, sourceAbility)
         damage_type = damageType,
         ability = sourceAbility,
     }
-    for _, mod in ipairs(target.modifiers or {}) do
+    local modifiersView = nil
+    if target.getContainer then modifiersView = target:getContainer("modifiers_view") end
+    for _, mod in ipairs(modifiersView and modifiersView:childrenList() or {}) do
         if mod.GetModifierIncomingDamage_Percentage then
             local pct = mod:GetModifierIncomingDamage_Percentage(incomingData) or 0
             amount = amount * (1 + pct / 100)

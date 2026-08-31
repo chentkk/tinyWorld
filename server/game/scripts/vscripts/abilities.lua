@@ -26,7 +26,7 @@ local npcPath = {
     ability_blood_harvest = "game/scripts/npc/heroes/vampire/blood_harvest.txt",
 }
 
-function registry.create(caster, abilityName)
+function registry.create(caster, abilityName, schema)
     local path = npcPath[abilityName]
     if not path then return nil, "unknown ability " .. tostring(abilityName) end
 
@@ -38,7 +38,7 @@ function registry.create(caster, abilityName)
     local cls = _G[abilityName]
     if not cls then return nil, "no vscript " .. abilityName end
 
-    local ability = cls.new(caster, data)
+    local ability = cls.new(caster, data, schema)
     ability:initModifier()
     return ability
 end

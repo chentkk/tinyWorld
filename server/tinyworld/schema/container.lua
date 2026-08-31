@@ -4,6 +4,7 @@
 
 local Record = require "tinyworld.schema.record"
 local ChildObject = require "tinyworld.schema.child_object"
+local Object = require "tinyworld.schema.object"
 
 -- 包装子对象: 保留 props/records/id, 同时支持 obj.field = value
 local function makeChildProxy(child)
@@ -82,6 +83,7 @@ function Container.new(def, host)
     rawset(self, "def", def)
     rawset(self, "host", host)
     rawset(self, "children", {})
+    rawset(self, "order", {})
     rawset(self, "props", {})
     rawset(self, "propsSchema", def.propsSchema)
     rawset(self, "records", {})
@@ -117,8 +119,19 @@ function Container:closeView()
     self.dirty = {}
 end
 
-function Container:add(data)
-    local id = data.id
+function Container:add(objOrData)
+    local child = objOrData
+
+    -- 兼容 old 用法: 传入 data table 时内部构造 Object
+    if type(objOrData) ~= "table" or rawget(objOrData, "_schema") == nil then
+        local data = objOrData or {}
+        child = Object.new(self.def.childSchema, self.def.childRecordDefs)
+        for name, value in pairs(data) do
+            child[name] = value
+        end
+    end
+
+    local id = child:objectId()
     if id == nil then
         error(self.def.name .. " child missing id")
     end
@@ -126,19 +139,12 @@ function Container:add(data)
         return false
     end
 
-    local child = {
-        id = id,
-        props = ChildObject.new(self.def.childSchema, self, id, data),
-        records = {},
-    }
-
-    -- 子对象包含表格 Record
-    for _, rdef in ipairs(self.def.childRecordDefs) do
-        child.records[rdef.name] = Record.new(rdef, self)
-    end
-
-    child = makeChildProxy(child)
+    child:attach(self, id)
     self.children[id] = child
+    if not child.__seen then
+        self.order[#self.order + 1] = id
+        child.__seen = true
+    end
 
     if self.isView then
         self.dirty[#self.dirty + 1] = {
@@ -151,7 +157,7 @@ function Container:add(data)
         self.host:onContainerPersist(self)
     end
 
-    return true
+    return child
 end
 
 function Container:remove(id)
@@ -160,6 +166,12 @@ function Container:remove(id)
     end
 
     self.children[id] = nil
+    for i, ordId in ipairs(self.order) do
+        if ordId == id then
+            table.remove(self.order, i)
+            break
+        end
+    end
 
     if self.isView then
         self.dirty[#self.dirty + 1] = { type = "remove", id = id }
@@ -187,12 +199,21 @@ function Container:has(id)
     return self.children[id] ~= nil
 end
 
+function Container:childrenList()
+    local out = {}
+    for _, id in ipairs(self.order or {}) do
+        local child = self.children[id]
+        if child then out[#out + 1] = child end
+    end
+    return out
+end
+
 -- ChildObject 属性写回的入口
 function Container:onChildPropChange(child, name, value)
     if self.isView then
         self.dirty[#self.dirty + 1] = {
             type = "set",
-            id = child:id(),
+            id = child:objectId(),
             data = { [name] = value },
         }
     end
@@ -202,12 +223,12 @@ function Container:onChildPropChange(child, name, value)
 end
 
 function Container:childFullData(child)
-    local out = { id = child.id }
+    local out = { id = child:objectId() }
 
-    for k, v in pairs(child.props:data()) do
+    for k, v in pairs(child:objectData() or {}) do
         out[k] = v
     end
-    for name, rec in pairs(child.records) do
+    for name, rec in pairs(child.records or {}) do
         out[name] = rec:dump()
     end
 

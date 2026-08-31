@@ -190,8 +190,8 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     end
     real.props:load(spawnProps)
     real:onCreate()
-    real:setupComponents(def.cellComponents)
     real:openViews(def.cellOpenViews)
+    real:setupComponents(def.cellComponents)
 
     cell:addEntity(real)
     cellapp:indexReal(real)
@@ -247,8 +247,8 @@ function cmd.ghost_promote(spaceId, cellKey, realId, req)
     if not real then return false end
 
     -- 迁移后重新装配 cell 侧组件(移动 / 战斗同步等)
-    real:setupComponents(real.def.cellComponents)
     real:openViews(real.def.cellOpenViews)
+    real:setupComponents(real.def.cellComponents)
     real.readyForSync = true
 
     if real.baseApp then

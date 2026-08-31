@@ -2,6 +2,7 @@
 -- Ability 基类: 统一处理 立即释放 / 施法时间 / 持续施法 三种释放流程。
 
 local class = require "tinyworld.core.class"
+local Object = require "tinyworld.schema.object"
 
 local STATE = {
     READY = "ready",
@@ -10,9 +11,10 @@ local STATE = {
     COOLDOWN = "cooldown",
 }
 
-local Ability = class.makeClass("Ability")
+local Ability = Object.extend("Ability")
 
-function Ability:ctor(caster, data)
+function Ability:ctor(caster, data, schema)
+    Object.ctor(self, schema)
     self.caster = caster
     self.data = data or {}
     self.id = self:GetAbilityName()

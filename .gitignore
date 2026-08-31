@@ -9,3 +9,4 @@ client/logs/
 # artifacts
 *.so
 core
+!server/tinyworld/core/

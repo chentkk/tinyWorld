@@ -4,14 +4,18 @@
 -- 由上层同步系统(如 buff 视图)统一推给客户端, 战斗框架不直接处理网络。
 
 local class = require "tinyworld.core.class"
+local Object = require "tinyworld.schema.object"
 local nextId = 0
 
-local Modifier = class.makeClass("Modifier")
+local Modifier = Object.extend("Modifier")
 
-function Modifier:ctor(parent, ability, params)
+function Modifier:ctor(parent, ability, params, schema)
+    Object.ctor(self, schema)
     params = params or {}
+
     nextId = nextId + 1
     self.uid = nextId
+    self.id = nextId
     self.parent = parent
     self.ability = ability
     self.caster = ability and ability.caster
@@ -19,6 +23,7 @@ function Modifier:ctor(parent, ability, params)
     self.elapsed = 0
     self.destroyed = false
     self.stack = 1
+    self.remaining = self.duration and self.duration or 0
     self.intervalThink = tonumber(ability and ability.data and ability.data.intervalThink) or 0
     self._params = params
 end
@@ -45,11 +50,15 @@ function Modifier:update(dt)
     if self.destroyed then return end
 
     self.elapsed = self.elapsed + dt
+
+    local hasDuration = self.duration and self.duration > 0
+    self.remaining = hasDuration and math.max(0, self.duration - self.elapsed) or 0
+
     if self.intervalThink > 0 and self.elapsed % self.intervalThink < dt then
         self:OnIntervalThink()
     end
 
-    if self.duration and self.elapsed >= self.duration then
+    if hasDuration and self.elapsed >= self.duration then
         self:destroy()
     end
 end
@@ -57,6 +66,7 @@ end
 function Modifier:refresh(params)
     self.elapsed = 0
     self.stack = self.stack + 1
+    self.remaining = self.duration and self.duration or 0
     self:OnRefresh(params)
 end
 

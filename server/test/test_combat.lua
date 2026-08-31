@@ -15,9 +15,23 @@ defs.register("CombatDummy", {
         { name = "hp", type = "number", sync = "all", persist = true, default = 500 },
         { name = "maxHp", type = "number", sync = "all", default = 500 },
     },
+    containers = {
+        (require "game.def.container.modifiers_view_def"),
+        (require "game.def.container.abilities_view_def"),
+    },
 })
 
+local function modifiersOf(unit)
+    return unit:getContainer("modifiers_view"):childrenList()
+end
+
+local function abilitiesOf(unit)
+    return unit:getContainer("abilities_view"):childrenList()
+end
+
 local unit = Entity.new(defs.get("CombatDummy"), 1, "CombatDummy")
+unit:getContainer("modifiers_view"):openView("modifiers")
+unit:getContainer("abilities_view"):openView("abilities")
 caster.apply(unit)
 assert(unit.combatApplied)
 
@@ -31,10 +45,11 @@ unit:loadAbilities({
     "ability_curse_of_avernus",
 })
 
-local shield = unit.abilities[1]
-local borrowed = unit.abilities[2]
-local mistCoil = unit.abilities[3]
-local curse = unit.abilities[4]
+local abilities = abilitiesOf(unit)
+local shield = abilities[1]
+local borrowed = abilities[2]
+local mistCoil = abilities[3]
+local curse = abilities[4]
 
 -- 立即进入持续施法
 assert(unit:castAbility(2, nil))
@@ -43,19 +58,21 @@ assert(borrowed.state == "channeling")
 
 -- 带施法时间: 施法中尚不产生 modifier
 local target = Entity.new(defs.get("CombatDummy"), 2, "CombatDummy")
+target:getContainer("modifiers_view"):openView("modifiers")
+target:getContainer("abilities_view"):openView("abilities")
 caster.apply(target)
 target.hp = 500
 unit:castAbility(1, target)
 unit:updateCombat(0.2)
-assert(#target.modifiers == 0, "should not apply before cast point")
+assert(#modifiersOf(target) == 0, "should not apply before cast point")
 
 unit:updateCombat(0.3) -- 达到 castPoint 0.4 后开始
 unit:updateCombat(0.1)
-assert(#target.modifiers == 1, "shield modifier should apply after cast point")
+assert(#modifiersOf(target) == 1, "shield modifier should apply after cast point")
 
 -- 先摧毁盾, 再验证伤害结算: hp 属性自动变化, 并触发事件
-target.modifiers[1]:destroy()
-assert(#target.modifiers == 0)
+modifiersOf(target)[1]:destroy()
+assert(#modifiersOf(target) == 0)
 local damaged = 0
 target:on("combat_damage", function(_, a, amount, t)
     damaged = amount
@@ -78,7 +95,7 @@ shield.cooldownLeft = 0
 shield.state = "ready"
 unit:castAbility(1, target)
 unit:updateCombat(0.5) -- 超过 castPoint
-assert(#target.modifiers == 1)
+assert(#modifiersOf(target) == 1)
 assert(addedNames[1] == "modifier_abaddon_aphotic_shield_lua")
 
 print("PASS test_combat")

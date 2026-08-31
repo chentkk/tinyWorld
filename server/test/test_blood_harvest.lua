@@ -17,6 +17,10 @@ defs.register("BloodDummy", {
         { name = "hp", type = "number", sync = "all", persist = true, default = 500 },
         { name = "maxHp", type = "number", sync = "all", persist = true, default = 500 },
     },
+    containers = {
+        (require "game.def.container.modifiers_view_def"),
+        (require "game.def.container.abilities_view_def"),
+    },
 })
 
 -- 注册技能工厂(与 cellapp 一致)
@@ -24,9 +28,15 @@ require "game.scripts.vscripts.abilities"
 
 local function newUnit(id, hp)
     local unit = Entity.new(defs.get("BloodDummy"), id, "BloodDummy")
+    unit:getContainer("modifiers_view"):openView("modifiers")
+    unit:getContainer("abilities_view"):openView("abilities")
     combatUnit.apply(unit)
     unit:set("hp", hp)
     return unit
+end
+
+local function abilitiesOf(unit)
+    return unit:getContainer("abilities_view"):childrenList()
 end
 
 local caster = newUnit(1, 300)
@@ -41,7 +51,7 @@ near.x, near.y = 40, 0    -- radius 80 内
 far.x, far.y = 200, 0     -- radius 80 外
 
 caster:loadAbilities({ "ability_blood_harvest" })
-local ab = caster.abilities[1]
+local ab = abilitiesOf(caster)[1]
 assert(ab, "ability_blood_harvest not loaded")
 assert(ab:GetAbilityName() == "ability_blood_harvest")
 
