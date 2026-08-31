@@ -1,13 +1,13 @@
--- tinyworld/schema/child_object.lua
--- ChildObject: 容器子对象 / Record 行包装对象。
--- 通过 __index / __newindex 支持 obj.field = value。
--- 属性写入会通知 owner, owner 再生成同步 op。
+-- tinyworld/schema/record_row.lua
+-- RecordRow: Record 的一行。
+-- 通过 __index / __newindex 支持 row.field = value。
+-- 字段写回会通知 owner(Record), 由 Record 合并生成同步 op。
 
-local ChildObject = {}
-ChildObject.__index = ChildObject
+local RecordRow = {}
+RecordRow.__index = RecordRow
 
-function ChildObject.new(schema, owner, id, data)
-    local self = setmetatable({}, ChildObject)
+function RecordRow.new(schema, owner, id, data)
+    local self = setmetatable({}, RecordRow)
 
     rawset(self, "_schema", schema)
     rawset(self, "_owner", owner)
@@ -22,14 +22,14 @@ function ChildObject.new(schema, owner, id, data)
     return self
 end
 
-function ChildObject:__index(name)
+function RecordRow:__index(name)
     local raw = rawget(self, name)
     if raw ~= nil then
         return raw
     end
 
-    if ChildObject[name] ~= nil then
-        return ChildObject[name]
+    if RecordRow[name] ~= nil then
+        return RecordRow[name]
     end
 
     local schema = rawget(self, "_schema")
@@ -42,7 +42,7 @@ function ChildObject:__index(name)
     return nil
 end
 
-function ChildObject:__newindex(name, value)
+function RecordRow:__newindex(name, value)
     local schema = rawget(self, "_schema")
     local data = rawget(self, "_data")
     if not schema:get(name) then
@@ -62,16 +62,16 @@ function ChildObject:__newindex(name, value)
     end
 end
 
-function ChildObject:rawSet(name, value)
+function RecordRow:rawSet(name, value)
     rawset(self, name, value)
 end
 
-function ChildObject:id()
+function RecordRow:id()
     return rawget(self, "_id")
 end
 
-function ChildObject:data()
+function RecordRow:data()
     return rawget(self, "_data")
 end
 
-return ChildObject
+return RecordRow

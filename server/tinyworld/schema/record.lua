@@ -2,7 +2,7 @@
 -- Record: 表格运行实例, 支持 add/remove/query/set/get, 提供同步 ops。
 -- 行对象支持 record[key].field = value 自动产生同步 op。
 
-local ChildObject = require "tinyworld.schema.child_object"
+local RecordRow = require "tinyworld.schema.record_row"
 
 local Record = {}
 Record.__index = Record
@@ -78,7 +78,7 @@ function Record:add(data)
         return nil
     end
 
-    local row = ChildObject.new(schema, self, key, data)
+    local row = RecordRow.new(schema, self, key, data)
 
     rawget(self, "rows")[key] = row
     rawget(self, "order")[#rawget(self, "order") + 1] = key
@@ -205,7 +205,7 @@ function Record:findOne(field, value)
     end
 end
 
--- ChildObject 写回入口: 行字段变化 -> 合并到该行当前待同步 op。
+-- RecordRow 写回入口: 行字段变化 -> 合并到该行当前待同步 op。
 -- 同一 flush 周期内同一行只保留一个 op, 最终字段覆盖中间值。
 function Record:onChildPropChange(child, name, value)
     local key = child:id()
