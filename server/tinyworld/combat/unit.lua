@@ -32,32 +32,6 @@ end
 
 M.snapshot = M.modifiersSnapshot
 
-local function combatView(unit, viewName)
-    if not unit.getContainer then return nil end
-    local cont = unit:getContainer(viewName)
-    if cont and cont:isViewOpened() then
-        return cont
-    end
-end
-
-local function syncObjectToView(unit, viewName, object)
-    if not object then return end
-    local cont = combatView(unit, viewName)
-    if not cont then return end
-
-    local data = object:viewData()
-    local id = data.id
-    if not cont:has(id) then
-        cont:add(data)
-        return
-    end
-
-    local child = cont:get(id)
-    for name, value in pairs(data) do
-        child[name] = value
-    end
-end
-
 function M.apply(unit)
     if unit.combatApplied then return unit end
     unit.combatApplied = true
@@ -88,7 +62,12 @@ function M.apply(unit)
 
         self.modifiers[#self.modifiers + 1] = mod
         mod:OnCreated(mod._params or {})
-        syncObjectToView(self, "modifiers_view", mod)
+
+        local view = self:getContainer("modifiers_view")
+        if view and view:isViewOpened() then
+            view:add(mod:viewData())
+        end
+
         self:emit("combat_modifier_add", name, mod.duration, mod.stack)
         return mod
     end
@@ -97,8 +76,12 @@ function M.apply(unit)
         for i, old in ipairs(self.modifiers) do
             if old == mod then
                 table.remove(self.modifiers, i)
-                local cont = combatView(self, "modifiers_view")
-                if cont then cont:remove(mod.uid) end
+
+                local view = self:getContainer("modifiers_view")
+                if view and view:isViewOpened() then
+                    view:remove(mod.uid)
+                end
+
                 self:emit("combat_modifier_remove", mod:GetModifierName())
                 return mod
             end
@@ -114,16 +97,34 @@ function M.apply(unit)
     end
 
     function unit:updateCombat(dt)
+        local modifiersView = self:getContainer("modifiers_view")
+        local abilitiesView = self:getContainer("abilities_view")
+
         for i, mod in ipairs(self.modifiers) do
             if mod then
                 mod:update(dt)
-                syncObjectToView(self, "modifiers_view", mod)
+                if modifiersView and modifiersView:isViewOpened() then
+                    local child = modifiersView:get(mod.uid)
+                    if child then
+                        for name, value in pairs(mod:viewData()) do
+                            child[name] = value
+                        end
+                    end
+                end
             end
         end
+
         for i, ab in ipairs(self.abilities) do
             if ab then
                 ab:update(dt)
-                syncObjectToView(self, "abilities_view", ab)
+                if abilitiesView and abilitiesView:isViewOpened() then
+                    local child = abilitiesView:get(ab:viewData().id)
+                    if child then
+                        for name, value in pairs(ab:viewData()) do
+                            child[name] = value
+                        end
+                    end
+                end
             end
         end
     end
@@ -134,7 +135,11 @@ function M.apply(unit)
             local ability = M.createAbility(self, abilityName)
             if ability then
                 self.abilities[#self.abilities + 1] = ability
-                syncObjectToView(self, "abilities_view", ability)
+
+                local view = self:getContainer("abilities_view")
+                if view and view:isViewOpened() then
+                    view:add(ability:viewData())
+                end
             end
         end
         return self.abilities
