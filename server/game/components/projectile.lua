@@ -1,20 +1,20 @@
--- game/components/projectile_move.lua
+-- game/components/projectile.lua
 -- 投掷物运动组件。
---   * 有 targetId: 追踪指定目标, 命中单一目标
---   * 无 targetId: 按 dir 直线前进, 沿途用 hitRadius 检测候选目标集合
--- 命中/超距后只发 projectile_hit 事件, 具体效果由游戏层监听处理。
+--   * 有 targetId: 追踪单一目标
+--   * 无 targetId: 按 dir 直线前进, hitRadius 检测沿途候选目标
+-- 命中/超距后调用 Ability:OnProjectileHit(目标, 落点), 效果由具体技能决定。
 
 local component = require "tinyworld.entity.component"
 
-local ProjectileMove = component.extend("ProjectileMove")
+local Projectile = component.extend("Projectile")
 
-function ProjectileMove:ctor(entity, name)
+function Projectile:ctor(entity, name)
     component.ctor(self, entity, name)
     self.traveled = 0
     self.destroyed = false
 end
 
-function ProjectileMove:findTarget()
+function Projectile:findTarget()
     local entity = self.entity
     local targetId = entity:get("targetId")
     if not targetId then return nil end
@@ -28,21 +28,18 @@ function ProjectileMove:findTarget()
     return nil
 end
 
-function ProjectileMove:direction()
+function Projectile:direction()
     local entity = self.entity
     local target = self:findTarget()
     if target then
-        local dx = (target.x or entity.x) - entity.x
-        local dy = (target.y or entity.y) - entity.y
-        return dx, dy
+        return (target.x or entity.x) - entity.x, (target.y or entity.y) - entity.y
     end
 
     local dir = entity:get("dir") or 0
     return math.cos(dir), math.sin(dir)
 end
 
--- 方向模式: 返回当前碰撞半径内的目标集合
-function ProjectileMove:targetsInRadius(radius)
+function Projectile:targetsInRadius(radius)
     local entity = self.entity
     local out = {}
     local radius2 = radius * radius
@@ -60,7 +57,7 @@ function ProjectileMove:targetsInRadius(radius)
     return out
 end
 
-function ProjectileMove:onTick(dt)
+function Projectile:onTick(dt)
     if self.destroyed then return end
 
     local entity = self.entity
@@ -90,33 +87,39 @@ function ProjectileMove:onTick(dt)
     entity.x = entity.x + dirX * step
     entity.y = entity.y + dirY * step
 
-    local target = self:findTarget()
-    local targetId = nil
-    local targets = nil
+    local trackingTarget = self:findTarget()
+    local hitTargets = {}
 
-    if target then
-        local dx = target.x - entity.x
-        local dy = target.y - entity.y
+    if trackingTarget then
+        local dx = trackingTarget.x - entity.x
+        local dy = trackingTarget.y - entity.y
         if dx * dx + dy * dy <= hitRadius * hitRadius then
-            targetId = target.clientId
+            hitTargets[#hitTargets + 1] = trackingTarget
         end
     else
-        targets = {}
         for _, candidate in ipairs(self:targetsInRadius(hitRadius)) do
-            targets[#targets + 1] = candidate.clientId
+            hitTargets[#hitTargets + 1] = candidate
         end
     end
 
-    if targetId or outOfRange or (targets and #targets > 0) then
+    if #hitTargets > 0 or outOfRange then
         self.destroyed = true
+
+        -- 命中事件(目标可空)
         entity:emit("projectile_hit", {
             projectile = entity,
             ownerId = entity:get("ownerId"),
-            targetId = targetId,
-            targets = targets or {},
+            targets = hitTargets,
         })
+
+        -- 把命中回调交给具体技能
+        local ability = entity.ability
+        if ability and ability.OnProjectileHit then
+            ability:OnProjectileHit(hitTargets, entity.x, entity.y)
+        end
+
         entity:destroy()
     end
 end
 
-return ProjectileMove
+return Projectile

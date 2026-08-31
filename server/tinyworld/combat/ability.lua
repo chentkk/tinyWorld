@@ -129,6 +129,9 @@ function Ability:initModifier()
     end
 end
 
+-- 投掷物命中回调(具体技能覆盖)
+function Ability:OnProjectileHit(targets, x, y) end
+
 -- 子类回调
 function Ability:OnCastStart() end
 function Ability:OnSpellStart() end

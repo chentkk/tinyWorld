@@ -83,6 +83,16 @@ function Entity:getContainer(name)
     return self.containers[name]
 end
 
+-- 由 cell 创建本地投掷物; data 为 spawn_entity 接受的参数
+function Entity:spawnProjectile(kind, data)
+    local cell = rawget(self, "cell")
+    if not cell then return nil, "entity not in cell" end
+    if not cell.host or not cell.host.spawn_projectile then return nil, "no spawn_projectile" end
+
+    local spaceId = cell.space and cell.space.id
+    return cell.host:spawn_projectile(spaceId, cell:key(), kind, data, nil)
+end
+
 -- Real / Ghost 共用: 属性变更只记录一份脏表, 出包时按观察者范围过滤
 function Entity:collectClientProps(forSelf)
     local out = {}
