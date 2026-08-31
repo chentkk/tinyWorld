@@ -3,7 +3,6 @@
 -- 提供 add/remove/get 与视图同步 op。
 
 local Record = require "tinyworld.schema.record"
-local ChildObject = require "tinyworld.schema.child_object"
 local Object = require "tinyworld.schema.object"
 
 -- 包装子对象: 保留 props/records/id, 同时支持 obj.field = value
@@ -208,7 +207,7 @@ function Container:childrenList()
     return out
 end
 
--- ChildObject 属性写回的入口
+-- 子对象属性写回的入口
 function Container:onChildPropChange(child, name, value)
     if self.isView then
         self.dirty[#self.dirty + 1] = {
