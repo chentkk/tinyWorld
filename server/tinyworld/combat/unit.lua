@@ -37,7 +37,6 @@ function M.modifiersSnapshot(unit)
     return out
 end
 
-M.snapshot = M.modifiersSnapshot
 
 function M.apply(unit)
     if unit.combatApplied then return unit end
