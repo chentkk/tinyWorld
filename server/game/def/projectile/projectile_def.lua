@@ -13,11 +13,14 @@ return {
         { name = "hitRadius", type = "number", sync = "all", default = 2 },
         { name = "ownerId", type = "number", sync = "all" },
         { name = "targetId", type = "number", sync = "all" },
+        { name = "damage", type = "number", sync = "all" },
+        { name = "damageType", type = "number", sync = "all", default = 2 },
     },
     records = {},
     containers = {},
     cellComponents = {
         "game.components.projectile_move",
+        "game.components.projectile_effects",
     },
     cellOpenViews = {},
 }
