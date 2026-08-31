@@ -30,7 +30,7 @@ function cmd.write(connId, kind, msgType, name, data)
         -- connect / disconnect 等无协议类型的事件, 不带大括号
         line = string.format("[%s][%s] %s\n", stamp, connId, data or "")
     else
-        line = string.format("[%s][%s] %s %s %s{%s}\n",
+        line = string.format("[%s][%s] %s %s %s %s\n",
             stamp, connId, kind, msgType, name or "", data or "")
     end
     file:write(line)

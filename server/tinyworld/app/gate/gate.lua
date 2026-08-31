@@ -54,7 +54,7 @@ function cmd.send_to_client(connId, body, msgType, name, dataStr)
     local msg = proto.decode(body)
     msgType = msgType or (msg and msg.t) or "?"
     name = name or (msg and msg.n) or ""
-    dataStr = dataStr or msgUtil.logData(msg and msg.d)
+    dataStr = dataStr or msgUtil.logData(msg and msg.d, msg and msg.t, msg and msg.n)
     sendBody(conn, msgType, name, dataStr, body)
     return true
 end
@@ -64,7 +64,7 @@ function cmd.kick(connId)
 end
 
 local function handleAuth(conn, msg)
-    writeLog(conn.connId, "recv", "AUTH", "auth", msgUtil.logData(msg.d))
+    writeLog(conn.connId, "recv", "AUTH", "auth", msgUtil.logData(msg.d, msg.t, msg.n))
 
     local accountId = skynet.call(loginAddr, "lua", "auth_token", msg.d.token)
     if not accountId then
@@ -80,7 +80,7 @@ local function handleAuth(conn, msg)
 
     local reply = msgUtil.new("AUTH", "auth_ok",
         { code = 0, accountId = accountId, connId = conn.connId, msg = "auth ok" })
-    sendBody(conn, "AUTH", "auth_ok", msgUtil.logData(reply.d), proto.encode(reply))
+    sendBody(conn, "AUTH", "auth_ok", msgUtil.logData(reply.d, reply.t, reply.n), proto.encode(reply))
 end
 
 local function onClientData(conn, body)
@@ -92,7 +92,7 @@ local function onClientData(conn, body)
         return
     end
 
-    writeLog(conn.connId, "recv", msg.t, msg.n, msgUtil.logData(msg.d))
+    writeLog(conn.connId, "recv", msg.t, msg.n, msgUtil.logData(msg.d, msg.t, msg.n))
     if conn.baseApp then
         skynet.send(conn.baseApp, "lua", "client_data", conn.connId, body)
     end

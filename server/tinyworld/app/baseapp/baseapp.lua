@@ -34,7 +34,7 @@ end
 local function sendToClient(session, msg)
     local body = proto.encode(msg)
     skynet.send(session.gate, "lua", "send_to_client", session.connId, body,
-        msg.t, msg.n, msgUtil.logData(msg.d))
+        msg.t, msg.n, msgUtil.logData(msg.d, msg.t, msg.n))
 end
 
 local function replyAccount(session, name, data)
