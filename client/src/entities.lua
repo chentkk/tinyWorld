@@ -18,8 +18,7 @@ function M.onObjectRemove(fn) M.onRemoveHandlers[#M.onRemoveHandlers + 1] = fn e
 function M.apply(msg)
     local d = msg.d or {}
     if msg.n == "add" then
-        local e = { entityId = d.entityId, kind = d.kind, props = d.props or {},
-                    modifiers = d.modifiers or {} }
+        local e = { entityId = d.entityId, kind = d.kind, props = d.props or {} }
         M.list[d.entityId] = e
         callHook(M.onAddHandlers, e)
     elseif msg.n == "remove" then

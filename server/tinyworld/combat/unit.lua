@@ -21,22 +21,6 @@ function M.createAbility(caster, abilityName)
     return M.abilityFactory(caster, abilityName, schema)
 end
 
--- spawn/object add 的 modifier 简述, 数据直接来自 modifiers_view
-function M.modifiersSnapshot(unit)
-    local out = {}
-    local view = nil
-    if unit.getContainer then view = unit:getContainer("modifiers_view") end
-    local mods = view and view:childrenList() or {}
-    for _, mod in ipairs(mods) do
-        out[#out + 1] = {
-            name = mod:GetModifierName(),
-            duration = mod.duration,
-            stack = mod.stack,
-        }
-    end
-    return out
-end
-
 
 function M.apply(unit)
     if unit.combatApplied then return unit end

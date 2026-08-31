@@ -84,10 +84,10 @@ local function sendOwnState(entity, session)
     end
 end
 
-local function sendObjectAdd(entity, session, props, modifiers)
+local function sendObjectAdd(entity, session, props)
     sendToClient(session, msgUtil.new("object", "add", {
         entityId = entity.cellEntityId or entity.id, kind = entity.kind, props = props,
-        modifiers = modifiers or {}, isSelf = true }))
+        isSelf = true }))
 end
 
 -- ACCOUNT 阶段处理
@@ -129,7 +129,7 @@ local function enterWorld(entity, session)
     entity:bindCell(info.appAddr, info.cell.id, info.spaceId)
     entity.entered = true
 
-    sendObjectAdd(entity, session, spawn.props, spawn.modifiers)
+    sendObjectAdd(entity, session, spawn.props)
     sendOwnState(entity, session)
     replyAccount(session, "selectCharacter", { code = 0, playerId = entity.id })
 end
