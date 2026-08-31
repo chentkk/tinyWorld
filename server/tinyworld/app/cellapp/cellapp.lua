@@ -202,6 +202,12 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     return info
 end
 
+-- 投掷物创建入口: 与实体创建同一条生命周期, 业务无需重复装配逻辑。
+-- kind 默认 Projectile, 具体数据经 data.props 进入对象自身 props。
+function cmd.spawn_projectile(spaceId, cellKey, kind, data, baseApp)
+    return cmd.spawn_entity(spaceId, cellKey, kind or "Projectile", data, baseApp)
+end
+
 function cmd.call_cell_rpc(spaceId, entityId, cellKey, name, data)
     local cell = getLocalCell(spaceId, cellKey)
     if not cell then return nil, "cell not local" end

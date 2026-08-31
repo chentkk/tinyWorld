@@ -232,6 +232,17 @@ function Entity:onDestroy()
     end)
 end
 
+-- 请求销毁: 触发 onDestroy 并离开当前 cell
+function Entity:destroy()
+    if rawget(self, "_destroyed") then return end
+    rawset(self, "_destroyed", true)
+
+    self:onDestroy()
+    if self.cell then
+        self.cell:removeEntity(self)
+    end
+end
+
 function Entity:onEnterCell(cell)
     self.cell = cell
     self:emit("on_enter_cell", cell)
