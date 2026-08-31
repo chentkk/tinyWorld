@@ -3,11 +3,6 @@
 
 local class = require "tinyworld.core.class"
 
-local function round2(n)
-    n = tonumber(n) or 0
-    return math.floor(n * 100 + 0.5) / 100
-end
-
 local STATE = {
     READY = "ready",
     CASTING = "casting",
@@ -20,6 +15,7 @@ local Ability = class.makeClass("Ability")
 function Ability:ctor(caster, data)
     self.caster = caster
     self.data = data or {}
+    self.id = self:GetAbilityName()
     self.level = 1
     self.state = STATE.READY
     self.castPoint = tonumber(self:GetSpecialValueFor("AbilityCastPoint")) or 0
@@ -50,16 +46,6 @@ end
 
 function Ability:IsReady()
     return self.state == STATE.READY and self.cooldownLeft <= 0
-end
-
--- 对象自身提供视图字段
-function Ability:viewData()
-    return {
-        id = self:GetAbilityName(),
-        level = self.level or 1,
-        cooldownLeft = round2(self.cooldownLeft or 0),
-        state = self.state or STATE.READY,
-    }
 end
 
 -- 统一入口。立即释放: castPoint=0, channelTime=0

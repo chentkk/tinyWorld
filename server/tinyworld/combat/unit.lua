@@ -65,7 +65,14 @@ function M.apply(unit)
 
         local view = self:getContainer("modifiers_view")
         if view and view:isViewOpened() then
-            view:add(mod:viewData())
+            local remaining = mod.duration and math.max(0, mod.duration - mod.elapsed) or 0
+            view:add({
+                id = mod.uid,
+                name = mod:GetModifierName(),
+                stack = mod.stack,
+                duration = mod.duration,
+                remaining = remaining,
+            })
         end
 
         self:emit("combat_modifier_add", name, mod.duration, mod.stack)
@@ -106,9 +113,10 @@ function M.apply(unit)
                 if modifiersView and modifiersView:isViewOpened() then
                     local child = modifiersView:get(mod.uid)
                     if child then
-                        for name, value in pairs(mod:viewData()) do
-                            child[name] = value
-                        end
+                        child.stack = mod.stack
+                        child.duration = mod.duration
+                        child.remaining = mod.duration
+                            and math.max(0, mod.duration - mod.elapsed) or 0
                     end
                 end
             end
@@ -118,11 +126,11 @@ function M.apply(unit)
             if ab then
                 ab:update(dt)
                 if abilitiesView and abilitiesView:isViewOpened() then
-                    local child = abilitiesView:get(ab:viewData().id)
+                    local child = abilitiesView:get(ab:GetAbilityName())
                     if child then
-                        for name, value in pairs(ab:viewData()) do
-                            child[name] = value
-                        end
+                        child.level = ab.level
+                        child.cooldownLeft = ab.cooldownLeft
+                        child.state = ab.state
                     end
                 end
             end
@@ -138,7 +146,12 @@ function M.apply(unit)
 
                 local view = self:getContainer("abilities_view")
                 if view and view:isViewOpened() then
-                    view:add(ability:viewData())
+                    view:add({
+                        id = ability:GetAbilityName(),
+                        level = ability.level,
+                        cooldownLeft = ability.cooldownLeft,
+                        state = ability.state,
+                    })
                 end
             end
         end
