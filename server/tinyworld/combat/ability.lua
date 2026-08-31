@@ -4,6 +4,11 @@
 local class = require "tinyworld.core.class"
 local Object = require "tinyworld.schema.object"
 
+local function round2(n)
+    n = tonumber(n) or 0
+    return math.floor(n * 100 + 0.5) / 100
+end
+
 local STATE = {
     READY = "ready",
     CASTING = "casting",
@@ -63,7 +68,7 @@ end
 
 function Ability:update(dt)
     if self.cooldownLeft > 0 then
-        self.cooldownLeft = self.cooldownLeft - dt
+        self.cooldownLeft = round2(self.cooldownLeft - dt)
         if self.cooldownLeft <= 0 then
             self.cooldownLeft = 0
             self.state = STATE.READY

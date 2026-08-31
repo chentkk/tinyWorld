@@ -7,6 +7,11 @@ local class = require "tinyworld.core.class"
 local Object = require "tinyworld.schema.object"
 local nextId = 0
 
+local function round2(n)
+    n = tonumber(n) or 0
+    return math.floor(n * 100 + 0.5) / 100
+end
+
 local Modifier = Object.extend("Modifier")
 
 function Modifier:ctor(parent, ability, params, schema)
@@ -23,7 +28,7 @@ function Modifier:ctor(parent, ability, params, schema)
     self.elapsed = 0
     self.destroyed = false
     self.stack = 1
-    self.remaining = self.duration and self.duration or 0
+    self.remaining = round2(self.duration and self.duration or 0)
     self.intervalThink = tonumber(ability and ability.data and ability.data.intervalThink) or 0
     self._params = params
 end
@@ -52,7 +57,7 @@ function Modifier:update(dt)
     self.elapsed = self.elapsed + dt
 
     local hasDuration = self.duration and self.duration > 0
-    self.remaining = hasDuration and math.max(0, self.duration - self.elapsed) or 0
+    self.remaining = round2(hasDuration and math.max(0, self.duration - self.elapsed) or 0)
 
     if self.intervalThink > 0 and self.elapsed % self.intervalThink < dt then
         self:OnIntervalThink()
@@ -66,7 +71,7 @@ end
 function Modifier:refresh(params)
     self.elapsed = 0
     self.stack = self.stack + 1
-    self.remaining = self.duration and self.duration or 0
+    self.remaining = round2(self.duration and self.duration or 0)
     self:OnRefresh(params)
 end
 
