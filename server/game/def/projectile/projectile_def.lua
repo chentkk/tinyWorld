@@ -20,7 +20,7 @@ return {
     records = {},
     containers = {},
     cellComponents = {
-        "game.components.projectile",
+        "tinyworld.combat.projectile",
     },
     cellOpenViews = {},
 }

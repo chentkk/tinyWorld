@@ -1,4 +1,4 @@
--- game/components/projectile.lua
+-- tinyworld/combat/projectile.lua
 -- 投掷物运动组件。
 --   * targetId: 追踪目标
 --   * 无 targetId: 按 dir 直线前进
