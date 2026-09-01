@@ -41,6 +41,11 @@ local function makeCell(entities)
         entities = entities,
         removed = removed,
         removeEntity = function(_, e) removed[e.id] = true end,
+        findByRealId = function(_, realId)
+            for _, e in pairs(entities) do
+                if e:getRealId() == realId then return e end
+            end
+        end,
     }
     for _, e in pairs(entities) do e.cell = cell end
     return cell

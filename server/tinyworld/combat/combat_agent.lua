@@ -91,11 +91,8 @@ function CombatAgent:onTick(dt)
 end
 
 function CombatAgent:resolveTarget(targetId)
-    local cellEntities = self.entity.cell and self.entity.cell.entities or {}
-    for _, candidate in pairs(cellEntities) do
-        if candidate:getRealId() == targetId then return candidate end
-    end
-    return nil
+    local cell = self.entity.cell
+    return cell and cell:findByRealId(targetId) or nil
 end
 
 function CombatAgent:onCastAbility(d)

@@ -38,10 +38,9 @@ function Projectile:findTarget()
     if not targetId then return nil end
 
     for _, cell in ipairs(self:nearbyCells()) do
-        for _, candidate in pairs(cell and cell.entities or {}) do
-            if candidate:getRealId() == targetId and candidate ~= entity then
-                return candidate
-            end
+        local candidate = cell and cell:findByRealId(targetId)
+        if candidate and candidate ~= entity then
+            return candidate
         end
     end
     return nil

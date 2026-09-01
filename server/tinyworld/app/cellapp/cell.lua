@@ -26,6 +26,7 @@ function Cell:ctor(cellInfo, host, space)
     self.host = host
     self.space = space
     self.entities = {}
+    self.realIndex = {}
     self.players = {}
     self.aoi = aoiMod.new(space.config.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
@@ -44,6 +45,7 @@ function Cell:addEntity(entity)
 
     entity.cell = self
     self.entities[entity.id] = entity
+    self.realIndex[entity:getRealId()] = entity
     self.aoi:enter(entity, entity.x, entity.y)
     -- object add 已携带全量 props, 避免同 tick 再发增量 prop
     entity:clearClientDirty()
@@ -60,6 +62,7 @@ function Cell:removeEntity(entity)
     if not self.entities[entity.id] then return end
 
     self.entities[entity.id] = nil
+    self.realIndex[entity:getRealId()] = nil
     self.aoi:leave(entity, entity.x, entity.y)
     if entity.kind == "Player" and entity.isReal then
         self.playerCount = self.playerCount - 1
@@ -72,6 +75,10 @@ end
 
 function Cell:get(id)
     return self.entities[id]
+end
+
+function Cell:findByRealId(realId)
+    return self.realIndex[realId]
 end
 
 function Cell:queryRange(x, y)
