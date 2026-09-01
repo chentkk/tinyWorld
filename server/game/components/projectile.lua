@@ -24,15 +24,24 @@ function Projectile:ctor(entity, name)
     self.destroyed = false
 end
 
+function Projectile:nearbyCells()
+    local entity = self.entity
+    if entity.space then
+        return entity.space.cells
+    end
+    return { entity.cell }
+end
+
 function Projectile:findTarget()
     local entity = self.entity
     local targetId = entity:get("targetId")
     if not targetId then return nil end
 
-    local entities = entity.cell and entity.cell.entities or {}
-    for _, candidate in pairs(entities) do
-        if candidate:getRealId() == targetId and candidate ~= entity then
-            return candidate
+    for _, cell in ipairs(self:nearbyCells()) do
+        for _, candidate in pairs(cell and cell.entities or {}) do
+            if candidate:getRealId() == targetId and candidate ~= entity then
+                return candidate
+            end
         end
     end
     return nil
@@ -54,17 +63,18 @@ function Projectile:targetsInRadius(radius)
     local out = {}
     local radius2 = radius * radius
 
-    local entities = entity.cell and entity.cell.entities or {}
     local ownerId = entity:get("ownerId")
-    for _, candidate in pairs(entities) do
-        if candidate ~= entity
-            and candidate:getRealId()
-            and (not ownerId or candidate:getRealId() ~= ownerId)
-            and not self.hitSet[candidate:getRealId()] then
-            local dx = (candidate.x or 0) - entity.x
-            local dy = (candidate.y or 0) - entity.y
-            if dx * dx + dy * dy <= radius2 then
-                out[#out + 1] = candidate
+    for _, cell in ipairs(self:nearbyCells()) do
+        for _, candidate in pairs(cell and cell.entities or {}) do
+            if candidate ~= entity
+                and candidate:getRealId()
+                and (not ownerId or candidate:getRealId() ~= ownerId)
+                and not self.hitSet[candidate:getRealId()] then
+                local dx = (candidate.x or 0) - entity.x
+                local dy = (candidate.y or 0) - entity.y
+                if dx * dx + dy * dy <= radius2 then
+                    out[#out + 1] = candidate
+                end
             end
         end
     end

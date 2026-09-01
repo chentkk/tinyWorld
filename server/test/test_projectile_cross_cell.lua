@@ -64,4 +64,25 @@ local oldX = p.x
 move:onTick(0.1)
 assert(p.x > oldX, "projectile should keep moving without migration")
 
+-- 阶段2: 不迁移, 但能在本 cellapp 其他 cell 找到追踪目标
+local target = RealEntity.new(defs.get("Projectile"), 7002, "Projectile", space, cellB)
+target.props:load({ x = 120, y = 50 })
+cellB:addEntity(target)
+
+local tracker = RealEntity.new(defs.get("Projectile"), 7003, "Projectile", space, cellA)
+tracker.props:load({ x = 10, y = 50, targetId = 7002, speed = 500, range = 200, hitRadius = 2, pierce = false })
+cellA:addEntity(tracker)
+tracker:openViews(tracker.def.cellOpenViews)
+tracker:setupComponents(tracker.def.cellComponents)
+tracker.readyForSync = true
+
+local trackMove = tracker:getComponent("projectile")
+local hitData
+tracker:on("projectile_hit", function(_, d) hitData = d end)
+while not trackMove.destroyed do trackMove:onTick(0.01) end
+
+assert(tracker.cell.info.id == "0:0", "tracker should stay in origin cell")
+assert(hitData, "tracking projectile should find target in another cell")
+assert(#hitData.targets == 1 and hitData.targets[1] == target, "cross-cell tracking target mismatch")
+
 print("PASS test_projectile_cross_cell")
