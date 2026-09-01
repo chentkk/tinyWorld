@@ -35,6 +35,10 @@ function Cell:key()
     return self.info.id
 end
 
+function Cell:getSpaceId()
+    return self.space and self.space:getSpaceId()
+end
+
 function Cell:addEntity(entity)
     if self.entities[entity.id] then return end
 
@@ -323,7 +327,7 @@ function Cell:migrateRemote(real, ideal)
     real.migrating = true
     local snapshot = real:ghostSnapshot()
 
-    local ok = self.host:call(ideal.appId, "ghost_create", self.space.id, ideal.id, {
+    local ok = self.host:call(ideal.appId, "ghost_create", self:getSpaceId(), ideal.id, {
         realId = real.id, kind = real.kind, x = real.x, y = real.y,
         snapshot = snapshot, fromApp = self.host.appId,
         ownerCellKey = self.info.id, promote = true,
@@ -338,7 +342,7 @@ function Cell:migrateRemote(real, ideal)
 
     local peers = self:collectGhostPeers(real)
     self:reparentOldGhosts(real, ideal, peers)
-    self.host:send(ideal.appId, "ghost_promote", self.space.id, ideal.id, real.id, {
+    self.host:send(ideal.appId, "ghost_promote", self:getSpaceId(), ideal.id, real.id, {
         fromApp = self.host.appId,
         witnessCellKey = real.cell.info.id,
         peers = peers,
@@ -361,7 +365,7 @@ function Cell:reparentOldGhosts(real, ideal, peers)
                     real.id, ghost.id, ideal.appId, ideal.id)
             end
         else
-            self.host:send(peer.app, "ghost_reparent", self.space.id,
+            self.host:send(peer.app, "ghost_reparent", self:getSpaceId(),
                 peer.cellKey, real.id, ideal.appId, ideal.id)
             self:ghostLog("request reparent ghost real=%d app=%d cell=%s -> app=%d cell=%s",
                 real.id, peer.app, peer.cellKey, ideal.appId, ideal.id)
@@ -424,7 +428,7 @@ function Cell:destroyGhost(real, key, info)
             self:ghostLog("destroy local ghost real=%d cell=%s", real.id, info.cellKey)
         end
     else
-        self.host:send(info.app, "ghost_destroy", self.space.id, info.cellKey, real.id)
+        self.host:send(info.app, "ghost_destroy", self:getSpaceId(), info.cellKey, real.id)
         self:ghostLog("request destroy remote ghost real=%d app=%d cell=%s",
             real.id, info.app, info.cellKey)
     end
@@ -449,7 +453,7 @@ function Cell:ensureGhostIn(real, neighborInfo)
         return
     end
 
-    local ok = self.host:call(neighborInfo.appId, "ghost_create", self.space.id, neighborInfo.id, {
+    local ok = self.host:call(neighborInfo.appId, "ghost_create", self:getSpaceId(), neighborInfo.id, {
         realId = real.id, kind = real.kind, x = real.x, y = real.y,
         snapshot = real:ghostSnapshot(), fromApp = self.host.appId,
         ownerCellKey = self.info.id, promote = false,

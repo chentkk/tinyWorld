@@ -11,6 +11,10 @@ function GhostEntity:getRealId()
     return self.realId
 end
 
+function GhostEntity:getSpaceId()
+    return self.space and self.space:getSpaceId()
+end
+
 -- 同 cellapp 时返回真身对象; 跨 app 暂不支持, 调用方按 nil 处理
 function GhostEntity:realEntity()
     if self.realApp == self.cell.host.appId then
@@ -49,7 +53,7 @@ function GhostEntity:sendReal(method, data)
         end
     else
         self.cell.host:send(self.realApp, "real_rpc",
-            self.space.id, self.realCellKey, self.realId, method, data)
+            self:getSpaceId(), self.realCellKey, self.realId, method, data)
     end
 end
 
@@ -65,7 +69,7 @@ function GhostEntity:callReal(method, data)
         end
     end
     return self.cell.host:call(self.realApp, "real_rpc",
-        self.space.id, self.realCellKey, self.realId, method, data)
+        self:getSpaceId(), self.realCellKey, self.realId, method, data)
 end
 
 -- real 跨 cell 迁移后, 旧 ghost 的 real 换到新的 app/cell

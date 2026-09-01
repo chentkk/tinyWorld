@@ -67,7 +67,7 @@ function RealEntity:sendGhostEach(outbox)
             end
         else
             self.cell.host:send(info.app, "ghost_sync",
-                self.space.id, info.cellKey, self.id, outbox)
+                self:getSpaceId(), info.cellKey, self.id, outbox)
         end
     end
 end
@@ -82,7 +82,7 @@ function RealEntity:callGhostEach(method, data)
             results[#results + 1] = ghost and ghost[method] and ghost[method](ghost, data)
         else
             results[#results + 1] = self.cell.host:call(info.app, "ghost_rpc",
-                self.space.id, info.cellKey, self.id, method, data)
+                self:getSpaceId(), info.cellKey, self.id, method, data)
         end
     end
     return results

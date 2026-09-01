@@ -30,6 +30,10 @@ function LocalSpace:addLocalCell(cellInfo)
     return cell
 end
 
+function LocalSpace:getSpaceId()
+    return self.id
+end
+
 function LocalSpace:getCell(key)
     return self.byKey[key]
 end
