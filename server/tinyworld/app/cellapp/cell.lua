@@ -41,6 +41,8 @@ function Cell:addEntity(entity)
     entity.cell = self
     self.entities[entity.id] = entity
     self.aoi:enter(entity, entity.x, entity.y)
+    -- object add 已携带全量 props, 避免同 tick 再发增量 prop
+    entity:clearClientDirty()
     if entity.kind == "Player" and entity.isReal then
         self.playerCount = self.playerCount + 1
     end
