@@ -12,9 +12,15 @@ function CombatSync:onCreate()
     local entity = self.entity
 
     entity:on("combat_damage", function(_, attacker, amount, damageType, abilityName)
+        local attackerId = nil
+        if type(attacker) == "table" and attacker.getRealId then
+            attackerId = attacker:getRealId()
+        else
+            attackerId = attacker
+        end
         self:push("onCombatDamage", {
             entityId = entity:getRealId(),
-            attackerId = attacker and attacker:getRealId(),
+            attackerId = attackerId,
             amount = amount,
             damageType = damageType,
             skill = abilityName,
@@ -22,9 +28,15 @@ function CombatSync:onCreate()
     end)
 
     entity:on("combat_heal", function(_, caster, amount, healType)
+        local casterId = nil
+        if type(caster) == "table" and caster.getRealId then
+            casterId = caster:getRealId()
+        else
+            casterId = caster
+        end
         self:push("onCombatHeal", {
             entityId = entity:getRealId(),
-            casterId = caster and caster:getRealId(),
+            casterId = casterId,
             amount = amount,
             healType = healType,
         })

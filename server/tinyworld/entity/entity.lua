@@ -38,6 +38,10 @@ function Entity:ctor(def, id, kind)
         ghost = rpc.new(),
     })
 
+    -- ghost -> real 结算 rpc(跨 cellapp 伤害/治疗路由)
+    self.rpc.real:register(self, "applyCombatDamage")
+    self.rpc.real:register(self, "applyCombatHeal")
+
     rawset(self, "components", {})
     rawset(self, "event", event.new())
 
@@ -74,6 +78,18 @@ end
 
 function Entity:set(name, value, source)
     self.props:set(name, value, source)
+end
+
+function Entity:applyCombatDamage(data)
+    local damage = require "tinyworld.combat.damage"
+    return damage.applyLocalDamage(self, data.attackerId, data.amount,
+        data.damageType, data.abilityName)
+end
+
+function Entity:applyCombatHeal(data)
+    local damage = require "tinyworld.combat.damage"
+    return damage.applyLocalHeal(self, data.casterId, data.amount,
+        data.healType, data.abilityName)
 end
 
 function Entity:get(name)
