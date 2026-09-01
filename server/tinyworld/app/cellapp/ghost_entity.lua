@@ -49,7 +49,7 @@ function GhostEntity:sendReal(method, data)
         end
     else
         self.cell.host:send(self.realApp, "real_rpc",
-            self.space.spaceId, self.realCellKey, self.realId, method, data)
+            self.space.id, self.realCellKey, self.realId, method, data)
     end
 end
 
@@ -65,7 +65,7 @@ function GhostEntity:callReal(method, data)
         end
     end
     return self.cell.host:call(self.realApp, "real_rpc",
-        self.space.spaceId, self.realCellKey, self.realId, method, data)
+        self.space.id, self.realCellKey, self.realId, method, data)
 end
 
 -- real 跨 cell 迁移后, 旧 ghost 的 real 换到新的 app/cell
