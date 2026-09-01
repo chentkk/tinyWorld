@@ -2,6 +2,7 @@
 -- 魔霭诅咒: 被动 via GetIntrinsicModifierName, 攻击落地事件叠加 debuff/buff。
 
 local Ability = require "tinyworld.combat.ability"
+local combatUnit = require "tinyworld.combat.unit"
 local Modifier = require "tinyworld.combat.modifier"
 
 ability_curse_of_avernus = Ability.extend("ability_curse_of_avernus")
@@ -24,13 +25,13 @@ end
 function modifier_ability_curse_of_avernus_lua:OnAttackLanded(data)
     if not data or not data.target then return end
     if data.attacker ~= self.parent then return end
-    if data.target:hasModifier("modifier_ability_curse_of_avernus_lua_debuff") then return end
+    if combatUnit.hasModifier(data.target, "modifier_ability_curse_of_avernus_lua_debuff") then return end
 
     local ability = self:GetAbility()
-    data.target:addModifier("modifier_ability_curse_of_avernus_lua_debuff", ability, {
+    data.combatUnit.addModifier(target, "modifier_ability_curse_of_avernus_lua_debuff", ability, {
         duration = tonumber(ability.data.slowDuration) or 2,
     })
-    self:GetCaster():addModifier("modifier_ability_curse_of_avernus_lua_buff", ability, {
+    combatUnit.addModifier(self:GetCaster(), "modifier_ability_curse_of_avernus_lua_buff", ability, {
         duration = tonumber(ability.data.slowDuration) or 2,
     })
 end

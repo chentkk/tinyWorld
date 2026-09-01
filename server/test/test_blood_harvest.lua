@@ -31,7 +31,6 @@ local function newUnit(id, hp)
     local unit = Entity.new(defs.get("BloodDummy"), id, "BloodDummy")
     unit:getContainer("modifiers_view"):openView("modifiers")
     unit:getContainer("abilities_view"):openView("abilities")
-    combatUnit.apply(unit)
     unit:set("hp", hp)
     return unit
 end
@@ -51,15 +50,15 @@ caster.x, caster.y = 0, 0
 near.x, near.y = 40, 0    -- radius 80 内
 far.x, far.y = 200, 0     -- radius 80 外
 
-caster:loadAbilities({ "ability_blood_harvest" })
+combatUnit.loadAbilities(caster, { "ability_blood_harvest" })
 local ab = abilitiesOf(caster)[1]
 assert(ab, "ability_blood_harvest not loaded")
 assert(ab:GetAbilityName() == "ability_blood_harvest")
 
 -- 平铺到施法完成(castPoint 0.3)
 ab:cast(nil)
-caster:updateCombat(0.3)
-caster:updateCombat(0.1)
+combatUnit.updateCombat(caster, 0.3)
+combatUnit.updateCombat(caster, 0.1)
 
 -- 直接伤害: 120
 assert(near:get("hp") == 500 - 120, ("near hp=%d expected 380"):format(near:get("hp")))
@@ -69,11 +68,11 @@ assert(far:get("hp") == 500, "far target should not take damage")
 assert(caster:get("hp") == 300 + 80, ("caster hp=%d expected 380"):format(caster:get("hp")))
 
 -- 持续掉血 modifier: 每 tick 15 点
-assert(near:hasModifier("modifier_blood_harvest_bleed"), "bleed modifier missing")
-assert(far:hasModifier("modifier_blood_harvest_bleed") == nil, "far target should not be bled")
+assert(combatUnit.hasModifier(near, "modifier_blood_harvest_bleed"), "bleed modifier missing")
+assert(combatUnit.hasModifier(far, "modifier_blood_harvest_bleed") == nil, "far target should not be bled")
 
 -- 主动触发 intervalThink 验证掉落逻辑
-local bleed = near:hasModifier("modifier_blood_harvest_bleed")
+local bleed = combatUnit.hasModifier(near, "modifier_blood_harvest_bleed")
 bleed:OnIntervalThink()
 assert(near:get("hp") == 380 - 15, ("near hp after tick=%d expected 365"):format(near:get("hp")))
 

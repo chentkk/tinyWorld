@@ -13,20 +13,17 @@ local function reply(code, msg)
 end
 
 function CombatAgent:onCreate()
-    combatUnit.apply(self.entity)
     self:registerClientRpc("onCastAbility")
 
     local names = {}
     for _, abilityName in ipairs(self.entity.cellInitData and self.entity.cellInitData.abilities or {}) do
         names[#names + 1] = abilityName
     end
-    self.entity:loadAbilities(names)
+    combatUnit.loadAbilities(self.entity, names)
 end
 
 function CombatAgent:onTick(dt)
-    if self.entity.combatApplied then
-        self.entity:updateCombat(dt)
-    end
+    combatUnit.updateCombat(self.entity, dt)
 end
 
 function CombatAgent:resolveTarget(targetId)

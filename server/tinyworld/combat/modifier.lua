@@ -80,8 +80,9 @@ function Modifier:destroy()
     self.destroyed = true
     self:OnDestroy()
     local owner = self.owner or self.caster
-    if owner and owner.removeModifier then
-        owner:removeModifier(self)
+    if owner then
+        local combatUnit = require "tinyworld.combat.unit"
+        combatUnit.removeModifier(owner, self)
     end
 end
 

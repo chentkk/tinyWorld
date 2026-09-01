@@ -32,14 +32,13 @@ end
 local unit = Entity.new(defs.get("CombatDummy"), 1, "CombatDummy")
 unit:getContainer("modifiers_view"):openView("modifiers")
 unit:getContainer("abilities_view"):openView("abilities")
-caster.apply(unit)
-assert(unit.combatApplied)
+assert(true)
 
 -- 注册能力工厂(与 cellapp init 一致), 再用 unit:loadAbilities 创建能力
 local abilityLoader = require "tinyworld.combat.ability_loader"
 abilityLoader.setup(require "game.config.abilities")
 
-unit:loadAbilities({
+caster.loadAbilities(unit, {
     "ability_aphotic_shield",
     "ability_borrowed_time",
     "ability_mist_coil",
@@ -53,22 +52,21 @@ local mistCoil = abilities[3]
 local curse = abilities[4]
 
 -- 立即进入持续施法
-assert(unit:castAbility(2, nil))
-unit:updateCombat(0.1)
+assert(caster.castAbility(unit, 2, nil))
+caster.updateCombat(unit, 0.1)
 assert(borrowed.state == "channeling")
 
 -- 带施法时间: 施法中尚不产生 modifier
 local target = Entity.new(defs.get("CombatDummy"), 2, "CombatDummy")
 target:getContainer("modifiers_view"):openView("modifiers")
 target:getContainer("abilities_view"):openView("abilities")
-caster.apply(target)
 target.hp = 500
-unit:castAbility(1, target)
-unit:updateCombat(0.2)
+caster.castAbility(unit, 1, target)
+caster.updateCombat(unit, 0.2)
 assert(#modifiersOf(target) == 0, "should not apply before cast point")
 
-unit:updateCombat(0.3) -- 达到 castPoint 0.4 后开始
-unit:updateCombat(0.1)
+caster.updateCombat(unit, 0.3) -- 达到 castPoint 0.4 后开始
+caster.updateCombat(unit, 0.1)
 assert(#modifiersOf(target) == 1, "shield modifier should apply after cast point")
 
 -- 先摧毁盾, 再验证伤害结算: hp 属性自动变化, 并触发事件
@@ -83,8 +81,8 @@ assert(target:get("hp") == 420)
 assert(damaged == 80)
 
 -- 立即释放: 迷雾缠绕造成 90 点魔法伤害
-unit:castAbility(3, target)
-unit:updateCombat(0.2)
+caster.castAbility(unit, 3, target)
+caster.updateCombat(unit, 0.2)
 assert(target:get("hp") == 330)
 
 -- modifier 增加 / 移除事件可驱动底层同步(buff view)
@@ -94,8 +92,8 @@ target:on("combat_modifier_add", function(_, name, duration, stack)
 end)
 shield.cooldownLeft = 0
 shield.state = "ready"
-unit:castAbility(1, target)
-unit:updateCombat(0.5) -- 超过 castPoint
+caster.castAbility(unit, 1, target)
+caster.updateCombat(unit, 0.5) -- 超过 castPoint
 assert(#modifiersOf(target) == 1)
 assert(addedNames[1] == "modifier_abaddon_aphotic_shield_lua")
 
