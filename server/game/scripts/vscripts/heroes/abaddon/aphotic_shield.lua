@@ -2,7 +2,7 @@
 -- 无光之盾: 施法时间结束后为目标套盾, modifier 吸收伤害。
 
 local Ability = require "tinyworld.combat.ability"
-local combatUnit = require "tinyworld.combat.unit"
+local modifierManager = require "tinyworld.combat.modifier_manager"
 local Modifier = require "tinyworld.combat.modifier"
 
 ability_aphotic_shield = Ability.extend("ability_aphotic_shield")
@@ -10,7 +10,7 @@ modifier_abaddon_aphotic_shield_lua = Modifier.extend("modifier_abaddon_aphotic_
 
 function ability_aphotic_shield:OnSpellStart()
     local target = self:GetCursorTarget() or self:GetCaster()
-    combatUnit.addModifier(target, "modifier_abaddon_aphotic_shield_lua", self, {
+    modifierManager.addModifier(target, "modifier_abaddon_aphotic_shield_lua", self, {
         duration = tonumber(self:GetSpecialValueFor("duration")),
         absorb = tonumber(self:GetSpecialValueFor("damageAbsorb")),
     })

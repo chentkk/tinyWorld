@@ -5,7 +5,7 @@
 local Ability = require "tinyworld.combat.ability"
 local Modifier = require "tinyworld.combat.modifier"
 local combatDamage = require "tinyworld.combat.damage"
-local combatUnit = require "tinyworld.combat.unit"
+local modifierManager = require "tinyworld.combat.modifier_manager"
 
 ABILITY_BLOOD_HARVEST = "ability_blood_harvest"
 ABILITY_BLOOD_HARVEST_BLEED = "modifier_blood_harvest_bleed"
@@ -49,7 +49,7 @@ function ability_blood_harvest:OnSpellStart()
         combatDamage.dealDamage(caster, target, damage,
             combatDamage.DAMAGE_TYPE.MAGICAL, self)
 
-        combatUnit.addModifier(target, ABILITY_BLOOD_HARVEST_BLEED, self, {
+        modifierManager.addModifier(target, ABILITY_BLOOD_HARVEST_BLEED, self, {
             duration = bleedDuration,
             intervalThink = tickInterval,
             damagePerTick = tickDamage,

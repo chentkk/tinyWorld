@@ -1,13 +1,13 @@
 -- tinyworld/combat/ability_loader.lua
--- 框架侧能力加载器: 自动扫描 vscript 目录并注册 abilityFactory。
--- 只负责加载, 不包含具体能力/修饰符逻辑。
+-- 框架侧能力加载器/工厂: 自动扫描 vscript 目录,
+-- 提供 setAbilityFactory / createAbility / loadAbilities / castAbility。
+-- 只负责加载与工厂注册, 不包含具体技能逻辑。
 
-local combatUnit = require "tinyworld.combat.unit"
 local kv = require "tinyworld.combat.kv"
 
 local M = {}
+M.abilityFactory = nil
 
--- 递归扫描目录下所有 .lua 文件, 返回相对路径列表
 local function scanLuaFiles(root)
     local out = {}
     local p = io.popen("find " .. root .. " -type f -name '*.lua' 2>/dev/null")
@@ -15,8 +15,7 @@ local function scanLuaFiles(root)
 
     for line in p:lines() do
         if line and line ~= "" then
-            local rel = line:sub(#root + 2)
-            out[#out + 1] = rel
+            out[#out + 1] = line:sub(#root + 2)
         end
     end
     p:close()
@@ -25,6 +24,39 @@ end
 
 local function modulePath(rel)
     return "game.scripts.vscripts." .. rel:gsub("%.lua$", ""):gsub("/", ".")
+end
+
+function M.setAbilityFactory(factory)
+    M.abilityFactory = factory
+end
+
+function M.createAbility(caster, abilityName)
+    if not M.abilityFactory then return nil, "ability factory not set" end
+
+    local schema = nil
+    if caster.getContainer then
+        local view = caster:getContainer("abilities_view")
+        schema = view and view.def.childSchema
+    end
+    return M.abilityFactory(caster, abilityName, schema)
+end
+
+function M.loadAbilities(unit, names)
+    local view = unit:getContainer("abilities_view")
+    if view then
+        for _, abilityName in ipairs(names or {}) do
+            local ability = M.createAbility(unit, abilityName)
+            if ability then view:add(ability) end
+        end
+    end
+    return view and view:childrenList() or {}
+end
+
+function M.castAbility(unit, index, target)
+    local view = unit:getContainer("abilities_view")
+    local ab = view and view:childrenList()[index]
+    if not ab then return false end
+    return ab:cast(target)
 end
 
 function M.setup(cfg)
@@ -44,7 +76,6 @@ function M.setup(cfg)
                 end
             end
         end
-
         require(modulePath(rel))
     end
 
@@ -53,8 +84,7 @@ function M.setup(cfg)
         local rel = abilityRel[abilityName]
         if not rel then return nil, "unknown ability " .. tostring(abilityName) end
 
-        local npcPath = npcRoot .. "/" .. rel .. ".txt"
-        local data = kv.load(npcPath, abilityName)
+        local data = kv.load(npcRoot .. "/" .. rel .. ".txt", abilityName)
         if not data then return nil, "no npc data " .. abilityName end
 
         local cls = _G[abilityName]
@@ -65,7 +95,7 @@ function M.setup(cfg)
         return ability
     end
 
-    combatUnit.setAbilityFactory(factory.create)
+    M.setAbilityFactory(factory.create)
     return factory
 end
 

@@ -2,7 +2,7 @@
 -- 回光返照: 被动 modifier 在低血量时自动开启持续施法。
 
 local Ability = require "tinyworld.combat.ability"
-local combatUnit = require "tinyworld.combat.unit"
+local modifierManager = require "tinyworld.combat.modifier_manager"
 local Modifier = require "tinyworld.combat.modifier"
 
 ability_borrowed_time = Ability.extend("ability_borrowed_time")
@@ -14,13 +14,13 @@ function ability_borrowed_time:GetIntrinsicModifierName()
 end
 
 function ability_borrowed_time:OnChannelStart()
-    combatUnit.addModifier(self:GetCaster(), "modifier_abaddon_borrowed_time_lua_active", self, {
+    modifierManager.addModifier(self:GetCaster(), "modifier_abaddon_borrowed_time_lua_active", self, {
         duration = tonumber(self:GetSpecialValueFor("duration")),
     })
 end
 
 function ability_borrowed_time:OnChannelFinish()
-    local active = combatUnit.hasModifier(self:GetCaster(), "modifier_abaddon_borrowed_time_lua_active")
+    local active = modifierManager.hasModifier(self:GetCaster(), "modifier_abaddon_borrowed_time_lua_active")
     if active then active:destroy() end
 end
 

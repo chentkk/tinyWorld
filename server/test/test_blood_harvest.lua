@@ -8,7 +8,9 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local defs = require "tinyworld.entity.defs"
 local Entity = require "tinyworld.entity.entity"
-local combatUnit = require "tinyworld.combat.unit"
+local abilityLoader = require "tinyworld.combat.ability_loader"
+local combatRunner = require "tinyworld.combat.combat_runner"
+local modifierManager = require "tinyworld.combat.modifier_manager"
 local combatDamage = require "tinyworld.combat.damage"
 
 defs.register("BloodDummy", {
@@ -50,15 +52,15 @@ caster.x, caster.y = 0, 0
 near.x, near.y = 40, 0    -- radius 80 内
 far.x, far.y = 200, 0     -- radius 80 外
 
-combatUnit.loadAbilities(caster, { "ability_blood_harvest" })
+abilityLoader.loadAbilities(caster, { "ability_blood_harvest" })
 local ab = abilitiesOf(caster)[1]
 assert(ab, "ability_blood_harvest not loaded")
 assert(ab:GetAbilityName() == "ability_blood_harvest")
 
 -- 平铺到施法完成(castPoint 0.3)
 ab:cast(nil)
-combatUnit.updateCombat(caster, 0.3)
-combatUnit.updateCombat(caster, 0.1)
+combatRunner.updateCombat(caster, 0.3)
+combatRunner.updateCombat(caster, 0.1)
 
 -- 直接伤害: 120
 assert(near:get("hp") == 500 - 120, ("near hp=%d expected 380"):format(near:get("hp")))
@@ -68,11 +70,11 @@ assert(far:get("hp") == 500, "far target should not take damage")
 assert(caster:get("hp") == 300 + 80, ("caster hp=%d expected 380"):format(caster:get("hp")))
 
 -- 持续掉血 modifier: 每 tick 15 点
-assert(combatUnit.hasModifier(near, "modifier_blood_harvest_bleed"), "bleed modifier missing")
-assert(combatUnit.hasModifier(far, "modifier_blood_harvest_bleed") == nil, "far target should not be bled")
+assert(modifierManager.hasModifier(near, "modifier_blood_harvest_bleed"), "bleed modifier missing")
+assert(modifierManager.hasModifier(far, "modifier_blood_harvest_bleed") == nil, "far target should not be bled")
 
 -- 主动触发 intervalThink 验证掉落逻辑
-local bleed = combatUnit.hasModifier(near, "modifier_blood_harvest_bleed")
+local bleed = modifierManager.hasModifier(near, "modifier_blood_harvest_bleed")
 bleed:OnIntervalThink()
 assert(near:get("hp") == 380 - 15, ("near hp after tick=%d expected 365"):format(near:get("hp")))
 

@@ -6,7 +6,8 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local Entity = require "tinyworld.entity.entity"
 local defs = require "tinyworld.entity.defs"
-local caster = require "tinyworld.combat.unit"
+local abilityLoader = require "tinyworld.combat.ability_loader"
+local combatRunner = require "tinyworld.combat.combat_runner"
 local combatDamage = require "tinyworld.combat.damage"
 
 defs.register("CombatDummy", {
@@ -38,7 +39,7 @@ assert(true)
 local abilityLoader = require "tinyworld.combat.ability_loader"
 abilityLoader.setup(require "game.config.abilities")
 
-caster.loadAbilities(unit, {
+abilityLoader.loadAbilities(unit, {
     "ability_aphotic_shield",
     "ability_borrowed_time",
     "ability_mist_coil",
@@ -52,8 +53,8 @@ local mistCoil = abilities[3]
 local curse = abilities[4]
 
 -- 立即进入持续施法
-assert(caster.castAbility(unit, 2, nil))
-caster.updateCombat(unit, 0.1)
+assert(abilityLoader.castAbility(unit,  2, nil))
+combatRunner.updateCombat(unit,  0.1)
 assert(borrowed.state == "channeling")
 
 -- 带施法时间: 施法中尚不产生 modifier
@@ -61,12 +62,12 @@ local target = Entity.new(defs.get("CombatDummy"), 2, "CombatDummy")
 target:getContainer("modifiers_view"):openView("modifiers")
 target:getContainer("abilities_view"):openView("abilities")
 target.hp = 500
-caster.castAbility(unit, 1, target)
-caster.updateCombat(unit, 0.2)
+abilityLoader.castAbility(unit,  1, target)
+combatRunner.updateCombat(unit,  0.2)
 assert(#modifiersOf(target) == 0, "should not apply before cast point")
 
-caster.updateCombat(unit, 0.3) -- 达到 castPoint 0.4 后开始
-caster.updateCombat(unit, 0.1)
+combatRunner.updateCombat(unit,  0.3) -- 达到 castPoint 0.4 后开始
+combatRunner.updateCombat(unit,  0.1)
 assert(#modifiersOf(target) == 1, "shield modifier should apply after cast point")
 
 -- 先摧毁盾, 再验证伤害结算: hp 属性自动变化, 并触发事件
@@ -81,8 +82,8 @@ assert(target:get("hp") == 420)
 assert(damaged == 80)
 
 -- 立即释放: 迷雾缠绕造成 90 点魔法伤害
-caster.castAbility(unit, 3, target)
-caster.updateCombat(unit, 0.2)
+abilityLoader.castAbility(unit,  3, target)
+combatRunner.updateCombat(unit,  0.2)
 assert(target:get("hp") == 330)
 
 -- modifier 增加 / 移除事件可驱动底层同步(buff view)
@@ -92,8 +93,8 @@ target:on("combat_modifier_add", function(_, name, duration, stack)
 end)
 shield.cooldownLeft = 0
 shield.state = "ready"
-caster.castAbility(unit, 1, target)
-caster.updateCombat(unit, 0.5) -- 超过 castPoint
+abilityLoader.castAbility(unit,  1, target)
+combatRunner.updateCombat(unit,  0.5) -- 超过 castPoint
 assert(#modifiersOf(target) == 1)
 assert(addedNames[1] == "modifier_abaddon_aphotic_shield_lua")
 

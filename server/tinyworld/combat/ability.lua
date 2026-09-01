@@ -125,8 +125,8 @@ end
 function Ability:initModifier()
     local name = self:GetIntrinsicModifierName()
     if type(name) == "string" then
-        local combatUnit = require "tinyworld.combat.unit"
-        combatUnit.addModifier(self.caster, name, self, nil)
+        local modifierManager = require "tinyworld.combat.modifier_manager"
+        modifierManager.addModifier(self.caster, name, self, nil)
     end
 end
 
