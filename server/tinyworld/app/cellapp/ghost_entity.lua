@@ -11,6 +11,15 @@ function GhostEntity:getRealId()
     return self.realId
 end
 
+-- 同 cellapp 时返回真身对象; 跨 app 暂不支持, 调用方按 nil 处理
+function GhostEntity:realEntity()
+    if self.realApp == self.cell.host.appId then
+        local cell = self.space:getCell(self.realCellKey)
+        return cell and cell:get(self.realId)
+    end
+    return nil
+end
+
 function GhostEntity:ctor(def, id, kind, space, cell, realId, x, y)
     Entity.ctor(self, def, id, kind)
     self.isGhost = true

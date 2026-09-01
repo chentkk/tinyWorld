@@ -84,21 +84,31 @@ end
 function Projectile:onHit(hitTargets, x, y)
     local entity = self.entity
 
+    -- ghost 命中尽量归一到真身, 避免技能对投影对象结算
+    local resolved = {}
+    for _, target in ipairs(hitTargets) do
+        local real = target
+        if target.isGhost and target.realEntity then
+            real = target:realEntity() or target
+        end
+        if real then resolved[#resolved + 1] = real end
+    end
+
     entity:emit("projectile_hit", {
         projectile = entity,
         ownerId = entity:get("ownerId"),
-        targets = hitTargets,
+        targets = resolved,
     })
 
     local ability = entity.ability
     if ability and ability.OnProjectileHit then
-        ability:OnProjectileHit(hitTargets, x, y)
+        ability:OnProjectileHit(resolved, x, y)
     end
 
-    for _, target in ipairs(hitTargets) do
+    for _, target in ipairs(resolved) do
         self.hitSet[target:getRealId()] = true
     end
-    self.hitCount = self.hitCount + #hitTargets
+    self.hitCount = self.hitCount + #resolved
 
     local tracking = entity:get("targetId") ~= nil
     if tracking then
