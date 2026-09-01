@@ -60,9 +60,14 @@ end
 
 function Entity:__index(key)
     local schema = rawget(self, "def") and rawget(self, "def").propSchema
-    if schema and schema:get(key) and self.props then
-        local v = self.props:get(key)
-        if v ~= nil then return v end
+    if schema and schema:get(key) then
+        if rawget(self, key) ~= nil then
+            error("schema field must not be rawset: " .. tostring(key))
+        end
+        if self.props then
+            local v = self.props:get(key)
+            if v ~= nil then return v end
+        end
     end
     return Entity[key]
 end
