@@ -1,15 +1,19 @@
--- tinyworld/app/cellapp/sync.lua
--- 战斗同步组件(cellapp 侧底层同步层)。
--- 监听 combat_damage / combat_heal 一次性事件转成客户端 RPC。
+-- tinyworld/app/cellapp/combat_sync.lua
+-- 统一战斗同步组件(cellapp 侧)。
+--   1) 监听 combat_damage/heal/cast 事件, 转成客户端 RPC
+--   2) 注册 ghost -> real 的战斗结算 RPC 入口
 -- modifier 状态由 modifiers_view 同步, 不在这里重复下发。
--- 战斗核心与技能脚本不碰网络, 底层通信全部收敛在本组件。
 
 local component = require "tinyworld.entity.component"
+local combatDamage = require "tinyworld.combat.damage"
 
 local CombatSync = component.extend("CombatSync")
 
 function CombatSync:onCreate()
     local entity = self.entity
+
+    self:registerRealRpc("applyCombatDamage")
+    self:registerRealRpc("applyCombatHeal")
 
     entity:on("combat_damage", function(_, attacker, amount, damageType, abilityName)
         local attackerId = nil
@@ -49,8 +53,18 @@ function CombatSync:onCreate()
             targetId = target and target:getRealId(),
         })
     end)
+end
 
-    -- modifier 状态统一由 modifiers_view 同步, 不再发一次性 RPC
+function CombatSync:applyCombatDamage(data)
+    data = data or {}
+    return combatDamage.applyLocalDamage(self.entity, data.attackerId, data.amount,
+        data.damageType, data.abilityName)
+end
+
+function CombatSync:applyCombatHeal(data)
+    data = data or {}
+    return combatDamage.applyLocalHeal(self.entity, data.casterId, data.amount,
+        data.healType, data.abilityName)
 end
 
 -- 需要 cell 上下文, 实体进入 cell 后才可用
