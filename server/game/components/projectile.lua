@@ -85,6 +85,14 @@ function Projectile:onHit(hitTargets, x, y)
     end
     self.hitCount = self.hitCount + #hitTargets
 
+    local tracking = entity:get("targetId") ~= nil
+    if tracking then
+        -- 追踪型命中即销毁
+        self.destroyed = true
+        entity:destroy()
+        return
+    end
+
     if entity:get("pierce") then
         local maxHits = entity:get("maxHits")
         if maxHits and self.hitCount >= maxHits then
