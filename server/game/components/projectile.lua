@@ -45,8 +45,11 @@ function Projectile:targetsInRadius(radius)
     local radius2 = radius * radius
 
     local entities = entity.cell and entity.cell.entities or {}
+    local ownerId = entity:get("ownerId")
     for _, candidate in pairs(entities) do
-        if candidate ~= entity and candidate.clientId then
+        if candidate ~= entity
+            and candidate.clientId
+            and (not ownerId or candidate.clientId ~= ownerId) then
             local dx = (candidate.x or 0) - entity.x
             local dy = (candidate.y or 0) - entity.y
             if dx * dx + dy * dy <= radius2 then

@@ -90,7 +90,7 @@ function Entity:spawnProjectile(kind, data)
     if not cell.host or not cell.host.spawn_projectile then return nil, "no spawn_projectile" end
 
     local spaceId = cell.space and cell.space.id
-    return cell.host:spawn_projectile(spaceId, cell:key(), kind, data, nil)
+    return cell.host.spawn_projectile(spaceId, cell:key(), kind, data, nil)
 end
 
 -- Real / Ghost 共用: 属性变更只记录一份脏表, 出包时按观察者范围过滤

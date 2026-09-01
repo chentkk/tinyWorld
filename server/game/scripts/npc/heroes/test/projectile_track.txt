@@ -1,0 +1,15 @@
+""
+{
+    "ability_projectile_track"
+    {
+        "ScriptFile"            "heroes/test/projectile_track"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "UNIT_TARGET"
+        "AbilityCastPoint"      "0.1"
+        "AbilityCooldown"       "3.0"
+        "movementSpeed"         "40"
+        "range"                 "80"
+        "hitRadius"             "4"
+        "damage"                "60"
+    }
+}

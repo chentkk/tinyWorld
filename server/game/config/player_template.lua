@@ -20,6 +20,8 @@ return {
             { name = "ability_borrowed_time" },
             { name = "ability_mist_coil" },
             { name = "ability_blood_harvest" },
+            { name = "ability_projectile_track" },
+            { name = "ability_projectile_line" },
         },
     },
     containers = {},

@@ -1,0 +1,15 @@
+""
+{
+    "ability_projectile_line"
+    {
+        "ScriptFile"            "heroes/test/projectile_line"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "NO_TARGET"
+        "AbilityCastPoint"      "0.1"
+        "AbilityCooldown"       "4.0"
+        "movementSpeed"         "40"
+        "range"                 "80"
+        "hitRadius"             "6"
+        "damage"                "25"
+    }
+}

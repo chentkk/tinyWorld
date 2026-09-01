@@ -40,8 +40,12 @@ end
 function CombatAgent:onCastAbility(d)
     d = d or {}
 
-    local target = self:resolveTarget(d.targetId)
-    if not target then return reply(1, "target not found") end
+    local target
+    local targetId = tonumber(d.targetId)
+    if targetId and targetId ~= 0 then
+        target = self:resolveTarget(targetId)
+        if not target then return reply(1, "target not found") end
+    end
 
     local abilitiesView = self.entity:getContainer("abilities_view")
     local ability = abilitiesView and abilitiesView:childrenList()[tonumber(d.index) or 1]
