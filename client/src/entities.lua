@@ -3,7 +3,7 @@
 
 local M = {}
 
-M.list = {} -- clientId -> entity
+M.list = {} -- entityId -> entity
 
 M.onAddHandlers = {}
 M.onRemoveHandlers = {}

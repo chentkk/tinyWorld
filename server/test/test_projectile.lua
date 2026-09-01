@@ -19,7 +19,6 @@ defs.register("Dummy", {
 
 local function newEntity(id, x, y)
     local e = Entity.new(defs.get("Dummy"), id, "Dummy")
-    e.clientId = id
     e.x = x
     e.y = y
     return e
@@ -27,7 +26,6 @@ end
 
 local function newProjectile(x, y, props, ability)
     local p = Entity.new(defs.get("Projectile"), 1000, "Projectile")
-    p.clientId = 1000
     p:set("x", x)
     p:set("y", y)
     if props then
