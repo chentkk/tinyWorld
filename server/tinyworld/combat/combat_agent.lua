@@ -1,10 +1,9 @@
 -- tinyworld/combat/combat_agent.lua
--- cellapp 侧战斗驱动组件。
--- 技能属于玩家数据: baseapp 加载后经 cellInitData 传入, 组件只负责装配与施放。
--- 客户端请求释放技能时携带目标 targetId 与技能 index。
+-- 完整战斗组件: 能力装配/施法、状态驱动、事件转 RPC、ghost 结算入口。
 
 local component = require "tinyworld.entity.component"
 local abilityLoader = require "tinyworld.combat.ability_loader"
+local combatDamage = require "tinyworld.combat.damage"
 
 local CombatAgent = component.extend("CombatAgent")
 
@@ -12,14 +11,62 @@ local function reply(code, msg)
     return { code = code, msg = msg }
 end
 
+local function idOf(obj)
+    if type(obj) == "table" and obj.getRealId then return obj:getRealId() end
+    return obj
+end
+
 function CombatAgent:onCreate()
+    local entity = self.entity
+
     self:registerClientRpc("onCastAbility")
+    self:registerRealRpc("applyCombatDamage")
+    self:registerRealRpc("applyCombatHeal")
+
+    entity:on("combat_damage", function(_, attacker, amount, damageType, abilityName)
+        self:push("onCombatDamage", {
+            entityId = entity:getRealId(),
+            attackerId = idOf(attacker),
+            amount = amount,
+            damageType = damageType,
+            skill = abilityName,
+        })
+    end)
+
+    entity:on("combat_heal", function(_, caster, amount, healType)
+        self:push("onCombatHeal", {
+            entityId = entity:getRealId(),
+            casterId = idOf(caster),
+            amount = amount,
+            healType = healType,
+        })
+    end)
+
+    entity:on("combat_cast", function(_, ability, target)
+        self:push("onSpellCast", {
+            entityId = entity:getRealId(),
+            abilityName = ability and ability:GetAbilityName(),
+            targetId = idOf(target),
+        })
+    end)
 
     local names = {}
-    for _, abilityName in ipairs(self.entity.cellInitData and self.entity.cellInitData.abilities or {}) do
+    for _, abilityName in ipairs(entity.cellInitData and entity.cellInitData.abilities or {}) do
         names[#names + 1] = abilityName
     end
-    abilityLoader.loadAbilities(self.entity, names)
+    abilityLoader.loadAbilities(entity, names)
+end
+
+function CombatAgent:applyCombatDamage(data)
+    data = data or {}
+    return combatDamage.applyLocalDamage(self.entity, data.attackerId, data.amount,
+        data.damageType, data.abilityName)
+end
+
+function CombatAgent:applyCombatHeal(data)
+    data = data or {}
+    return combatDamage.applyLocalHeal(self.entity, data.casterId, data.amount,
+        data.healType, data.abilityName)
 end
 
 -- 框架级驱动: 也可供测试直接调用
@@ -69,6 +116,17 @@ function CombatAgent:onCastAbility(d)
     ability:cast(target)
     self.entity:emit("combat_cast", ability, target)
     return { code = 0, msg = "cast ok" }
+end
+
+-- 需要 cell 上下文, 实体进入 cell 后才可用
+function CombatAgent:push(method, data)
+    local entity = self.entity
+    if not entity.readyForSync then return end
+
+    local cell = entity.cell
+    if not cell then return end
+
+    cell:postEvent(entity, { t = "RPC", n = method, d = data })
 end
 
 return CombatAgent

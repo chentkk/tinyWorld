@@ -50,7 +50,7 @@ local real = Real.new(defs.get("SettleDummy"), 10, "SettleDummy", space, cellA)
 real.props:load({ hp = 100 })
 cellA:addEntity(real)
 real:getContainer("modifiers_view"):openView("modifiers")
-real:addComponent("combat_sync", require "tinyworld.app.cellapp.combat_sync")
+real:addComponent("combat_agent", require "tinyworld.combat.combat_agent")
 
 local ghost = cellB:buildGhost(real)
 ghost.realApp = fake.appId
