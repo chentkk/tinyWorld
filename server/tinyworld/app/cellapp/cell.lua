@@ -289,7 +289,7 @@ end
 function Cell:checkMigrations()
     local toMigrate = {}
     for _, real in pairs(self.entities) do
-        if real.isReal and not real.migrating then
+        if real.isReal and real:canMigrate() and not real.migrating then
             local ideal = self.space.config:cellAt(real.x, real.y)
             if ideal.id ~= self.info.id and self:shouldMigrate(real, ideal) then
                 toMigrate[#toMigrate + 1] = { real = real, ideal = ideal }
@@ -393,7 +393,7 @@ end
 
 function Cell:ensureGhosts()
     for _, real in pairs(self.entities) do
-        if real.isReal and not real.migrating then
+        if real.isReal and real:canMigrate() and not real.migrating then
             self:pruneGhosts(real)
 
             for _, neighbor in ipairs(self.space.config:neighbors(self.info)) do

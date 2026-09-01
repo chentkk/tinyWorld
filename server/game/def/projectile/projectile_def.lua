@@ -4,6 +4,7 @@
 
 return {
     name = "Projectile",
+    migratable = false,
     props = {
         { name = "x", type = "number", sync = "all", persist = true },
         { name = "y", type = "number", sync = "all", persist = true },

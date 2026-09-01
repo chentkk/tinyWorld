@@ -1,6 +1,6 @@
 -- server/test/test_projectile_cross_cell.lua
--- 跨 cell 投掷物迁移测试(同 cellapp)。
--- 直线投掷物越过 cell 边界后, 新 cell 拥有 real, 旧 cell 留下 witness/ghost。
+-- 跨 cell 投掷物阶段1测试(同 cellapp)。
+-- 投掷物标记为 migratable=false, 越过 cell 边界仍留在原 cell, 不做迁移。
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
@@ -55,19 +55,13 @@ p.readyForSync = true
 fake.time = 110
 cellA:tick(0.1)
 
-assert(p.cell.info.id == "1:0", "projectile should migrate to cell 1:0")
+assert(p.cell.info.id == "0:0", "projectile should stay in origin cell")
 
-local witness
-for _, e in pairs(cellA.entities) do
-    if e.isGhost and e:getRealId() == p:getRealId() then witness = e end
-end
-assert(witness, "old cell should keep witness ghost")
-
--- 迁移后运动组件继续工作
+-- 不迁移但仍持续运动
 local move = p:getComponent("projectile")
-assert(move and not move.destroyed, "projectile component should survive migration")
+assert(move and not move.destroyed, "projectile component should keep running")
 local oldX = p.x
 move:onTick(0.1)
-assert(p.x > oldX, "projectile should keep moving after migration")
+assert(p.x > oldX, "projectile should keep moving without migration")
 
 print("PASS test_projectile_cross_cell")

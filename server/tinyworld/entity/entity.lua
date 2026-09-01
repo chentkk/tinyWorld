@@ -80,6 +80,11 @@ function Entity:get(name)
     return self.props:get(name)
 end
 
+-- 是否允许跨 cell 迁移。瞬态/特殊实体可通过 def.migratable=false 关闭。
+function Entity:canMigrate()
+    return not (self.def and self.def.migratable == false)
+end
+
 -- 客户端视角的权威实体 id。Real 返回自身 id, Ghost 返回真身 realId。
 function Entity:getRealId()
     return self.id
