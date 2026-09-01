@@ -30,21 +30,29 @@ function Aoi:enter(entity, x, y)
         self.grid[key] = bucket
     end
     bucket[entity.id] = entity
+    entity.aoiKey = key
 end
 
-function Aoi:move(entity, oldX, oldY, x, y)
-    local oldKey = self:gridKey(oldX, oldY)
+-- 位置变化后重算网格: 以上次 enter/move 记录的 key 为 old
+function Aoi:move(entity, x, y)
+    local oldKey = entity.aoiKey
     local newKey = self:gridKey(x, y)
-    if oldKey ~= newKey then
+    if oldKey == newKey then
+        return
+    end
+
+    if oldKey then
         local bucket = self.grid[oldKey]
         if bucket then bucket[entity.id] = nil end
-        self:enter(entity, x, y)
     end
+    self:enter(entity, x, y)
 end
 
 function Aoi:leave(entity, x, y)
-    local bucket = self.grid[self:gridKey(x, y)]
+    local key = entity.aoiKey or self:gridKey(x, y)
+    local bucket = self.grid[key]
     if bucket then bucket[entity.id] = nil end
+    entity.aoiKey = nil
 end
 
 -- 查询周围对象(不含自身)

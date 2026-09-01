@@ -53,6 +53,13 @@ real.x = 99
 cell:tick(0)
 assert(real.cell.info.id == "0:0")
 
+-- AOI 网格应跟随位置变化
+local seenInAoi = false
+for _, e in ipairs(cell:queryRange(99, 50)) do
+    if e == real then seenInAoi = true break end
+end
+assert(seenInAoi, "aoi grid not synced after move")
+
 -- 深入目标 cell 后迁移到 1:0
 fake.time = 110
 real.x = 130

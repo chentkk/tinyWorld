@@ -79,6 +79,7 @@ end
 
 function Cell:tick(dt)
     self:updateEntities(dt)
+    self:syncAoi()
     self:updateVisibilities()
     self:buildOutboxes()
     self:deliverOutboxes()
@@ -92,6 +93,13 @@ end
 function Cell:updateEntities(dt)
     for _, entity in pairs(self.entities) do
         if entity.isReal then entity:onTick(dt) end
+    end
+end
+
+-- 实体 tick 后重算 AOI 网格, 保证 query 与实际位置一致
+function Cell:syncAoi()
+    for _, entity in pairs(self.entities) do
+        self.aoi:move(entity, entity.x, entity.y)
     end
 end
 
