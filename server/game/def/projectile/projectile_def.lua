@@ -13,6 +13,8 @@ return {
         { name = "hitRadius", type = "number", sync = "all", default = 2 },
         { name = "ownerId", type = "number", sync = "all" },
         { name = "targetId", type = "number", sync = "all" },
+        { name = "pierce", type = "boolean", sync = "all", default = false },
+        { name = "maxHits", type = "number", sync = "all" },
     },
     records = {},
     containers = {},

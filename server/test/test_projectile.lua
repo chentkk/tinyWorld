@@ -88,4 +88,30 @@ while not move2.destroyed do move2:onTick(0.1) end
 assert(hitData2, "directional hit callback missing")
 assert(#hitData2.targets >= 2, "directional should hit multiple targets")
 
+-- 3) 穿透型: 命中后不销毁, 继续飞行直到超距; 同一目标只命中一次
+local hitData3 = {}
+local fakeAbility3 = {
+    OnProjectileHit = function(_, targets, x, y)
+        hitData3[#hitData3 + 1] = targets
+    end,
+}
+
+local pierceTargetA = newEntity(5, 4, 0)
+local pierceTargetB = newEntity(6, 9, 0)
+local p3 = newProjectile(0, 0, {
+    targetId = nil, dir = 0, speed = 20, range = 15, hitRadius = 3,
+    pierce = true,
+}, fakeAbility3)
+local cell3 = makeCell({ [pierceTargetA.id] = pierceTargetA, [pierceTargetB.id] = pierceTargetB, [p3.id] = p3 })
+p3:setupComponents(p3.def.cellComponents)
+local move3 = p3:getComponent("projectile")
+local guard = 0
+while not move3.destroyed and guard < 100 do
+    guard = guard + 1
+    move3:onTick(0.1)
+end
+
+assert(#hitData3 >= 2, "pierce projectile should hit multiple distinct targets")
+assert(cell3.removed[p3.id], "pierce projectile should eventually be destroyed after range")
+
 print("PASS test_projectile")

@@ -26,6 +26,8 @@ function M.CreateTrackingProjectile(params)
             speed = params.iMoveSpeed or 10,
             range = params.range or 20,
             hitRadius = params.hitRadius or 2,
+            pierce = params.pierce or false,
+            maxHits = params.maxHits,
         },
         ability = params.Ability,
     })
@@ -45,6 +47,8 @@ function M.CreateLinearProjectile(params)
             speed = params.iMoveSpeed or 10,
             range = params.range or 20,
             hitRadius = params.hitRadius or 2,
+            pierce = params.pierce or false,
+            maxHits = params.maxHits,
         },
         ability = params.Ability,
     })

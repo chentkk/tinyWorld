@@ -1,8 +1,11 @@
 -- game/components/projectile.lua
 -- 投掷物运动组件。
---   * 有 targetId: 追踪单一目标
---   * 无 targetId: 按 dir 直线前进, hitRadius 检测沿途候选目标
--- 命中/超距后调用 Ability:OnProjectileHit(目标, 落点), 效果由具体技能决定。
+--   * targetId: 追踪目标
+--   * 无 targetId: 按 dir 直线前进
+-- 命中控制:
+--   * pierce=false: 命中后立刻销毁(默认)
+--   * pierce=true : 命中后继续前进, 直到超距或命中数达 maxHits
+-- 同一目标只触发一次 projectile_hit / OnProjectileHit。
 
 local component = require "tinyworld.entity.component"
 
@@ -11,6 +14,8 @@ local Projectile = component.extend("Projectile")
 function Projectile:ctor(entity, name)
     component.ctor(self, entity, name)
     self.traveled = 0
+    self.hitSet = {}
+    self.hitCount = 0
     self.destroyed = false
 end
 
@@ -49,7 +54,8 @@ function Projectile:targetsInRadius(radius)
     for _, candidate in pairs(entities) do
         if candidate ~= entity
             and candidate.clientId
-            and (not ownerId or candidate.clientId ~= ownerId) then
+            and (not ownerId or candidate.clientId ~= ownerId)
+            and not self.hitSet[candidate.clientId] then
             local dx = (candidate.x or 0) - entity.x
             local dy = (candidate.y or 0) - entity.y
             if dx * dx + dy * dy <= radius2 then
@@ -58,6 +64,37 @@ function Projectile:targetsInRadius(radius)
         end
     end
     return out
+end
+
+function Projectile:onHit(hitTargets, x, y)
+    local entity = self.entity
+
+    entity:emit("projectile_hit", {
+        projectile = entity,
+        ownerId = entity:get("ownerId"),
+        targets = hitTargets,
+    })
+
+    local ability = entity.ability
+    if ability and ability.OnProjectileHit then
+        ability:OnProjectileHit(hitTargets, x, y)
+    end
+
+    for _, target in ipairs(hitTargets) do
+        self.hitSet[target.clientId] = true
+    end
+    self.hitCount = self.hitCount + #hitTargets
+
+    if entity:get("pierce") then
+        local maxHits = entity:get("maxHits")
+        if maxHits and self.hitCount >= maxHits then
+            self.destroyed = true
+            entity:destroy()
+        end
+    else
+        self.destroyed = true
+        entity:destroy()
+    end
 end
 
 function Projectile:onTick(dt)
@@ -105,22 +142,23 @@ function Projectile:onTick(dt)
         end
     end
 
-    if #hitTargets > 0 or outOfRange then
-        self.destroyed = true
+    if #hitTargets > 0 then
+        self:onHit(hitTargets, entity.x, entity.y)
+    end
 
-        -- 命中事件(目标可空)
+    if outOfRange and not self.destroyed then
         entity:emit("projectile_hit", {
             projectile = entity,
             ownerId = entity:get("ownerId"),
-            targets = hitTargets,
+            targets = {},
         })
 
-        -- 把命中回调交给具体技能
         local ability = entity.ability
         if ability and ability.OnProjectileHit then
-            ability:OnProjectileHit(hitTargets, entity.x, entity.y)
+            ability:OnProjectileHit({}, entity.x, entity.y)
         end
 
+        self.destroyed = true
         entity:destroy()
     end
 end
