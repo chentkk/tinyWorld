@@ -1,4 +1,4 @@
--- tinyworld/combat/sync.lua
+-- tinyworld/app/cellapp/sync.lua
 -- 战斗同步组件(cellapp 侧底层同步层)。
 -- 监听 combat_damage / combat_heal 一次性事件转成客户端 RPC。
 -- modifier 状态由 modifiers_view 同步, 不在这里重复下发。

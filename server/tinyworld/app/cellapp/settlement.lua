@@ -1,4 +1,4 @@
--- tinyworld/combat/settlement.lua
+-- tinyworld/app/cellapp/settlement.lua
 -- 战斗结算组件: 挂在 real 实体上, 注册 ghost -> real 的结算 RPC。
 -- 伤害/治疗仍在 combat.damage 内结算, 本组件只负责 RPC 入口。
 
