@@ -9,7 +9,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 local defs = require "tinyworld.entity.defs"
 local Entity = require "tinyworld.entity.entity"
 local abilityLoader = require "tinyworld.combat.ability_loader"
-local combatRunner = require "tinyworld.combat.combat_runner"
+local CombatAgent = require "tinyworld.combat.combat_agent"
 local modifierManager = require "tinyworld.combat.modifier_manager"
 local combatDamage = require "tinyworld.combat.damage"
 
@@ -59,8 +59,8 @@ assert(ab:GetAbilityName() == "ability_blood_harvest")
 
 -- 平铺到施法完成(castPoint 0.3)
 ab:cast(nil)
-combatRunner.updateCombat(caster, 0.3)
-combatRunner.updateCombat(caster, 0.1)
+CombatAgent.updateCombat(caster, 0.3)
+CombatAgent.updateCombat(caster, 0.1)
 
 -- 直接伤害: 120
 assert(near:get("hp") == 500 - 120, ("near hp=%d expected 380"):format(near:get("hp")))

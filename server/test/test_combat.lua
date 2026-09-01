@@ -7,7 +7,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 local Entity = require "tinyworld.entity.entity"
 local defs = require "tinyworld.entity.defs"
 local abilityLoader = require "tinyworld.combat.ability_loader"
-local combatRunner = require "tinyworld.combat.combat_runner"
+local CombatAgent = require "tinyworld.combat.combat_agent"
 local combatDamage = require "tinyworld.combat.damage"
 
 defs.register("CombatDummy", {
@@ -54,7 +54,7 @@ local curse = abilities[4]
 
 -- 立即进入持续施法
 assert(abilityLoader.castAbility(unit,  2, nil))
-combatRunner.updateCombat(unit,  0.1)
+CombatAgent.updateCombat(unit,  0.1)
 assert(borrowed.state == "channeling")
 
 -- 带施法时间: 施法中尚不产生 modifier
@@ -63,11 +63,11 @@ target:getContainer("modifiers_view"):openView("modifiers")
 target:getContainer("abilities_view"):openView("abilities")
 target.hp = 500
 abilityLoader.castAbility(unit,  1, target)
-combatRunner.updateCombat(unit,  0.2)
+CombatAgent.updateCombat(unit,  0.2)
 assert(#modifiersOf(target) == 0, "should not apply before cast point")
 
-combatRunner.updateCombat(unit,  0.3) -- 达到 castPoint 0.4 后开始
-combatRunner.updateCombat(unit,  0.1)
+CombatAgent.updateCombat(unit,  0.3) -- 达到 castPoint 0.4 后开始
+CombatAgent.updateCombat(unit,  0.1)
 assert(#modifiersOf(target) == 1, "shield modifier should apply after cast point")
 
 -- 先摧毁盾, 再验证伤害结算: hp 属性自动变化, 并触发事件
@@ -83,7 +83,7 @@ assert(damaged == 80)
 
 -- 立即释放: 迷雾缠绕造成 90 点魔法伤害
 abilityLoader.castAbility(unit,  3, target)
-combatRunner.updateCombat(unit,  0.2)
+CombatAgent.updateCombat(unit,  0.2)
 assert(target:get("hp") == 330)
 
 -- modifier 增加 / 移除事件可驱动底层同步(buff view)
@@ -94,7 +94,7 @@ end)
 shield.cooldownLeft = 0
 shield.state = "ready"
 abilityLoader.castAbility(unit,  1, target)
-combatRunner.updateCombat(unit,  0.5) -- 超过 castPoint
+CombatAgent.updateCombat(unit,  0.5) -- 超过 castPoint
 assert(#modifiersOf(target) == 1)
 assert(addedNames[1] == "modifier_abaddon_aphotic_shield_lua")
 

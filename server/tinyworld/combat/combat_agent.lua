@@ -1,11 +1,10 @@
--- game/components/combat_agent.lua
+-- tinyworld/combat/combat_agent.lua
 -- cellapp 侧战斗驱动组件。
 -- 技能属于玩家数据: baseapp 加载后经 cellInitData 传入, 组件只负责装配与施放。
 -- 客户端请求释放技能时携带目标 targetId 与技能 index。
 
 local component = require "tinyworld.entity.component"
 local abilityLoader = require "tinyworld.combat.ability_loader"
-local combatRunner = require "tinyworld.combat.combat_runner"
 
 local CombatAgent = component.extend("CombatAgent")
 
@@ -23,8 +22,25 @@ function CombatAgent:onCreate()
     abilityLoader.loadAbilities(self.entity, names)
 end
 
+-- 框架级驱动: 也可供测试直接调用
+function CombatAgent.updateCombat(unit, dt)
+    local modifiersView = unit:getContainer("modifiers_view")
+    if modifiersView then
+        for _, mod in ipairs(modifiersView:childrenList()) do
+            if mod then mod:update(dt) end
+        end
+    end
+
+    local abilitiesView = unit:getContainer("abilities_view")
+    if abilitiesView then
+        for _, ab in ipairs(abilitiesView:childrenList()) do
+            if ab then ab:update(dt) end
+        end
+    end
+end
+
 function CombatAgent:onTick(dt)
-    combatRunner.updateCombat(self.entity, dt)
+    CombatAgent.updateCombat(self.entity, dt)
 end
 
 function CombatAgent:resolveTarget(targetId)
