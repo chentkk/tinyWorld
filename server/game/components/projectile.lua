@@ -84,14 +84,21 @@ end
 function Projectile:onHit(hitTargets, x, y)
     local entity = self.entity
 
-    -- ghost 命中尽量归一到真身, 避免技能对投影对象结算
+    -- ghost 命中尽量归一到真身, 并按 realId 去重, 避免同 tick/连续 tick 重复结算
     local resolved = {}
+    local seen = {}
     for _, target in ipairs(hitTargets) do
         local real = target
         if target.isGhost and target.realEntity then
             real = target:realEntity() or target
         end
-        if real then resolved[#resolved + 1] = real end
+        if real then
+            local rid = real:getRealId()
+            if not self.hitSet[rid] and not seen[rid] then
+                seen[rid] = true
+                resolved[#resolved + 1] = real
+            end
+        end
     end
 
     entity:emit("projectile_hit", {
