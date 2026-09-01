@@ -7,6 +7,7 @@ local tests = {
     "test_proto", "test_schema", "test_space", "test_loadbalancer", "test_combat",
     "test_ghost_sync", "test_blood_harvest", "test_ghost_promote",
     "test_projectile",
+    "test_projectile_cross_cell",
 }
 
 for _, name in ipairs(tests) do
