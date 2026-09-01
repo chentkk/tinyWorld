@@ -19,6 +19,7 @@ return {
         "game.components.move",
         { name = "combat_sync", module = "tinyworld.combat.sync" },
         "game.components.combat_agent",
+        { name = "combat_settlement", module = "tinyworld.combat.settlement" },
         { name = "cell_sync_stress", module = "game.components.sync_stress" },
     },
     cellOpenViews = { "modifiers_view", "abilities_view" },

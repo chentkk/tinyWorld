@@ -39,7 +39,14 @@ function GhostEntity:sendReal(method, data)
     if self.realApp == self.cell.host.appId then
         local cell = self.space:getCell(self.realCellKey)
         local real = cell and cell:get(self.realId)
-        if real and real[method] then real[method](real, data) end
+        if real then
+            if real[method] then
+                real[method](real, data)
+            else
+                real:dispatchRealRpc(method, data)
+            end
+            return
+        end
     else
         self.cell.host:send(self.realApp, "real_rpc",
             self.space.spaceId, self.realCellKey, self.realId, method, data)
@@ -50,7 +57,12 @@ function GhostEntity:callReal(method, data)
     if self.realApp == self.cell.host.appId then
         local cell = self.space:getCell(self.realCellKey)
         local real = cell and cell:get(self.realId)
-        if real and real[method] then return real[method](real, data) end
+        if real then
+            if real[method] then
+                return real[method](real, data)
+            end
+            return real:dispatchRealRpc(method, data)
+        end
     end
     return self.cell.host:call(self.realApp, "real_rpc",
         self.space.spaceId, self.realCellKey, self.realId, method, data)

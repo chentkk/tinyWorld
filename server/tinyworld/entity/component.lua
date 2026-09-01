@@ -23,6 +23,14 @@ function Component:registerBaseRpc(methodName)
     self.entity:registerBaseRpc(self, methodName)
 end
 
+function Component:registerRealRpc(methodName)
+    self.entity:registerRealRpc(self, methodName)
+end
+
+function Component:registerGhostRpc(methodName)
+    self.entity:registerGhostRpc(self, methodName)
+end
+
 function Component:listen(eventName, fn)
     return self.entity:on(eventName, fn)
 end
