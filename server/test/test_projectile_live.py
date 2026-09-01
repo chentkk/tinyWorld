@@ -41,6 +41,7 @@ WANTED = {
     ("RPC","onSpellCast"), ("RPC","onCombatDamage"), ("RPC","onCombatHeal"),
     ("object","add"), ("object","remove"),
     ("view","modifiers_view"), ("view","abilities_view"),
+    ("prop","props"),
 }
 
 def drain(s, seconds):
@@ -68,7 +69,7 @@ print("== tracking projectile ==")
 send(s1, "RPC", "onCastAbility", {"index": 5, "targetId": 2})
 for m in drain(s1, 4) + drain(s2, 4):
     t, n = m.get("t"), m.get("n")
-    if t == "object" or (t == "RPC" and n in ("onSpellCast","onCombatDamage","onCombatHeal")):
+    if t == "object" or t == "prop" or (t == "RPC" and n in ("onSpellCast","onCombatDamage","onCombatHeal")):
         print(t, n, m.get("d"))
 
 time.sleep(5)
@@ -76,7 +77,7 @@ print("== linear projectile ==")
 send(s1, "RPC", "onCastAbility", {"index": 6, "targetId": 0})
 for m in drain(s1, 6) + drain(s2, 6):
     t, n = m.get("t"), m.get("n")
-    if t == "object" or (t == "RPC" and n in ("onSpellCast","onCombatDamage","onCombatHeal")):
+    if t == "object" or t == "prop" or (t == "RPC" and n in ("onSpellCast","onCombatDamage","onCombatHeal")):
         print(t, n, m.get("d"))
 
 s1.close(); s2.close()

@@ -11,6 +11,11 @@ local component = require "tinyworld.entity.component"
 
 local Projectile = component.extend("Projectile")
 
+local function round2(n)
+    n = tonumber(n) or 0
+    return math.floor(n * 100 + 0.5) / 100
+end
+
 function Projectile:ctor(entity, name)
     component.ctor(self, entity, name)
     self.traveled = 0
@@ -93,15 +98,19 @@ function Projectile:onHit(hitTargets, x, y)
         return
     end
 
-    if entity:get("pierce") then
+    -- 直线型: 默认穿透, 直到超距; 显式 pierce=false 才命中销毁
+    local pierce = entity:get("pierce")
+    if pierce == false then
+        self.destroyed = true
+        entity:destroy()
+    end
+
+    if not self.destroyed then
         local maxHits = entity:get("maxHits")
         if maxHits and self.hitCount >= maxHits then
             self.destroyed = true
             entity:destroy()
         end
-    else
-        self.destroyed = true
-        entity:destroy()
     end
 end
 
@@ -132,8 +141,8 @@ function Projectile:onTick(dt)
         self.traveled = range
     end
 
-    entity.x = entity.x + dirX * step
-    entity.y = entity.y + dirY * step
+    entity.x = round2(entity.x + dirX * step)
+    entity.y = round2(entity.y + dirY * step)
 
     local trackingTarget = self:findTarget()
     local hitTargets = {}

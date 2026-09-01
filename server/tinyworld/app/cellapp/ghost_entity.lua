@@ -15,8 +15,8 @@ function GhostEntity:ctor(def, id, kind, space, cell, realId, x, y)
     self.clientId = realId -- 客户端看到的是真身 id
     self.space = space
     self.cell = cell
-    self.x = x or 0
-    self.y = y or 0
+    self.props:set("x", x or 0)
+    self.props:set("y", y or 0)
     self.realApp = nil
     self.realCellKey = nil
     self.pendingEvents = {}

@@ -11,8 +11,8 @@ function RealEntity:ctor(def, id, kind, space, cell, x, y)
     self.isReal = true
     self.space = space
     self.cell = cell
-    self.x = x or 0
-    self.y = y or 0
+    self.props:set("x", x or 0)
+    self.props:set("y", y or 0)
     self.ghosts = {} -- 维护真实对象关联的 ghost 列表
     self.moving = false
     self.lastMigrateTime = 0
@@ -43,9 +43,6 @@ end
 
 -- override 基类钩子
 function RealEntity:onPropChange(name, value, mode, source)
-    if name == "x" or name == "y" then
-        rawset(self, name, value)
-    end
     self:onPropChanged(name, value, mode, source)
     self:emit("prop_change", name, value, mode, source)
     self:eachComponent(function(_, comp)

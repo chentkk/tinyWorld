@@ -7,8 +7,8 @@
         "AbilityBehavior"       "NO_TARGET"
         "AbilityCastPoint"      "0.1"
         "AbilityCooldown"       "4.0"
-        "movementSpeed"         "40"
-        "range"                 "80"
+        "movementSpeed"         "15"
+        "range"                 "120"
         "hitRadius"             "6"
         "damage"                "25"
     }
