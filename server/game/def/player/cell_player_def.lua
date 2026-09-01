@@ -18,7 +18,6 @@ return {
     cellComponents = {
         "game.components.move",
         "tinyworld.combat.combat_agent",
-        { name = "cell_sync_stress", module = "game.components.sync_stress" },
     },
     cellOpenViews = { "modifiers_view", "abilities_view" },
 }

@@ -33,6 +33,10 @@ function RealEntity:setBaseApp(addr)
     self.baseApp = addr
 end
 
+function RealEntity:getSpaceId()
+    return self.space and self.space:getSpaceId()
+end
+
 -- 属性变化: 记录 ghost 同步候选 + 客户端广播候选
 function RealEntity:onPropChanged(name, value, mode, source)
     if mode ~= "none" then

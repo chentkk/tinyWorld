@@ -41,7 +41,7 @@ return {
         "game.components.bag",
         "game.components.equipment",
         "game.components.task",
-        { name = "base_sync_stress", module = "game.components.sync_stress" },
+
     },
     baseOpenViews = { "bag", "equipment" },
 }
