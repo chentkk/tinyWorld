@@ -7,10 +7,6 @@ local Entity = require "tinyworld.entity.entity"
 
 local GhostEntity = Entity.extend("GhostEntity")
 
-function GhostEntity:getRealId()
-    return self.realId
-end
-
 function GhostEntity:getSpaceId()
     return self.space and self.space:getSpaceId()
 end

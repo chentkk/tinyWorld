@@ -26,7 +26,6 @@ function Cell:ctor(cellInfo, host, space)
     self.host = host
     self.space = space
     self.entities = {}
-    self.realIndex = {}
     self.players = {}
     self.aoi = aoiMod.new(space.config.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
@@ -45,7 +44,6 @@ function Cell:addEntity(entity)
 
     entity.cell = self
     self.entities[entity.id] = entity
-    self.realIndex[entity:getRealId()] = entity
     self.aoi:enter(entity, entity.x, entity.y)
     -- object add 已携带全量 props, 避免同 tick 再发增量 prop
     entity:clearClientDirty()
@@ -62,7 +60,6 @@ function Cell:removeEntity(entity)
     if not self.entities[entity.id] then return end
 
     self.entities[entity.id] = nil
-    self.realIndex[entity:getRealId()] = nil
     self.aoi:leave(entity, entity.x, entity.y)
     if entity.kind == "Player" and entity.isReal then
         self.playerCount = self.playerCount - 1
@@ -78,7 +75,7 @@ function Cell:get(id)
 end
 
 function Cell:findByRealId(realId)
-    return self.realIndex[realId]
+    return self.entities[realId]
 end
 
 function Cell:queryRange(x, y)
@@ -320,8 +317,9 @@ function Cell:migrateEntity(real, ideal)
 
     local target = self.space:getCell(ideal.id)
     if target then
-        real.cell:leaveWitness(real)
-        real.cell:removeEntity(real)
+        local oldCell = real.cell
+        oldCell:removeEntity(real)
+        oldCell:leaveWitness(real)
         real.cell = target
         target:addEntity(real)
         return
@@ -344,14 +342,15 @@ function Cell:migrateRemote(real, ideal)
         return
     end
 
-    real.cell:leaveWitness(real)
-    real.cell:removeEntity(real)
+    local oldCell = real.cell
+    oldCell:removeEntity(real)
+    oldCell:leaveWitness(real)
 
     local peers = self:collectGhostPeers(real)
     self:reparentOldGhosts(real, ideal, peers)
     self.host:send(ideal.appId, "ghost_promote", self:getSpaceId(), ideal.id, real.id, {
         fromApp = self.host.appId,
-        witnessCellKey = real.cell.info.id,
+        witnessCellKey = oldCell:key(),
         peers = peers,
         baseApp = real.baseApp,
         playerId = real.playerId,
@@ -474,7 +473,7 @@ end
 -- 在本 cell 构造一个 real 的 ghost
 function Cell:buildGhost(real)
     local def = defs.get(real.kind) or real.def
-    local ghost = GhostEntity.new(def, self.host:nextId(), real.kind, self.space, self, real.id, real.x, real.y)
+    local ghost = GhostEntity.new(def, real.id, real.kind, self.space, self, real.id, real.x, real.y)
     ghost.props:load(real.props:dump())
     ghost.props:collectSync() -- 初始属性随 object add 下发, 不再作为变更重复广播
     return ghost
@@ -482,9 +481,8 @@ end
 
 -- 本 cell 内查找某 real 的 ghost
 function Cell:findGhost(realId)
-    for _, entity in pairs(self.entities) do
-        if entity.isGhost and entity.realId == realId then return entity end
-    end
+    local entity = self.entities[realId]
+    if entity and entity.isGhost then return entity end
     return nil
 end
 
@@ -524,7 +522,7 @@ function Cell:upsertRemoteGhost(req)
     local def = defs.get(req.kind)
     if not def then return false end
 
-    ghost = GhostEntity.new(def, self.host:nextId(), req.kind, self.space, self, req.realId, req.x, req.y)
+    ghost = GhostEntity.new(def, req.realId, req.kind, self.space, self, req.realId, req.x, req.y)
     if req.snapshot and req.snapshot.props then
         ghost.props:load(req.snapshot.props)
     end

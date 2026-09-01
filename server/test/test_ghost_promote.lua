@@ -118,7 +118,8 @@ real:set("y", 50)
 cellA:tick(0)
 
 assert(promoteCalls == 1, "ghost_promote not sent")
-assert(cellA:get(real.id) == nil, "real should leave origin cell")
+local oldEntity = cellA:get(real.id)
+assert(oldEntity == nil or not oldEntity.isReal, "real should leave origin cell")
 assert(rebind[7] and rebind[7].cellKey == "1:0", "baseapp rebind_cell not notified")
 
 local promoted = cellB:get(real.id)
