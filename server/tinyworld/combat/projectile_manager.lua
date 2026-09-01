@@ -8,8 +8,8 @@ local function baseState(source, target)
     return {
         x = source.x or 0,
         y = source.y or 0,
-        ownerId = source.clientId or source.id,
-        targetId = target and (target.clientId or target.id) or nil,
+        ownerId = source:getRealId(),
+        targetId = target and target:getRealId() or nil,
     }
 end
 

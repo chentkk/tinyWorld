@@ -58,18 +58,18 @@ end
 
 function cellapp:sendToClient(player, msg)
     if player.baseApp then
-        msg.playerId = player.playerId or player.clientId
+        msg.playerId = player.playerId or player:getRealId()
         log.debug("cellapp sendToClient entity=%s playerId=%s t=%s",
-            tostring(player.clientId), tostring(msg.playerId), tostring(msg.t))
+            tostring(player:getRealId()), tostring(msg.playerId), tostring(msg.t))
         skynet.send(player.baseApp, "lua", "client_send", msg)
     else
-        log.warn("cellapp sendToClient no baseApp entity=%s", tostring(player.clientId))
+        log.warn("cellapp sendToClient no baseApp entity=%s", tostring(player:getRealId()))
     end
 end
 
 function cellapp:notifyEntityMoved(real)
     -- 跨 cellapp 迁移完成后回调
-    log.info("entity %s promoted on app %d", real.clientId, cellapp.appId)
+    log.info("entity %s promoted on app %d", real:getRealId(), cellapp.appId)
 end
 
 -- 注册一个真身实体(供业务查找)

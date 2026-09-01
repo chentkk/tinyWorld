@@ -13,8 +13,8 @@ function CombatSync:onCreate()
 
     entity:on("combat_damage", function(_, attacker, amount, damageType, abilityName)
         self:push("onCombatDamage", {
-            entityId = entity.clientId,
-            attackerId = attacker and attacker.clientId,
+            entityId = entity:getRealId(),
+            attackerId = attacker and attacker:getRealId(),
             amount = amount,
             damageType = damageType,
             skill = abilityName,
@@ -23,8 +23,8 @@ function CombatSync:onCreate()
 
     entity:on("combat_heal", function(_, caster, amount, healType)
         self:push("onCombatHeal", {
-            entityId = entity.clientId,
-            casterId = caster and caster.clientId,
+            entityId = entity:getRealId(),
+            casterId = caster and caster:getRealId(),
             amount = amount,
             healType = healType,
         })
@@ -32,9 +32,9 @@ function CombatSync:onCreate()
 
     entity:on("combat_cast", function(_, ability, target)
         self:push("onSpellCast", {
-            entityId = entity.clientId,
+            entityId = entity:getRealId(),
             abilityName = ability and ability:GetAbilityName(),
-            targetId = target and (target.clientId or target.id),
+            targetId = target and target:getRealId(),
         })
     end)
 

@@ -7,12 +7,15 @@ local Entity = require "tinyworld.entity.entity"
 
 local GhostEntity = Entity.extend("GhostEntity")
 
+function GhostEntity:getRealId()
+    return self.realId
+end
+
 function GhostEntity:ctor(def, id, kind, space, cell, realId, x, y)
     Entity.ctor(self, def, id, kind)
     self.isGhost = true
     self.isReal = false
     self.realId = realId
-    self.clientId = realId -- 客户端看到的是真身 id
     self.space = space
     self.cell = cell
     self.props:set("x", x or 0)

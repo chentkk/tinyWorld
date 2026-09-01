@@ -41,7 +41,7 @@ function Entity:ctor(def, id, kind)
     rawset(self, "components", {})
     rawset(self, "event", event.new())
 
-    -- AOI 视野表: 以服务器实体 id 为索引。clientId 只是为了特定客户端显示,
+    -- AOI 视野表: 以服务器实体 id 为索引。客户端显示 id 统一使用 getRealId(),
     -- 由下发消息统一转换(objectAddMsg / objectRemoveMsg / cell 消息)。
     rawset(self, "visibleEntities", {})
     rawset(self, "dirtyClient", {})
@@ -73,6 +73,11 @@ end
 
 function Entity:get(name)
     return self.props:get(name)
+end
+
+-- 客户端视角的权威实体 id。Real 返回自身 id, Ghost 返回真身 realId。
+function Entity:getRealId()
+    return self.id
 end
 
 function Entity:getRecord(name)

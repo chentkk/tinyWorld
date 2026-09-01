@@ -31,7 +31,7 @@ function Projectile:findTarget()
 
     local entities = entity.cell and entity.cell.entities or {}
     for _, candidate in pairs(entities) do
-        if candidate.clientId == targetId and candidate ~= entity then
+        if candidate:getRealId() == targetId and candidate ~= entity then
             return candidate
         end
     end
@@ -58,9 +58,9 @@ function Projectile:targetsInRadius(radius)
     local ownerId = entity:get("ownerId")
     for _, candidate in pairs(entities) do
         if candidate ~= entity
-            and candidate.clientId
-            and (not ownerId or candidate.clientId ~= ownerId)
-            and not self.hitSet[candidate.clientId] then
+            and candidate:getRealId()
+            and (not ownerId or candidate:getRealId() ~= ownerId)
+            and not self.hitSet[candidate:getRealId()] then
             local dx = (candidate.x or 0) - entity.x
             local dy = (candidate.y or 0) - entity.y
             if dx * dx + dy * dy <= radius2 then
@@ -86,7 +86,7 @@ function Projectile:onHit(hitTargets, x, y)
     end
 
     for _, target in ipairs(hitTargets) do
-        self.hitSet[target.clientId] = true
+        self.hitSet[target:getRealId()] = true
     end
     self.hitCount = self.hitCount + #hitTargets
 

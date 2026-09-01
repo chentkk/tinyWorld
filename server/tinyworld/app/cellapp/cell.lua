@@ -155,7 +155,7 @@ end
 function Cell:sendProp(player, entity, props)
     if not props or not next(props) then return end
 
-    local data = { t = "prop", n = "props", d = { entityId = entity.clientId or entity.id } }
+    local data = { t = "prop", n = "props", d = { entityId = entity:getRealId() } }
     for k, v in pairs(props) do data.d[k] = v end
     self.host:sendToClient(player, data)
 end
@@ -188,19 +188,19 @@ end
 function Cell:sendGhostViewProp(player, entity, stage)
     if not stage or not next(stage) then return end
 
-    local data = { t = "prop", n = "props", d = { entityId = entity.clientId or entity.id } }
+    local data = { t = "prop", n = "props", d = { entityId = entity:getRealId() } }
     for k, v in pairs(stage) do data.d[k] = v end
     self.host:sendToClient(player, data)
 end
 
 function Cell:sendRecordOps(player, entity, name, ops)
     self.host:sendToClient(player, { t = "record", n = name,
-        d = { entityId = entity.clientId or entity.id, ops = ops } })
+        d = { entityId = entity:getRealId(), ops = ops } })
 end
 
 function Cell:sendViewOps(player, entity, name, ops)
     self.host:sendToClient(player, { t = "view", n = name,
-        d = { entityId = entity.clientId or entity.id, ops = ops } })
+        d = { entityId = entity:getRealId(), ops = ops } })
 end
 
 function Cell:deliverOutboxes()
@@ -238,7 +238,7 @@ function Cell:deliverToPlayer(player)
             self:sendEntityAroundTo(player, target)
             self:ghostLog("deliver outbox player=%s source=%s entity=%d kind=%s",
                 tostring(player.playerId), target.isGhost and "ghost" or "real",
-                target.clientId or target.id, target.kind)
+                target:getRealId(), target.kind)
         end
     end
 end

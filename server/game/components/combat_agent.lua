@@ -32,7 +32,7 @@ end
 function CombatAgent:resolveTarget(targetId)
     local cellEntities = self.entity.cell and self.entity.cell.entities or {}
     for _, candidate in pairs(cellEntities) do
-        if candidate.clientId == targetId then return candidate end
+        if candidate:getRealId() == targetId then return candidate end
     end
     return nil
 end

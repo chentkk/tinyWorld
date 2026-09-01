@@ -7,7 +7,6 @@ local RealEntity = Entity.extend("RealEntity")
 
 function RealEntity:ctor(def, id, kind, space, cell, x, y)
     Entity.ctor(self, def, id, kind)
-    self.clientId = id
     self.isReal = true
     self.space = space
     self.cell = cell
