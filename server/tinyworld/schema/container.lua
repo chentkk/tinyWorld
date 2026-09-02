@@ -210,22 +210,40 @@ function Container:childrenList()
     return out
 end
 
--- 子对象属性写回入口: 同一 flush 周期内同一子对象只保留一个 set op
+-- 子对象属性写回入口: 视图开启时合并同一子对象的 set op
 function Container:onChildPropChange(child, name, value)
-    local id = child:objectId()
-
     if self.isView then
-        local idx = self.dirtyIndex[id]
-        if idx and self.dirty[idx] and self.dirty[idx].type == "set" then
-            self.dirty[idx].data[name] = value
-        else
-            local op = { type = "set", id = id, data = { [name] = value } }
-            self.dirty[#self.dirty + 1] = op
-            self.dirtyIndex[id] = #self.dirty
-        end
+        self:mergeChildSet(child, name, value)
     end
+
     if self.host and self.host.onContainerPersist then
         self.host:onContainerPersist(self)
+    end
+end
+
+function Container:pendingSetOp(id)
+    local idx = self.dirtyIndex[id]
+    local op = idx and self.dirty[idx]
+    if op and op.type == "set" then
+        return op
+    end
+    return nil
+end
+
+function Container:appendSetOp(id, name, value)
+    local op = { type = "set", id = id, data = { [name] = value } }
+    self.dirty[#self.dirty + 1] = op
+    self.dirtyIndex[id] = #self.dirty
+    return op
+end
+
+function Container:mergeChildSet(child, name, value)
+    local id = child:objectId()
+    local op = self:pendingSetOp(id)
+    if op then
+        op.data[name] = value
+    else
+        self:appendSetOp(id, name, value)
     end
 end
 
