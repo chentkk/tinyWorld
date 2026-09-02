@@ -93,6 +93,7 @@ function Container.new(def, host)
 
     rawset(self, "viewId", nil)
     rawset(self, "dirty", {})
+    rawset(self, "dirtyIndex", {})
     rawset(self, "isView", false)
 
     return self
@@ -110,12 +111,14 @@ function Container:openView(viewId)
     self.isView = true
     self.viewId = viewId
     self.dirty = {}
+    self.dirtyIndex = {}
 end
 
 function Container:closeView()
     self.isView = false
     self.viewId = nil
     self.dirty = {}
+    self.dirtyIndex = {}
 end
 
 function Container:add(objOrData)
@@ -207,14 +210,19 @@ function Container:childrenList()
     return out
 end
 
--- 子对象属性写回的入口
+-- 子对象属性写回入口: 同一 flush 周期内同一子对象只保留一个 set op
 function Container:onChildPropChange(child, name, value)
+    local id = child:objectId()
+
     if self.isView then
-        self.dirty[#self.dirty + 1] = {
-            type = "set",
-            id = child:objectId(),
-            data = { [name] = value },
-        }
+        local idx = self.dirtyIndex[id]
+        if idx and self.dirty[idx] and self.dirty[idx].type == "set" then
+            self.dirty[idx].data[name] = value
+        else
+            local op = { type = "set", id = id, data = { [name] = value } }
+            self.dirty[#self.dirty + 1] = op
+            self.dirtyIndex[id] = #self.dirty
+        end
     end
     if self.host and self.host.onContainerPersist then
         self.host:onContainerPersist(self)
@@ -237,6 +245,7 @@ end
 function Container:collectSync()
     local ops = self.dirty
     self.dirty = {}
+    self.dirtyIndex = {}
     return ops
 end
 
