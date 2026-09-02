@@ -104,8 +104,13 @@ function RealEntity:applySnapshot(snap)
     if snap.props then self.props:load(snap.props) end
 end
 
+-- real 销毁时需同步销毁所有 ghost, 否则远端会残留不更新的 ghost。
+-- 注意: 迁移不调用 destroy, 走 reparent, 因此不会被这里的清理误伤。
 function RealEntity:onDestroy()
     Entity.onDestroy(self)
+    if self.cell and self.cell.destroyGhostsOf then
+        self.cell:destroyGhostsOf(self)
+    end
 end
 
 return RealEntity

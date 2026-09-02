@@ -396,14 +396,16 @@ function Cell:collectGhostPeers(real)
     return peers
 end
 
--- 为 neighbor cell 有玩家的地方维护 real 的 ghost
+-- 为 neighbor cell 维护 real 的 ghost。
+-- ghost 是否创建只看 canGhost(默认 true), 与是否可迁移(canMigrate)无关:
+-- 短生命周期的 projectile 不迁移, 但仍要在这里同步出 ghost。
 function Cell:ghostLog(fmt, ...)
     log.info("[ghost][cell " .. tostring(self.info and self.info.id) .. "] " .. fmt, ...)
 end
 
 function Cell:ensureGhosts()
     for _, real in pairs(self.entities) do
-        if real.isReal and real:canMigrate() and not real.migrating then
+        if real.isReal and real:canGhost() and not real.migrating then
             self:pruneGhosts(real)
 
             for _, neighbor in ipairs(self.space.config:neighbors(self.info)) do
@@ -439,6 +441,14 @@ function Cell:destroyGhost(real, key, info)
             real.id, info.app, info.cellKey)
     end
     real.ghosts[key] = nil
+end
+
+-- real 生命周期结束(销毁)时清理其所有 ghost。
+-- 迁移路径走 reparent, 不经过 destroy; 因此这里可以无条件清空。
+function Cell:destroyGhostsOf(real)
+    for _, info in pairs(real.ghosts or {}) do
+        self:destroyGhost(real, real.id .. "@" .. info.cellKey, info)
+    end
 end
 
 function Cell:ensureGhostIn(real, neighborInfo)

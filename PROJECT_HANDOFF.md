@@ -88,6 +88,10 @@ registry -> logservice -> dbmgr -> world -> login
 - `Entity` 基类：`props / records / containers / rpc / components / event`
 - 属性同步约定：**schema 字段只通过 `entity:set` / `entity.field = value` 写；绝不允许 rawset，否则 `Entity:__index` 在读时直接报错**
 - `RealEntity` 与 `GhostEntity` 是固定设计，不要合并或统一。
+- 迁移与 ghost 判定分离：
+  - `Entity:canMigrate()`：`def.migratable=false` 时返回 false。只影响 `Cell:checkMigrations`（是否跨 cell 迁移）。短生命周期对象（如 projectile）可关闭迁移，仍留在创建时的 cell 由该 cell 持续 tick。
+  - `Entity:canGhost()`：`def.ghostable=false` 时返回 false，否则默认 true。只影响 `Cell:ensureGhosts`（是否为其他 cell 创建 ghost）。关闭迁移不代表关闭 ghost；projectile 需要 ghost 同步给其他 cell 的观察者。
+  - real 生命周期结束（`RealEntity:onDestroy`）会调用 `Cell:destroyGhostsOf` 清理其所有 ghost；迁移路径走 `reparent`、不走 `destroy`，不会被误清。
 - `Record` 与 `Container` 都在一个 flush 周期内把同一行/同一子对象的多次 `set` 合并成一个 op。
 - `Container` 子对象现在统一用 `Object`（`tinyworld/schema/object.lua`）承载 props/records；`child_object.lua` 已简化并重命名为 `record_row.lua`。
 
@@ -135,7 +139,7 @@ Cell:tick
   - `pierce=false` 命中销毁，`pierce=true` 穿透到超距或 `maxHits`;
   - 默认直线 `pierce=true`;
   - 同一 realId 只命中一次去重；
-- 投掷物 `def.migratable=false`，不做跨 cell 迁移；
+- 投掷物 `def.migratable=false`：不做跨 cell 迁移，tick 始终由创建时的 cell 驱动；但 `canGhost` 默认 true，其他 cell 仍会创建其 ghost 并收到 object add / 移动 prop / object remove；
 - 跨 cellapp 目标通过 ghost 机制 + `dealDamage` 的 ghost→real 路由完成结算。
 
 ## 4. 已固定的关键命令/约束

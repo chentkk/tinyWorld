@@ -82,8 +82,15 @@ function Entity:get(name)
 end
 
 -- 是否允许跨 cell 迁移。瞬态/特殊实体可通过 def.migratable=false 关闭。
+-- migratable 只影响 checkMigrations, 不影响 ghost 创建(ghost 判定见 canGhost)。
 function Entity:canMigrate()
     return not (self.def and self.def.migratable == false)
+end
+
+-- 是否可为其他 cell 创建 ghost。默认所有 cell entity 都需要 ghost;
+-- 短生命周期对象(如 projectile)可以不迁移, 但仍需要 ghost 机制同步给其他 cell。
+function Entity:canGhost()
+    return not (self.def and self.def.ghostable == false)
 end
 
 -- 客户端视角的权威实体 id。Real 返回自身 id, Ghost 返回真身 realId。
