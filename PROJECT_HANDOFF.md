@@ -1,249 +1,186 @@
-# tinyWorld 项目交接文档（给新 AI 会话使用）
+# tinyWorld 交接文档
 
-## 目标
+本仓库当前位于 `/root/test/testv3`。服务器在 `/root/test/testv3/server`，客户端在 `/root/test/testv3/client`。
 
-读懂本仓库并继续开发/优化 tinyWorld：一个基于 skynet 的 MMORPG 服务端框架（参考 bigworld 概念），
-以及一个 love2d 客户端。文档覆盖：
-- 项目布局
-- 核心架构与数据流
-- 关键设计约束
-- 如何验证
-- 已知待办与“不要做什么”
-- 继续开发的建议入口
+## 1. 项目目标
 
----
+实现一个基于 skynet 的 MMORPG 服务端框架（参考 bigworld 概念），并配一个 love2d 多客户端。重点是把框架层（`server/tinyworld`）与游戏业务层（`server/game`）严格分离。
 
-## 1. 项目布局
+## 2. 目录结构
 
 ```text
 server/
-  skynet/                       # skynet 引擎(按 cservice/lualib/luaclib 存在)
-  tinyworld/                    # 通用框架（不含具体游戏业务）
-    core/                       # class/log/json/proto/bin/service/event/util/mockdb
-    schema/                     # property/property_schema/record/record_def/container/container_def/child_object
-    entity/                     # entity/component/rpc/defs/entity_def
-    net/                        # msg 协议封装 & message.log 格式化
-    space/                      # cell_info/space
-    combat/                     # env/ability/modifier/unit/combat/damage/sync
+  skynet/                       # skynet 引擎（不要改）
+  tinyworld/                    # 通用框架，不含具体游戏业务
+    core/                       # class/json/proto/bin/service/event/util/mockdb/log
+    schema/                     # 属性/表格/容器/子对象
+    entity/                     # Entity / Component / RPC / def 注册
+    net/                        # 协议消息构造与 message.log 格式化
+    space/                      # SpaceConfig / CellInfo
+    combat/                     # 战斗框架
     app/
-      world/                    # world 服务 + server_space + load_balancer
-      cellapp/                  # cellapp 服务 + local_space + cell + aoi + real/ghost entity + entity_msg
-      baseapp/                  # baseapp 服务 + baseentity
-      gate/
-      login/
-      dbmgr/
-      db/
-      logservice/
-  game/                         # 游戏业务（不进入 tinyworld 通用层）
-    def/                        # 对象定义目录（每类对象一个目录）
-      player/
-      modifier/
-      ability/
-      container/
-    components/                 # move/bag/equipment/task/weather/combat_agent/sync_stress
-                                # sync_stress 是压力测试组件
-    config/                     # skynet config + spaces + schema.sql
-    scripts/
-      npc/                      # dota 风格 KV 数据
-      vscripts/                 # dota 风格技能脚本
-    init.lua                    # 游戏挂载点：注册 defs、load/save、setup 组件
-  sql/                          # 建表 sql
+      boot.lua                  # 框架启动入口
+      registry.lua              # 服务地址注册表
+      logservice/ db/ dbmgr/ world/ login/ baseapp/ gate/ cellapp/
+  game/                         # 游戏业务
+    config/
+      config                    # skynet 启动配置
+      init.lua                  # 配置聚合入口
+      spaces.lua                # space 配置
+      entity_defs.lua           # entity def 注册清单
+      abilities.lua             # skill 数据目录配置
+      player_template.lua       # 玩家默认模板
+      schema.lua                # 建表 SQL / mock 数据
+    def/                        # 对象定义（player/modifier/ability/container/projectile）
+    components/                 # 游戏业务组件（bag/equipment/task/move/weather/sync_stress）
+    scripts/npc/                # dota 风格 KV 数据
+    scripts/vscripts/           # 具体技能/ modifier 脚本（只放业务逻辑）
+    main.lua                    # 游戏启动钩子（目前无额外游戏服务）
+  sql/init.sql                  # mysql 初始化脚本
   test/                         # 测试
 client/
   main.lua
   src/                          # net/json/entities/views/records/ui/move/debuglog
-PROJECT_HANDOFF.md              # 本文件
 ```
 
-## 2. 核心概念
+## 3. 核心设计
 
-### 2.1 三类数据布局
+### 3.1 boot 启动顺序（fixed）
 
-每个对象（player/monster/modifier/ability/container/子对象）都由定义文件描述：
-- `props`：属性（`PropertySchema`）
-- `records`：表格（`Record`）
-- `containers`：容器/视图（`Container`）
+`tinyworld/app/boot.lua` 负责框架启动：
 
-`props` 字段可包含：`name/type/sync/persist/comment/default`。
-`sync` 取值：`none/self/all`。
-
-容器定义结构：
-```lua
-return {
-  name = "bag",
-  persist = true,
-  props = { ... },        -- 容器自身属性
-  records = { ... },      -- 容器自身表格
-  childDef = { props = { ... }, records = { ... } },  -- 子对象定义（与 player 同结构）
-}
 ```
-**不再使用**：`viewProps`、`childProps`、`childRecords`、`setViewProp`、`getViewProp`、
-`setChildProp`、`getChildProp`、`getChildRecord`。
-
-### 2.2 数据读写方式
-
-属性：
-```lua
-entity.level = 10
-entity:set("level", 10)
-```
-`entity` 的属性 table（`entity.props`）负责 dure/同步；不要直接用 `entity.x =`（某些 x/y 由 real entity rawset）。
-
-表格（Record）：
-```lua
-local tasks = entity:getRecord("current_tasks")
-tasks:add({ taskid = 11, state = 0, progress = 0 })
-local row = tasks[10]       -- 读行
-row.progress = row.progress + 1   -- 行属性写回自动同步
-tasks:remove(10)
-```
-`Record` 行是 `ChildObject`，字段写回会自动触发同步 op。
-
-容器（View）：
-```lua
-local bag = entity:getContainer("bag")
-bag:openView("bag")
-bag:add({ id = 1, itemId = 1001, count = 3 })
-local item = bag:get(1)
-item.count = item.count + 1  -- 直接改子对象属性
-bag:remove(1)
-```
-容器自身属性：
-```lua
-bag.capacity = 16 -- 直接写
+registry -> logservice -> dbmgr -> world -> login
+-> baseapp(s) -> gate(s) -> cellapp(s)
+-> world.create_space("main")
+-> game.main.start(registry)
 ```
 
-### 2.3 实体同步模型（Real/Ghost 与 cell）
+- 所有框架服务由 boot 显式 `init`；
+- 服务地址统一在 `registry` 服务注册/查询；
+- 底层服务地址不会动态变化，服务在 init 时查询一次并缓存；
+- `skynet.setenv` 不再放服务地址，只保留 boot 静态参数。
 
-一个 cell 内有两种实体（**这是固定的设计，不要合并/统一**）：
-- `RealEntity`：真身，只有 home cell 保存权威对象
-- `GhostEntity`：别的 cell 中 real 的投影
+### 3.2 world / space / cellapp
 
-用一个统一的 `outbox` 思路：
-1. `Cell:tick` 分成 `updateEntities` / `updateVisibilities` / `buildOutboxes` / `deliverOutboxes`
-2. 每个 entity 在一次 buildOutbox 中只打包一次变更
-3. 观察者视角：从 `player.visibleEntities` 中取对象 outbox，发给自己
-4. `Real` 的 outbox 通过 `real:sendGhostEach(real.outbox)` 同步给所有 ghost
-5. ghost 下一 tick 再像 real 一样打包给观察者
+- `world` 是分布式场景管理中心；
+- `game.config.spaces` 只描述空间几何和感知参数，不描述 cellapp；
+- `world.create_space(spaceId)`：
+  1. 读 `game.config.spaces` 中的 def；
+  2. `SpaceConfig.compile(def)` 只做切分；
+  3. `CellAllocator.distribute(config, appIds)` 按顺序轮询分配 cellapp；
+  4. 存 `ServerSpace`；
+  5. 给每个 cellapp `bind_cells`（含完整 `cellId -> appId` 映射）；
+- `SpaceConfig.compile` 支持：
+  - 自动切分：`cellSize` 或 `cellCols/cellRows`
+  - 手动切分：`cells = { {id,x,y,w,h}, ... }`
+- **ghostRange 建议为 `2 * aoiRange`**，确保相邻 cell 边缘可见性安全。
+- `LocalSpace` 是一个 space 在某个 cellapp 上的运行态；一个 cellapp 可运行多个 space。
+- `Cell` 是运行时 cell，含 entities/players/AOI，tick 顺序：
+  ```
+  updateEntities -> syncAoi -> updateVisibilities
+  -> buildOutboxes -> deliverOutboxes
+  -> checkMigrations -> ensureGhosts -> broadcastGhostChanges
+  ```
 
-ghost 协议入口位于 `cellapp.lua` 的 `cmd.ghost_*`，最终落到 `Cell` 方法：
-- `upsertRemoteGhost`
-- `promoteGhost`
-- `applyRemoteGhostSync`
-- `destroyRemoteGhost`
+### 3.3 entity / schema
 
-`LocalSpace` 已经尽量薄：只管理本 cellapp 的 cell 集合与 space 数据边界。
-不要把迁移策略/实体物化逻辑写回 LocalSpace。
+- `Entity` 基类：`props / records / containers / rpc / components / event`
+- 属性同步约定：**schema 字段只通过 `entity:set` / `entity.field = value` 写；绝不允许 rawset，否则 `Entity:__index` 在读时直接报错**
+- `RealEntity` 与 `GhostEntity` 是固定设计，不要合并或统一。
+- `Record` 与 `Container` 都在一个 flush 周期内把同一行/同一子对象的多次 `set` 合并成一个 op。
+- `Container` 子对象现在统一用 `Object`（`tinyworld/schema/object.lua`）承载 props/records；`child_object.lua` 已简化并重命名为 `record_row.lua`。
 
-## 3. 服务与启动
+### 3.4 combat
 
-`server/game/config/config` 指定：
-- `cellapp_count=2`、`baseapp_count=1`
-- `db_mode=mysql`，也支持 `mock`
-- `login_port=8080`、`gate_ports=8000`
+当前 combat 模块：
 
-启动：
-```bash
-cd /root/test/testv3/server
-./skynet/skynet game/config/config
+- `tinyworld/combat/ability.lua`：Ability 类
+- `tinyworld/combat/modifier.lua`：Modifier 类
+- `tinyworld/combat/damage.lua`：伤害/治疗结算，并支持 ghost 目标路由到 real
+- `tinyworld/combat/modifier_manager.lua`：add/remove/hasModifier
+- `tinyworld/combat/ability_loader.lua`：自动扫描 vscripts 并注册 abilityFactory
+- `tinyworld/combat/combat_agent.lua`：完整战斗组件（技能装配、驱动、事件 RPC、ghost→real 结算 RPC 入口）
+- `tinyworld/combat/projectile.lua`：投掷物运动/命中组件
+- `tinyworld/combat/projectile_manager.lua`：追踪/直线投掷物创建工具
+- `tinyworld/combat/env.lua`：共享逻辑环境（IsServer）
+- `tinyworld/app/cellapp/`：不再有 `combat_sync/settlement`；战斗事务统一归 `CombatAgent`
+
+### 3.5 同步链路
+
+```
+Cell:tick
+  -> entity onTick 改 props/records/containers
+  -> AOI 重对齐
+  -> 玩家可见性更新
+  -> buildOutbox（每个实体一次）
+  -> deliverOutboxes（观察者领取）
+  -> 迁移/ ghost / ghost 变更广播
 ```
 
-服务名：
-- `world`：space/cell 管理，保存完整 space 信息
-- `cellapp`：运行 cell
-- `baseapp`：玩家与 base entity
-- `login`：http 登录鉴权
-- `gate`：socket/gateway
-- `dbmgr`：db 服务负载均衡
-- `db`：mysql/mock 执行 sql
-- `logservice`：写 message.log
+- Real 的 outbox 会发给它的 ghost；
+- Ghost 下一 tick 与 real 一样统一打包给观察者；
+- spawn / object add 之后会清理初始 dirty，避免同 tick 重复 prop；
+- object add 不再携带历史 `modifiers` 字段；modifier 状态只通过 `modifiers_view` 同步。
 
-服务入口命令用小写下划线，例如 `spawn_entity`、`ghost_create`、`cellapp_register`。
-所有服务必须有一个 `init` 方法（由 bootstrap/main 逐一切线/调用或内部 init）。
+### 3.6 投掷物 projectile
 
-## 4. 战斗 / vscripts
+- 定义：`game/def/projectile/projectile_def.lua`
+- 组件：`tinyworld/combat/projectile.lua`
+- 创建工具：`tinyworld/combat/projectile_manager.lua`
+- cmd：`cellapp.spawn_projectile` 等同于 `spawn_entity`，kind 默认 `Projectile`
+- `projectile` 支持：
+  - `targetId` 存在：追踪目标，命中即销毁；
+  - 无 `targetId`：直线前进；
+  - `pierce=false` 命中销毁，`pierce=true` 穿透到超距或 `maxHits`;
+  - 默认直线 `pierce=true`;
+  - 同一 realId 只命中一次去重；
+- 投掷物 `def.migratable=false`，不做跨 cell 迁移；
+- 跨 cellapp 目标通过 ghost 机制 + `dealDamage` 的 ghost→real 路由完成结算。
 
-vscripts 目录遵循 dota2 风格：
-- NPC 数据在 `game/scripts/npc/...`
-- 技能文件 `game/scripts/vscripts/heroes/...`
-- 文件只放具体技能逻辑.
-- 技能脚本直接定义全局 `ability_...`/`modifier_...`（不要 `local M` 包裹）
-- `LinkLuaModifier` 是 vscripts 预加载入口，能力创建时预加载 `ScriptFile`
+## 4. 已固定的关键命令/约束
 
-技能加载：
-- 玩家技能列表取自 baseentity 的 `records.abilities`，由 baseapp 打包成 `initData`
-- cellapp 创建 cell entity（real）时通过 `CombatAgent` 的 `entity:loadAbilities(names)` 创建能力
-- 被动 modifier 通过 ability 的 `GetIntrinsicModifierName()` 返回 name，由 `Ability:initModifier()` 自动挂载
+- 文件名小写；函数/方法名 camelCase；服务命令小写下划线；
+- 通用代码放 `server/tinyworld`，游戏业务放 `server/game`；
+- 旧接口 `viewProps/childProps/childRecords/setViewProp/getViewProp/setChildProp/getChildProp/getChildRecord` 已废弃，禁止恢复；
+- RealEntity/GhostEntity 是固定设计；
+- 不要用 `goto`；
+- 不要直接 rawset schema 字段；
+- `sync_stress` 是压力测试组件，当前不要默认加载。
 
-modifier/ability 状态同步：
-- `modifiers_view`（观测者可见）：cell 上 View，子对象是 `modifier_def`
-- `abilities_view`（selfOnly）：cell 上 View，子对象是 `ability_def`
-- combat 同步字段由 `modifier:viewData()` / `ability:viewData()` 提供；通用层只负责 view 增删改
-
-## 5. 协议
-
-网络包：2 字节小端长度 + JSON body。
-
-消息：
-- 属性：`prop props{entityId, ...}`
-- 对象：`object add{entityId, kind, props, modifiers}` / `object remove{entityId}`
-- 表格：`record name{entityId, ops}`
-- 视图/容器：`view name{entityId, ops}`（op：add/remove/set/view）
-- 一次性战斗事件：`RPC onCombatDamage/onCombatHeal/onSpellCast`
-  - modifier 的 add/remove/refresh 不再单独发 RPC，只走 view
-
-## 6. 测试与验证
+## 5. 测试
 
 ```bash
 cd /root/test/testv3/server
 lua test/run_all.lua
 ```
 
-已有测试：
-- property/record/container/entity/bin
-- space 迁移/ghost
-- load_balancer
-- combat/skills
+应输出 `ALL TESTS PASS`。
 
-真实多客户端验证可以用 python 模拟协议，也可以启动 love 客户端。
-love 需要 xvfb（本环境已安装）。
+关键测试文件：
+- `test/run_all.lua`
+- `test/test_projectile_10_clients.py`：10 客户端投掷物压测（需真实服务器/DB 准备）
 
-## 7. 设计约束/不要做
+## 6. 下个会话必做任务
 
-- 文件名小写，服务路径小写。
-- 函数/类型 camelCase；对象类用 `class.makeClass`，模块单类时直接 `return Class`。
-- 不要用 `goto`。
-- 不要把业务写进 tinyworld；tinyworld 是通用框架。
-- 不要打印大段代码；函数简洁、早 return、避免嵌套。
-- 老的 `viewProps/childProps/setChildProp` 等已废弃，不要新增/恢复。
-- `playerId` 作为玩家 cell entityId；monster/projectile 用 `nextId()`。
+1. 把 space 拆为 4 个 cell，并配置 4 个 cellapp；
+2. 准备 10 个测试账号/角色，出生在 space 中心附近（4 个 cell 交界处），使每个玩家可能在其他 3 个 cell 都有 ghost；
+3. 运行 10 客户端测试，让其中 1 个施放投掷物技能；
+4. 比对 `server/game/logs/message.log`，检查：
+   - 10 个客户端是否都登录/进入世界；
+   - 远端 ghost 是否创建/同步；
+   - projectile object add / 移动 prop / object remove 是否正常；
+   - 每个目标是否只结算一次，是否广播给所有观察者；
+   - message.log 格式是否符合预期。
 
-## 8. 当前状态
+## 7. 提示词（下个会话直接使用）
 
-- mysql 模式可运行
-- 登录/进世界/移动同步/背包装备任务同步/战斗同步均验证通过
-- 大量测试覆盖
-- `Cell:buildOutboxes/deliverOutboxes` 同步模型已整理
-- 旧 RPC 同步已清理，modifier 使用 View 同步
-- message.log 毫秒级
-
-## 9. 建议继续开发方向
-
-1. 完善 baseapp 时长/组件 tick 的生命周期与 player 下线保存
-2. 客户端接入 vscripts/IsServer 共享逻辑
-3. 技能 index 改为 abilityName 驱动，避免顺序依赖
-4. 增强 AOI 网格与跨 cell 推送验证
-
-## 10. 新会话提示词
-
-将以下内容发给新 AI 会话：
-
----
-
-请阅读 /root/test/testv3/PROJECT_HANDOFF.md。
-按文档理解 tinyWorld 项目。遵循文档中的设计约束：
-- 不要恢复已废弃的 viewProps/childProps/setChildProp 等旧接口。
-- RealEntity / GhostEntity 是固定设计，不要合并/统一，也不要提出合并方案。
-- 不要动代码。
-先跑 `cd /root/test/testv3/server && lua test/run_all.lua` 确认基线，再报告你理解的核心架构和下一步建议。
----
+```text
+请阅读 /root/test/testv3/PROJECT_HANDOFF.md，按文档理解 tinyWorld。
+然后执行任务：
+1. 启动 mysql 并准备测试数据。
+2. 启动服务器（4 cellapp / 2x2 space）。
+3. 运行 10 客户端投掷物压力测试。
+4. 比对 server/game/logs/message.log，报告是否符合预期。
+不要修改任何代码。
+```
