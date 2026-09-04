@@ -86,15 +86,17 @@ function cmd.init(registryAddr, index, gameConfig)
 
     require("tinyworld.combat.env").setIsServer(true)
 
-    local entityDefs = gameConfig and gameConfig.entityDefs or {}
-    for _, bootModule in ipairs(entityDefs.cell and entityDefs.cell.boot or {}) do
+    assert(gameConfig, "cellapp.init: gameConfig required")
+    local entityDefs = assert(gameConfig.entityDefs, "gameConfig.entityDefs required")
+    local cellDefs = assert(entityDefs.cell, "entityDefs.cell required")
+    for _, bootModule in ipairs(cellDefs.boot) do
         require(bootModule)
     end
-    if entityDefs.cell and entityDefs.cell.abilityConfig then
+    if cellDefs.abilityConfig then
         local abilityLoader = require "tinyworld.combat.ability_loader"
-        abilityLoader.setup(require(entityDefs.cell.abilityConfig))
+        abilityLoader.setup(require(cellDefs.abilityConfig))
     end
-    defs.registerList(entityDefs.cell and entityDefs.cell.defs)
+    defs.registerList(cellDefs.defs)
 
     local ret = skynet.call(cellapp.world, "lua", "cellapp_register", skynet.self())
     if not ret then
@@ -185,6 +187,10 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     if data and data.ability then
         real.ability = data.ability
     end
+    if data and data.runtime then
+        -- 由 spawn_projectile 配置的运行时字段; 组件从 entity.runtime 读取
+        real.runtime = data.runtime
+    end
     local x = data and data.x or cell.info.x + cell.info.w / 2
     local y = data and data.y or cell.info.y + cell.info.h / 2
     real.x = x
@@ -228,7 +234,8 @@ end
 -- 供 baseapp 存盘前取 cell 侧最新属性(坐标等)
 function cmd.get_entity(spaceId, entityId)
     local space = cellapp.spaces[spaceId]
-    for _, cell in ipairs(space and space.cells or {}) do
+    assert(space, "get_entity: unknown space " .. tostring(spaceId))
+    for _, cell in ipairs(space.cells) do
         local e = cell:get(entityId)
         if e then
             return { cellKey = cell.info.id,
@@ -239,7 +246,8 @@ end
 
 function cmd.find_entity(spaceId, entityId)
     local space = cellapp.spaces[spaceId]
-    for _, cell in ipairs(space and space.cells or {}) do
+    assert(space, "find_entity: unknown space " .. tostring(spaceId))
+    for _, cell in ipairs(space.cells) do
         local e = cell:get(entityId)
         if e then return cell.info.id end
     end

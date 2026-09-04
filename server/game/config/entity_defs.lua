@@ -16,6 +16,7 @@ return {
         defs = {
             { kind = "Player", module = "game.def.player.cell_player_def" },
             { kind = "Projectile", module = "game.def.projectile.projectile_def" },
+            { kind = "ServerObject", module = "game.def.server_object.server_object_def" },
         },
     },
 }

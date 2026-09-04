@@ -297,11 +297,13 @@ function cmd.init(registryAddr, index, gameConfig)
 
     require("tinyworld.combat.env").setIsServer(true)
 
-    local entityDefs = gameConfig and gameConfig.entityDefs or {}
-    for _, bootModule in ipairs(entityDefs.base and entityDefs.base.boot or {}) do
+    assert(gameConfig, "baseapp.init: gameConfig required")
+    local entityDefs = assert(gameConfig.entityDefs, "gameConfig.entityDefs required")
+    local baseDefs = assert(entityDefs.base, "entityDefs.base required")
+    for _, bootModule in ipairs(baseDefs.boot) do
         require(bootModule)
     end
-    defs.registerList(entityDefs.base and entityDefs.base.defs)
+    defs.registerList(baseDefs.defs)
 
     playerStore = PlayerStore.new({
         query = dbQuery,

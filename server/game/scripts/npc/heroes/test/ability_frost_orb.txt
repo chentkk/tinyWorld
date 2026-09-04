@@ -1,0 +1,15 @@
+""
+{
+    "ability_frost_orb"
+    {
+        "ScriptFile"            "heroes/test/ability_frost_orb"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "NO_TARGET"
+        "AbilityCastPoint"      "0.0"
+        "AbilityCooldown"       "8.0"
+        "duration"              "5"
+        "tickInterval"          "0.5"
+        "areaRadius"            "40"
+        "damage"                "12"
+    }
+}

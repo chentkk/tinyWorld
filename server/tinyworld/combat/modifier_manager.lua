@@ -4,21 +4,21 @@
 local M = {}
 
 function M.addModifier(unit, mod, ability, params)
-    if not mod then return nil end
+    assert(unit, "addModifier: unit required")
+    assert(mod, "addModifier: mod required")
+    assert(ability, "addModifier: ability required")
 
     if type(mod) == "string" then
-        local cls = _G[mod]
-        if not cls then return nil end
-
+        local cls = assert(_G[mod], "addModifier: unknown modifier class " .. tostring(mod))
         local view = unit:getContainer("modifiers_view")
-        local schema = view and view.def.childSchema
-        mod = cls.new(unit, ability, params, schema)
+        assert(view, "addModifier: unit has no modifiers_view")
+        mod = cls.new(unit, ability, params, view.def.childSchema)
     end
 
     if not mod.owner then mod.owner = unit end
 
     local view = unit:getContainer("modifiers_view")
-    if not view then return nil end
+    assert(view, "addModifier: unit has no modifiers_view")
 
     local name = mod:GetModifierName()
     for _, old in ipairs(view:childrenList()) do
@@ -37,7 +37,7 @@ end
 
 function M.removeModifier(unit, mod)
     local view = unit:getContainer("modifiers_view")
-    if not view then return nil end
+    assert(view, "removeModifier: unit has no modifiers_view")
 
     for _, old in ipairs(view:childrenList()) do
         if old == mod then
@@ -51,7 +51,7 @@ end
 
 function M.hasModifier(unit, name)
     local view = unit:getContainer("modifiers_view")
-    if not view then return nil end
+    assert(view, "hasModifier: unit has no modifiers_view")
 
     for _, mod in ipairs(view:childrenList()) do
         if mod:GetModifierName() == name then return mod end

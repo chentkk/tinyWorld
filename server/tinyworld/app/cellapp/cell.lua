@@ -13,7 +13,7 @@ local function outboxHasChanges(outbox)
            next(outbox.recordOps or {}) ~= nil or next(outbox.viewOps or {}) ~= nil or
            #(outbox.events or {}) > 0
 end
-local aoiMod = require "tinyworld.app.cellapp.aoi"
+local SpatialIndex = require "tinyworld.app.cellapp.spatial_index"
 local entityMsg = require "tinyworld.app.cellapp.entity_msg"
 local RealEntity = require "tinyworld.app.cellapp.real_entity"
 local GhostEntity = require "tinyworld.app.cellapp.ghost_entity"
@@ -27,7 +27,7 @@ function Cell:ctor(cellInfo, host, space)
     self.space = space
     self.entities = {}
     self.players = {}
-    self.aoi = aoiMod.new(space.config.aoiRange, cellInfo.w, cellInfo.h)
+    self.spatial = SpatialIndex.new(space.config.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
 end
 
@@ -39,12 +39,24 @@ function Cell:getSpaceId()
     return self.space and self.space:getSpaceId()
 end
 
+-- cell 是拥有 host(cellapp)/space 的运行时上下文,
+-- 全局服务寻址(spawn etc.)统一由 Cell 完成, Entity 不直接访问 host。
+function Cell:spawnEntity(kind, data, baseApp)
+    assert(self.host and self.host.spawn_entity, "cell host has no spawn_entity")
+    assert(self.space, "cell has no space")
+    return self.host.spawn_entity(self:getSpaceId(), self:key(), kind, data, baseApp)
+end
+
+function Cell:spawnProjectile(kind, data)
+    return self:spawnEntity(kind, data, nil)
+end
+
 function Cell:addEntity(entity)
     if self.entities[entity.id] then return end
 
     entity.cell = self
     self.entities[entity.id] = entity
-    self.aoi:enter(entity, entity.x, entity.y)
+    self.spatial:enter(entity, entity.x, entity.y)
     -- object add 已携带全量 props, 避免同 tick 再发增量 prop
     entity:clearClientDirty()
     if entity.kind == "Player" and entity.isReal then
@@ -60,7 +72,7 @@ function Cell:removeEntity(entity)
     if not self.entities[entity.id] then return end
 
     self.entities[entity.id] = nil
-    self.aoi:leave(entity, entity.x, entity.y)
+    self.spatial:leave(entity, entity.x, entity.y)
     if entity.kind == "Player" and entity.isReal then
         self.playerCount = self.playerCount - 1
     end
@@ -79,7 +91,7 @@ function Cell:findByRealId(realId)
 end
 
 function Cell:queryRange(x, y)
-    return self.aoi:query(x, y)
+    return self.spatial:query(x, y)
 end
 
 -- 战斗事件入口: 由底层同步组件调用, 不直接触碰 cell 内部结构
@@ -109,7 +121,7 @@ end
 -- 实体 tick 后重算 AOI 网格, 保证 query 与实际位置一致
 function Cell:syncAoi()
     for _, entity in pairs(self.entities) do
-        self.aoi:move(entity, entity.x, entity.y)
+        self.spatial:move(entity, entity.x, entity.y)
     end
 end
 
@@ -152,10 +164,12 @@ end
 
 function Cell:buildOutboxes()
     for _, entity in pairs(self.entities) do
-        self:buildOutbox(entity)
-        if entity.isGhost and outboxHasChanges(entity.outbox) then
-            self:ghostLog("ghost outbox ready real=%d ghost=%d",
-                entity.realId, entity.id)
+        if entity:isNetworked() then
+            self:buildOutbox(entity)
+            if entity.isGhost and outboxHasChanges(entity.outbox) then
+                self:ghostLog("ghost outbox ready real=%d ghost=%d",
+                    entity.realId, entity.id)
+            end
         end
     end
 end
@@ -253,15 +267,12 @@ end
 
 function Cell:updatePlayerVisibility(player)
     local visible = {}
-    local range = self.space.config.aoiRange
 
-    for _, other in pairs(self.entities) do
-        if other.id ~= player.id then
-            local dx = other.x - player.x
-            local dy = other.y - player.y
-            if dx * dx + dy * dy <= range * range then
-                visible[other.id] = other
-            end
+    -- 使用十字链表索引做候选裁剪, 避免每 tick 对 cell 内全量对象做 O(N^2) 扫描。
+    -- 非网络对象纯服务器可见, 不进玩家视野。
+    for _, other in ipairs(self.spatial:query(player.x, player.y)) do
+        if other.id ~= player.id and other:isNetworked() then
+            visible[other.id] = other
         end
     end
 
@@ -317,15 +328,58 @@ function Cell:migrateEntity(real, ideal)
 
     local target = self.space:getCell(ideal.id)
     if target then
-        local oldCell = real.cell
-        oldCell:removeEntity(real)
-        oldCell:leaveWitness(real)
-        real.cell = target
-        target:addEntity(real)
+        self:migrateLocal(real, target)
         return
     end
 
     self:migrateRemote(real, ideal)
+end
+
+-- 同 cellapp 本地迁移: 与跨 cellapp 迁移使用同一套 promoteGhost 语义。
+-- ensureGhosts 可能已经提前在目标 cell 为 real 建好 ghost(二者共用 entity id),
+-- 因此不能直接把 real 塞进 target; 统一消费 target 里的 ghost -> 提升为新 real。
+-- 这样本地与远端迁移在对象身份 / ghost 清理 / witness 处理上完全一致。
+function Cell:migrateLocal(real, target)
+    real.migrating = true
+
+    -- 目标 cell 若还没有该 real 的 ghost, 先补一个(与 ensureGhostIn 语义一致)
+    local ghost = target:findGhost(real.id)
+    if not ghost then
+        local key = real.id .. "@" .. target.info.id
+        ghost = target:buildGhost(real)
+        target:addEntity(ghost)
+        real:addGhost({ key = key, app = self.host.appId, cellKey = target.info.id, sameApp = true })
+    end
+
+    local oldCell = real.cell
+    oldCell:removeEntity(real)
+    oldCell:leaveWitness(real)
+
+    local peers = self:collectGhostPeers(real)
+    self:reparentOldGhosts(real, target.info, peers)
+
+    -- 与跨 app ghost_promote 完全相同的提升入口
+    local promoted = target:promoteGhost(real.id, {
+        fromApp = self.host.appId,
+        witnessCellKey = oldCell:key(),
+        peers = peers,
+        baseApp = real.baseApp,
+        playerId = real.playerId,
+        initData = real.cellInitData,
+        lastMigrateTime = real.lastMigrateTime,
+        snapshot = real:ghostSnapshot(),
+    })
+    if not promoted then
+        real.migrating = false
+        return
+    end
+
+    -- 提升得到的是全新 real, 重新装配 cell 组件/视图(与 cellapp.cmd.ghost_promote 一致)
+    promoted:openViews(promoted.def.cellOpenViews)
+    promoted:setupComponents(promoted.def.cellComponents)
+    promoted.readyForSync = true
+
+    real.migrating = false
 end
 
 function Cell:migrateRemote(real, ideal)
@@ -355,6 +409,7 @@ function Cell:migrateRemote(real, ideal)
         baseApp = real.baseApp,
         playerId = real.playerId,
         initData = real.cellInitData,
+        lastMigrateTime = real.lastMigrateTime,
     })
     real.migrating = nil
 end
@@ -552,10 +607,19 @@ function Cell:promoteGhost(realId, req)
         realId, ghost.id)
 
     local real = RealEntity.new(ghost.def, realId, ghost.kind, self.space, self, ghost.x, ghost.y)
-    real.props:load(ghost.props:dump())
+    -- 优先用迁移快照恢复完整状态(props/records/containers); 只有 props 时退回 props 恢复
+    if req.snapshot then
+        real:load(req.snapshot)
+        -- ghost 的位置才是 real 进入本 cell 的坐标, 快照可能落后于最新位置
+        real.props:set("x", ghost.x)
+        real.props:set("y", ghost.y)
+    else
+        real.props:load(ghost.props:dump())
+    end
     real.baseApp = req.baseApp
     real.playerId = req.playerId
     real.cellInitData = req.initData
+    real.lastMigrateTime = req.lastMigrateTime or real.lastMigrateTime
 
     real.ghosts = {}
     for _, peer in ipairs(req.peers or {}) do

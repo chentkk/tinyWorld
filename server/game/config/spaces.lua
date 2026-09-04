@@ -10,12 +10,11 @@ return {
     spaces = {
         {
             id = "main",
-            width = 200,
-            height = 200,
-            aoiRange = 40,
-            ghostRange = 80,
-            cellCols = 2,
-            cellRows = 2,
+            width = 2000,
+            height = 2000,
+            aoiRange = 60,
+            ghostRange = 120,
+            cellSize = 500,
             minMigrateInterval = 0.5,
             hysteresis = 8,
             balance = { enabled = true, strategy = 2 },

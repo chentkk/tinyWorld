@@ -48,6 +48,7 @@ local cellB = space:getCell("1:0")
 
 local real = Real.new(defs.get("SettleDummy"), 10, "SettleDummy", space, cellA)
 real.props:load({ hp = 100 })
+real.cellInitData = { abilities = {} }
 cellA:addEntity(real)
 real:getContainer("modifiers_view"):openView("modifiers")
 real:addComponent("combat_agent", require "tinyworld.combat.combat_agent")

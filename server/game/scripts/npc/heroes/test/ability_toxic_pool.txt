@@ -1,0 +1,15 @@
+""
+{
+    "ability_toxic_pool"
+    {
+        "ScriptFile"            "heroes/test/ability_toxic_pool"
+        "BaseClass"             "ability_lua"
+        "AbilityBehavior"       "NO_TARGET"
+        "AbilityCastPoint"      "0.0"
+        "AbilityCooldown"       "10.0"
+        "duration"              "6"
+        "tickInterval"          "1"
+        "areaRadius"            "30"
+        "damage"                "8"
+    }
+}

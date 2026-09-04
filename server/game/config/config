@@ -8,7 +8,7 @@ lualoader = "./skynet/lualib/loader.lua"
 
 luaservice = "./game/?.lua;./game/?/init.lua;./tinyworld/?.lua;./tinyworld/?/init.lua;./tinyworld/app/?.lua;./tinyworld/app/?/?.lua;./skynet/service/?.lua"
 lua_path = "./?.lua;./?/init.lua;./skynet/lualib/?.lua;./skynet/lualib/?/init.lua"
-lua_cpath = "./skynet/luaclib/?.so"
+lua_cpath = "./skynet/luaclib/?.so;./luaclib/?.so"
 cpath = "./skynet/cservice/?.so"
 
 -- 服务数量与配置

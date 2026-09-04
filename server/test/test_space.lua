@@ -60,34 +60,39 @@ for _, e in ipairs(cell:queryRange(99, 50)) do
 end
 assert(seenInAoi, "aoi grid not synced after move")
 
--- 深入目标 cell 后迁移到 1:0
+-- 深入目标 cell 后迁移到 1:0(统一 promoteGhost 语义: real 身份被提升对象接管)
 fake.time = 110
 real.x = 130
 real.y = 50
 cell:tick(0)
-assert(real.cell.info.id == "1:0")
-assert(real.lastMigrateTime == 110)
+
+local targetCell = space:getCell("1:0")
+local moved = targetCell:get(real.id)
+assert(moved and moved.isReal, "promoted real missing in target cell")
+assert(moved.cell.info.id == "1:0")
+assert(moved.lastMigrateTime == 110)
 
 -- 旧 cell 留下见证 ghost
 local oldCell = space:getCell("0:0")
 local foundGhost
 for _, e in pairs(oldCell.entities) do
-    if e.isGhost and e.realId == real.id then foundGhost = e end
+    if e.isGhost and e.realId == moved.id then foundGhost = e end
 end
 assert(foundGhost, "witness ghost not created")
 
 -- 再回移但未满足最小间隔/阈值 -> 不抖
-real.x = 96
-cell:tick(0)
-assert(real.cell.info.id == "1:0")
+moved.x = 96
+space:tick(0)
+local rebound = space:getCell("1:0"):get(moved.id)
+assert(rebound and rebound.isReal and rebound.cell.info.id == "1:0")
 
 -- Real -> Ghost: cell 内广播用 real.outbox
-real:set("x", 140)
-real.outbox = { aroundProps = { x = 140 } }
-real:sendGhostEach(real.outbox)
+moved:set("x", 140)
+moved.outbox = { aroundProps = { x = 140 } }
+moved:sendGhostEach(moved.outbox)
 foundGhost = nil
 for _, e in pairs(oldCell.entities) do
-    if e.isGhost and e.realId == real.id then foundGhost = e end
+    if e.isGhost and e.realId == moved.id then foundGhost = e end
 end
 assert(foundGhost and foundGhost.props:get("x") == 140)
 

@@ -10,11 +10,12 @@ local LocalSpace = class.makeClass("LocalSpace")
 
 function LocalSpace:ctor(host, config, cells)
     self.host = host
-    config = config or (host and host.spaceConfig)
+    config = config or host.spaceConfig
+    assert(config, "LocalSpace: config required (pass config or host.spaceConfig)")
     self.config = config
-    self.id = config and config.id
-    self.bounds = (config and config.bounds)
-        or { x1 = 0, y1 = 0, x2 = (config and config.width) or 0, y2 = (config and config.height) or 0 }
+    self.id = assert(config.id, "LocalSpace: config.id required")
+    self.bounds = config.bounds
+        or { x1 = 0, y1 = 0, x2 = config.width, y2 = config.height }
     self.cells = {}
     self.byKey = {}
 

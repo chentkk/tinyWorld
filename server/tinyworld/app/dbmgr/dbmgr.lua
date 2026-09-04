@@ -50,8 +50,9 @@ function cmd.init(registryAddr, gameConfig)
 
     -- mock 模式下初始化 schema
     if (skynet.getenv("db_mode") or "mock") == "mock" then
-        local schema = gameConfig and gameConfig.schema or {}
-        for _, sql in ipairs(schema.mocks or {}) do
+        assert(gameConfig, "dbmgr.init: gameConfig required in mock mode")
+        local schema = assert(gameConfig.schema, "gameConfig.schema required in mock mode")
+        for _, sql in ipairs(schema.mocks) do
             skynet.call(dbs[1], "lua", "exec", sql)
         end
     end

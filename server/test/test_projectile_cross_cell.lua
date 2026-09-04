@@ -46,7 +46,8 @@ local cellB = space:getCell("1:0")
 assert(cellA and cellB)
 
 local p = RealEntity.new(defs.get("Projectile"), 7001, "Projectile", space, cellA)
-p.props:load({ x = 90, y = 50, dir = 0, speed = 200, range = 80, hitRadius = 2, pierce = true })
+p.props:load({ x = 90, y = 50, dir = 0, speed = 200, range = 80, hitRadius = 2 })
+rawset(p, "runtime", { movement = "linear" })
 cellA:addEntity(p)
 p:openViews(p.def.cellOpenViews)
 p:setupComponents(p.def.cellComponents)
@@ -69,20 +70,27 @@ local target = RealEntity.new(defs.get("Projectile"), 7002, "Projectile", space,
 target.props:load({ x = 120, y = 50 })
 cellB:addEntity(target)
 
+local hitData
+
 local tracker = RealEntity.new(defs.get("Projectile"), 7003, "Projectile", space, cellA)
-tracker.props:load({ x = 10, y = 50, targetId = 7002, speed = 500, range = 200, hitRadius = 2, pierce = false })
+tracker.props:load({ x = 10, y = 50, targetId = 7002, speed = 500, range = 200, hitRadius = 2 })
+rawset(tracker, "runtime", {
+    movement = "homing",
+    onHit = function(_, targets)
+        hitData = targets
+        return "destroy"
+    end,
+})
 cellA:addEntity(tracker)
 tracker:openViews(tracker.def.cellOpenViews)
 tracker:setupComponents(tracker.def.cellComponents)
 tracker.readyForSync = true
 
 local trackMove = tracker:getComponent("projectile")
-local hitData
-tracker:on("projectile_hit", function(_, d) hitData = d end)
 while not trackMove.destroyed do trackMove:onTick(0.01) end
 
 assert(tracker.cell.info.id == "0:0", "tracker should stay in origin cell")
 assert(hitData, "tracking projectile should find target in another cell")
-assert(#hitData.targets == 1 and hitData.targets[1] == target, "cross-cell tracking target mismatch")
+assert(#hitData == 1 and hitData[1] == target, "cross-cell tracking target mismatch")
 
 print("PASS test_projectile_cross_cell")

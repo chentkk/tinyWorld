@@ -22,6 +22,8 @@ return {
             { name = "ability_blood_harvest" },
             { name = "ability_projectile_track" },
             { name = "ability_projectile_line" },
+            { name = "ability_frost_orb" },
+            { name = "ability_toxic_pool" },
         },
     },
     containers = {},

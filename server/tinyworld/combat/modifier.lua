@@ -16,20 +16,24 @@ local Modifier = Object.extend("Modifier")
 
 function Modifier:ctor(parent, ability, params, schema)
     Object.ctor(self, schema)
-    params = params or {}
 
+    assert(parent, "Modifier: parent/owner required")
+    assert(ability, "Modifier: ability required")
+    assert(ability.data, "Modifier: ability.data required")
+
+    params = params or {}
     nextId = nextId + 1
     self.uid = nextId
     self.id = nextId
     self.parent = parent
     self.ability = ability
-    self.caster = ability and ability.caster
+    self.caster = ability.caster
     self.duration = params.duration
     self.elapsed = 0
     self.destroyed = false
     self.stack = 1
-    self.remaining = round2(self.duration and self.duration or 0)
-    self.intervalThink = tonumber(ability and ability.data and ability.data.intervalThink) or 0
+    self.remaining = round2(self.duration or 0)
+    self.intervalThink = tonumber(ability.data.intervalThink) or 0
     self._params = params
 end
 

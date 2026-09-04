@@ -1,5 +1,6 @@
 -- game/scripts/vscripts/heroes/test/projectile_line.lua
--- 直线投掷物测试技能: 按施法者朝向直线前进, 途中命中所有碰撞目标。
+-- 直线投掷物测试技能: 按施法者朝向直线前进, 途中对所有碰撞目标造成伤害。
+-- 伤害通过 CreateLinearProjectile 的内置 damage option 表达式, 不再写 onHit 循环。
 
 local Ability = require "tinyworld.combat.ability"
 local combatDamage = require "tinyworld.combat.damage"
@@ -11,8 +12,6 @@ function ability_projectile_line:OnSpellStart()
     local caster = self:GetCaster()
     if not caster then return end
 
-    self.damage = tonumber(self:GetSpecialValueFor("damage")) or 0
-
     projectileManager.CreateLinearProjectile({
         Source = caster,
         Ability = self,
@@ -20,16 +19,11 @@ function ability_projectile_line:OnSpellStart()
         range = tonumber(self:GetSpecialValueFor("range")) or 80,
         hitRadius = tonumber(self:GetSpecialValueFor("hitRadius")) or 6,
         dir = caster:get("dir") or 0,
+        damage = {
+            amount = tonumber(self:GetSpecialValueFor("damage")) or 0,
+            type = combatDamage.DAMAGE_TYPE.MAGICAL,
+        },
     })
-end
-
-function ability_projectile_line:OnProjectileHit(targets, x, y)
-    if not self.damage or self.damage <= 0 then return end
-
-    for _, target in ipairs(targets or {}) do
-        combatDamage.dealDamage(self:GetCaster(), target, self.damage,
-            combatDamage.DAMAGE_TYPE.MAGICAL, self)
-    end
 end
 
 return ability_projectile_line

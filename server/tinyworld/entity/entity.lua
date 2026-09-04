@@ -87,9 +87,18 @@ function Entity:canMigrate()
     return not (self.def and self.def.migratable == false)
 end
 
+-- 是否为网络对象(客户端可感知)。
+-- networked=false 的对象只存在于服务器, 不进 outbox / ghost / visibility,
+-- 客户端完全无法感知其生命周期。
+function Entity:isNetworked()
+    return not (self.def and self.def.networked == false)
+end
+
 -- 是否可为其他 cell 创建 ghost。默认所有 cell entity 都需要 ghost;
 -- 短生命周期对象(如 projectile)可以不迁移, 但仍需要 ghost 机制同步给其他 cell。
+-- 纯服务器对象(networked=false)完全不需要 ghost。
 function Entity:canGhost()
+    if not self:isNetworked() then return false end
     return not (self.def and self.def.ghostable == false)
 end
 
@@ -104,16 +113,6 @@ end
 
 function Entity:getContainer(name)
     return self.containers[name]
-end
-
--- 由 cell 创建本地投掷物; data 为 spawn_entity 接受的参数
-function Entity:spawnProjectile(kind, data)
-    local cell = rawget(self, "cell")
-    if not cell then return nil, "entity not in cell" end
-    if not cell.host or not cell.host.spawn_projectile then return nil, "no spawn_projectile" end
-
-    local spaceId = cell.space and cell.space.id
-    return cell.host.spawn_projectile(spaceId, cell:key(), kind, data, nil)
 end
 
 -- Real / Ghost 共用: 属性变更只记录一份脏表, 出包时按观察者范围过滤

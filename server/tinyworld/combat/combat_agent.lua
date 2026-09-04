@@ -43,15 +43,18 @@ function CombatAgent:onCreate()
     end)
 
     entity:on("combat_cast", function(_, ability, target)
+        assert(ability, "combat_cast: ability required")
         self:push("onSpellCast", {
             entityId = entity:getRealId(),
-            abilityName = ability and ability:GetAbilityName(),
+            abilityName = ability:GetAbilityName(),
             targetId = idOf(target),
         })
     end)
 
+    assert(entity.cellInitData, "CombatAgent: entity.cellInitData required")
+    assert(type(entity.cellInitData.abilities) == "table", "CombatAgent: cellInitData.abilities required")
     local names = {}
-    for _, abilityName in ipairs(entity.cellInitData and entity.cellInitData.abilities or {}) do
+    for _, abilityName in ipairs(entity.cellInitData.abilities) do
         names[#names + 1] = abilityName
     end
     abilityLoader.loadAbilities(entity, names)
@@ -121,8 +124,7 @@ function CombatAgent:push(method, data)
     if not entity.readyForSync then return end
 
     local cell = entity.cell
-    if not cell then return end
-
+    assert(cell, "CombatAgent:push requires entity.cell")
     cell:postEvent(entity, { t = "RPC", n = method, d = data })
 end
 

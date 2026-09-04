@@ -49,8 +49,9 @@ end
 function cmd.init(registryAddr, gameConfig)
     registry = registryAddr
 
-    local spacesConfig = gameConfig and gameConfig.spaces or {}
-    for _, spaceDef in ipairs(spacesConfig.spaces or {}) do
+    assert(gameConfig, "world.init: gameConfig required")
+    local spacesConfig = assert(gameConfig.spaces, "gameConfig.spaces required")
+    for _, spaceDef in ipairs(spacesConfig.spaces) do
         validateSpaceDef(spaceDef)
         spaceDefs[spaceDef.id] = spaceDef
         log.info("space def %s loaded", spaceDef.id)
