@@ -16,17 +16,17 @@ function ServerObject:ctor(entity, name)
     assert(runtime, "ServerObject requires runtime")
     self.runtime = runtime
     self.known = {}
+    self.elapsed = 0
+    self.tickAccumulator = 0
 end
 
 function ServerObject:onTick(dt)
     local entity = self.entity
     local runtime = self.runtime
 
-    -- 先推进存活时间(供内部与使用层依据使用)
+    -- 推进存活时间(供内部与使用层依据使用)
+    self.elapsed = self.elapsed + dt
     local duration = entity:get("duration")
-    if duration then
-        self.elapsed = (self.elapsed or 0) + dt
-    end
 
     -- 区域进出检测(显式可选, 不需要 onEnter/onExit 的对象不 query)
     if runtime.onEnter or runtime.onExit then
@@ -64,6 +64,18 @@ function ServerObject:onTick(dt)
         runtime.onTick(entity, dt)
     end
 
+    -- 周期行为(tickInterval > 0 时触发)
+    local tickInterval = entity:get("tickInterval")
+    if tickInterval and tickInterval > 0 then
+        self.tickAccumulator = self.tickAccumulator + dt
+        while self.tickAccumulator >= tickInterval do
+            self.tickAccumulator = self.tickAccumulator - tickInterval
+            if runtime.onIntervalThink then
+                runtime.onIntervalThink(entity, self.elapsed)
+            end
+        end
+    end
+
     -- 生命周期到期最后处理, 保证边界 tick 先执行完区域行为与 onTick
     if duration and self.elapsed >= duration then
         entity:destroy()
@@ -75,6 +87,23 @@ function ServerObject:onDestroy()
     if runtime and runtime.onDestroy then
         runtime.onDestroy(self.entity)
     end
+end
+
+-- 查询半径内对象(服务器内部使用; 默认只返回网络对象)
+function ServerObject:getObjectsInRadius(radius, filter)
+    local entity = self.entity
+    local cell = entity.cell
+    assert(cell and cell.spatial, "ServerObject requires cell with spatial index")
+
+    local out = {}
+    for _, other in ipairs(cell.spatial:query(entity.x, entity.y, radius)) do
+        if other ~= entity then
+            if other:isNetworked() and (not filter or filter(other)) then
+                out[#out + 1] = other
+            end
+        end
+    end
+    return out
 end
 
 -- 创建纯服务器对象。ref 可以是 Cell, 也可以是带 cell 的实体;
@@ -95,12 +124,14 @@ function ServerObject.Create(ref, params)
             y = params.y or cell.info.y + cell.info.h / 2,
             radius = params.radius,
             duration = params.duration,
+            tickInterval = params.tickInterval,
         },
         runtime = {
             onTick = params.onTick,
             onEnter = params.onEnter,
             onExit = params.onExit,
             onDestroy = params.onDestroy,
+            onIntervalThink = params.onIntervalThink,
         },
     }
 

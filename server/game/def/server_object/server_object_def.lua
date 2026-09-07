@@ -13,6 +13,7 @@ return {
         { name = "y", type = "number", sync = "none", persist = true },
         { name = "radius", type = "number", sync = "none" },
         { name = "duration", type = "number", sync = "none" },
+        { name = "tickInterval", type = "number", sync = "none" },
         { name = "ownerId", type = "number", sync = "none" },
     },
     records = {},

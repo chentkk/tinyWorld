@@ -120,4 +120,26 @@ cell:syncAoi()
 comp:onTick(0.1)
 comp:onTick(0.1)
 assert(destroyed, "duration should destroy server object")
+-- 服务器对象周期回调与半径查询
+local tickCount = 0
+local ok2 = ServerObject.Create(cell, {
+    x = 100, y = 100,
+    tickInterval = 0.3,
+    onIntervalThink = function(_, elapsed)
+        tickCount = tickCount + 1
+        assert(elapsed ~= nil, "onIntervalThink should receive elapsed")
+    end,
+})
+assert(ok2 and ok2.entityId, "second server object created")
+local srv2 = cell:get(ok2.entityId)
+local comp2 = srv2:getComponent("server_object")
+
+-- 附近只有 player, 且 player 位于半径 20 内
+local objs = comp2:getObjectsInRadius(20)
+assert(#objs == 1 and objs[1] == player, "getObjectsInRadius should return network player")
+
+comp2:onTick(0.2)
+comp2:onTick(0.1)
+assert(tickCount == 1, "onIntervalThink should fire once at 0.3s")
+
 print("PASS test_server_object")
