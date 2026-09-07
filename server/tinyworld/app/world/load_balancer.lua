@@ -11,7 +11,7 @@ local LoadBalancer = class.makeClass("LoadBalancer")
 function LoadBalancer:ctor(spaceConfig)
     self.config = spaceConfig
     self.stats = {} -- appId -> { realCount, cpu, smoothCpu, cells }
-    self.enabled = spaceConfig.balance and spaceConfig.balance.enabled and true or false
+    self.enabled = (spaceConfig.balance and spaceConfig.balance.enabled) == true
     self.strategy = (spaceConfig.balance and spaceConfig.balance.strategy) or 2
     self.migrateInProgress = {} -- 防抖: app 对迁移冷却
 end

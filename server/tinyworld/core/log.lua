@@ -20,7 +20,7 @@ function M.setMinLevel(name)
 end
 
 function M.setColor(enable)
-    colorOff = not enable and true or false
+    colorOff = enable == false
 end
 
 function M.setPrefix(text)

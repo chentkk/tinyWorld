@@ -6,7 +6,8 @@ local M = {}
 local isServer = false
 
 function M.setIsServer(v)
-    isServer = v and true or false
+    assert(type(v) == "boolean", "setIsServer requires boolean")
+    isServer = v
 end
 
 function M.IsServer()

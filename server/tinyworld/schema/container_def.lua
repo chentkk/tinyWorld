@@ -12,8 +12,8 @@ function ContainerDef.new(def)
     local self = setmetatable({}, ContainerDef)
 
     self.name = def.name
-    self.persist = def.persist and true or false
-    self.selfOnly = def.selfOnly and true or false
+    self.persist = def.persist == true
+    self.selfOnly = def.selfOnly == true
 
     -- 容器自身定义: props + records
     self.propsSchema = PropertySchema.new(def.props or {})

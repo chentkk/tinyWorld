@@ -23,7 +23,7 @@ local function flattenFields(defs, result, seen, stack)
                 name = item.name,
                 type = item.type or "number",
                 sync = item.sync or "all",
-                persist = item.persist and true or false,
+                persist = item.persist == true,
                 comment = item.comment or "",
                 default = item.default,
             }
@@ -55,7 +55,7 @@ function PropertySchema:coerce(name, value)
     elseif f.type == "string" then return tostring(value)
     elseif f.type == "boolean" then
         if value == "false" then return false end
-        return not not value
+        return value == true
     end
     return value
 end

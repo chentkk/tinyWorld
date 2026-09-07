@@ -40,7 +40,9 @@ local function targetValid(entity, t, runtime)
     if ownerId and t:getRealId() == ownerId then return false end
 
     if runtime.targetFilter then
-        return not not runtime.targetFilter(entity, t)
+        local ok = runtime.targetFilter(entity, t)
+        assert(type(ok) == "boolean", "targetFilter must return boolean")
+        return ok
     end
     return true
 end
