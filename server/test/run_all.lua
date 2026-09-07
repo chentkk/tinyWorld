@@ -9,6 +9,7 @@ local tests = {
     "test_projectile",
     "test_combat_entity",
     "test_server_object",
+    "test_gameplay_tags",
     "test_spatial_index",
     "test_projectile_cross_cell",
     "test_ghost_settlement",

@@ -23,10 +23,18 @@ local function targetAlive(t)
     return true
 end
 
--- 目标是否为合法目标(owner 自身 / 死亡 / targetFilter 拒绝)
+-- 目标是否为合法目标
+-- 默认排除: 自身 / owner / 不可被选为目标的对象(not_targetable tag)
+-- 如果有 hp 属性, 默认还排除死亡目标。使用层可用 runtime.targetFilter 覆盖/追加过滤。
 local function targetValid(entity, t, runtime)
     if not t or t == entity or not t:getRealId() then return false end
-    if t:get("hp") and t:get("hp") <= 0 then return false end
+
+    -- 对象分类: 不选带 not_targetable 标签的对象(如 projectile / server_object)
+    if t:hasTag("not_targetable") then return false end
+
+    if t:get("hp") then
+        if t:get("hp") <= 0 then return false end
+    end
 
     local ownerId = entity:get("ownerId")
     if ownerId and t:getRealId() == ownerId then return false end

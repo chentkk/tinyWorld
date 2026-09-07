@@ -7,6 +7,7 @@ return {
     name = "ServerObject",
     networked = false,
     migratable = false,
+    tags = { "server_object", "not_targetable" },
     props = {
         { name = "x", type = "number", sync = "none", persist = true },
         { name = "y", type = "number", sync = "none", persist = true },

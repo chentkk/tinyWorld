@@ -4,6 +4,7 @@
 local PropertySchema = require "tinyworld.schema.property_schema"
 local RecordDef = require "tinyworld.schema.record_def"
 local ContainerDef = require "tinyworld.schema.container_def"
+local tag = require "tinyworld.core.tag"
 
 return function(defModuleOrTable)
     local def
@@ -29,5 +30,12 @@ return function(defModuleOrTable)
     def.baseOpenViews = def.baseOpenViews or {}
     def.cellComponents = def.cellComponents or {}
     def.cellOpenViews = def.cellOpenViews or {}
+
+    -- 对象分类标签(静态, 用于目标筛选/能力匹配)
+    -- compileDef 在 def module 表上执行, 可能被重复注册; 用 rawTags 保留原始数组, 保证幂等
+    if def.rawTags == nil then
+        def.rawTags = def.tags
+    end
+    def.tags = tag.normalize(def.rawTags)
     return def
 end

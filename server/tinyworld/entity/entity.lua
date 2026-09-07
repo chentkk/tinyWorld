@@ -111,6 +111,22 @@ function Entity:getRecord(name)
     return self.records[name]
 end
 
+-- 对象分类标签(来自 def.tags, 构造时已 normalize)
+function Entity:hasTag(tag)
+    local tagMod = require "tinyworld.core.tag"
+    return tagMod.has(self.def and self.def.tags, tag)
+end
+
+function Entity:hasAnyTag(tags)
+    local tagMod = require "tinyworld.core.tag"
+    return tagMod.hasAny(self.def and self.def.tags, tags)
+end
+
+function Entity:hasAllTags(tags)
+    local tagMod = require "tinyworld.core.tag"
+    return tagMod.hasAll(self.def and self.def.tags, tags)
+end
+
 function Entity:getContainer(name)
     return self.containers[name]
 end
