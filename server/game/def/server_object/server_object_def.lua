@@ -19,7 +19,7 @@ return {
     records = {},
     containers = {},
     cellComponents = {
-        "tinyworld.app.cellapp.server_object",
+        "tinyworld.app.cellapp.components.server_object",
     },
     cellOpenViews = {},
 }

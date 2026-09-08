@@ -1,40 +1,23 @@
--- game/components/sync_stress.lua
--- 数据同步压力测试组件。挂在 cell real 上随机改属性,
--- 挂在 baseentity 上随机操作表格/容器, 用于验证全链路同步。
+-- game/base/sync_stress.lua
+-- baseapp 侧数据同步压测组件: 随机操作表格/容器, 验证 base real -> cell real 同步链路。
+-- 挂在 baseentity 上, 由 baseComponents 配置名为 "base_sync_stress"。
 
 local component = require "tinyworld.entity.component"
 
-local SyncStress = component.extend("SyncStress")
+local BaseSyncStress = component.extend("BaseSyncStress")
 
-function SyncStress:ctor(entity, name)
+function BaseSyncStress:ctor(entity, name)
     component.ctor(self, entity, name)
-    self.kind = name == "cell_sync_stress" and "cell" or "base"
     self.timer = 0
     self.step = 0
 end
 
-function SyncStress:onTick(dt)
+function BaseSyncStress:onTick(dt)
     self.timer = self.timer + dt
     if self.timer < 2 then return end
     self.timer = 0
     self.step = self.step + 1
 
-    if self.kind == "cell" then
-        self:onTickCell()
-    else
-        self:onTickBase()
-    end
-end
-
-function SyncStress:onTickCell()
-    local entity = self.entity
-    local hp = (entity:get("hp") or 100) % 97 + 1
-    local gold = (entity:get("gold") or 0) + 10
-    entity:set("hp", hp)
-    entity:set("gold", gold)
-end
-
-function SyncStress:onTickBase()
     local entity = self.entity
 
     -- 表格: current_tasks 随机 add / 直接修改 / remove
@@ -74,4 +57,4 @@ function SyncStress:onTickBase()
     end
 end
 
-return SyncStress
+return BaseSyncStress

@@ -9,7 +9,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local defs = require "tinyworld.entity.defs"
 local Entity = require "tinyworld.entity.entity"
-local SpatialIndex = require "tinyworld.app.cellapp.spatial_index"
+local SpatialIndex = require "tinyworld.app.cellapp.space.spatial_index"
 
 defs.register("Projectile", require "game.def.projectile.projectile_def")
 defs.register("Dummy", {

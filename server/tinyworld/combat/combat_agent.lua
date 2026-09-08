@@ -4,6 +4,7 @@
 local component = require "tinyworld.entity.component"
 local abilityLoader = require "tinyworld.combat.ability_loader"
 local combatDamage = require "tinyworld.combat.damage"
+local protocol = require "tinyworld.net.protocol"
 
 local CombatAgent = component.extend("CombatAgent")
 
@@ -125,7 +126,7 @@ function CombatAgent:push(method, data)
 
     local cell = entity.cell
     assert(cell, "CombatAgent:push requires entity.cell")
-    cell:postEvent(entity, { t = "RPC", n = method, d = data })
+    cell:postEvent(entity, protocol.rpc(method, data))
 end
 
 return CombatAgent

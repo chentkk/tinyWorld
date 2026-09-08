@@ -2,6 +2,7 @@
 -- Container: 容器运行实例(打开同步后称为视图 View)。
 -- 提供 add/remove/get 与视图同步 op。
 
+local class = require "tinyworld.core.class"
 local Record = require "tinyworld.schema.record"
 local Object = require "tinyworld.schema.object"
 
@@ -28,8 +29,7 @@ local function makeChildProxy(child)
     })
 end
 
-local Container = {}
-Container.__index = Container
+local Container = class.makeClass("Container")
 
 -- 子对象/容器自身属性直接读写的辅助
 local function setContainerProp(self, name, value)
@@ -51,34 +51,30 @@ local function setContainerProp(self, name, value)
     end
 end
 
-function Container.new(def, host)
-    local self = {}
+function Container:__index(key)
+    local raw = rawget(self, key)
+    if raw ~= nil then
+        return raw
+    end
 
-    local meta = {
-        __index = function(_, key)
-            local raw = rawget(self, key)
-            if raw ~= nil then
-                return raw
-            end
+    local props = rawget(self, "props")
+    local schema = rawget(self, "propsSchema")
+    if schema and schema:get(key) then
+        return props[key]
+    end
+    return Container[key]
+end
 
-            local props = rawget(self, "props")
-            local schema = rawget(self, "propsSchema")
-            if schema and schema:get(key) then
-                return props[key]
-            end
-            return Container[key]
-        end,
-        __newindex = function(_, key, value)
-            local schema = rawget(self, "propsSchema")
-            if schema and schema:get(key) then
-                setContainerProp(self, key, value)
-                return
-            end
-            rawset(self, key, value)
-        end,
-    }
-    self = setmetatable(self, meta)
+function Container:__newindex(key, value)
+    local schema = rawget(self, "propsSchema")
+    if schema and schema:get(key) then
+        setContainerProp(self, key, value)
+        return
+    end
+    rawset(self, key, value)
+end
 
+function Container:ctor(def, host)
     rawset(self, "def", def)
     rawset(self, "host", host)
     rawset(self, "children", {})
@@ -95,8 +91,6 @@ function Container.new(def, host)
     rawset(self, "dirty", {})
     rawset(self, "dirtyIndex", {})
     rawset(self, "isView", false)
-
-    return self
 end
 
 function Container:isViewOpened()

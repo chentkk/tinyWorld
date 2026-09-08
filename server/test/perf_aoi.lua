@@ -3,7 +3,7 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
-local SpatialIndex = require "tinyworld.app.cellapp.spatial_index"
+local SpatialIndex = require "tinyworld.app.cellapp.space.spatial_index"
 
 local sp = SpatialIndex.new(50, 100, 100)
 

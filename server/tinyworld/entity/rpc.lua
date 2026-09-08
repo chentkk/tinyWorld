@@ -2,12 +2,12 @@
 -- RPC 注册表。仅保存 { 对象, 函数名 }, 调用时按名字直接索取,
 -- 不需要再遍历对象上的所有组件。
 
+local class = require "tinyworld.core.class"
 
-local RpcRegistry = {}
-RpcRegistry.__index = RpcRegistry
+local RpcRegistry = class.makeClass("RpcRegistry")
 
-function RpcRegistry.new()
-    return setmetatable({ entries = {} }, RpcRegistry)
+function RpcRegistry:ctor()
+    self.entries = {}
 end
 
 function RpcRegistry:register(target, methodName, option)

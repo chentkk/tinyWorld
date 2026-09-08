@@ -10,6 +10,7 @@ M.registry = {}
 function M.register(kind, defModuleOrTable)
     local def = compileDef(defModuleOrTable)
     M.registry[kind] = def
+
     return def
 end
 

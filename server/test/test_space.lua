@@ -6,8 +6,8 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local SpaceConfig = require "tinyworld.space.space"
 local CellAllocator = require "tinyworld.app.world.cell_allocator"
-local LocalSpace = require "tinyworld.app.cellapp.local_space"
-local RealEntity = require "tinyworld.app.cellapp.real_entity"
+local LocalSpace = require "tinyworld.app.cellapp.space.local_space"
+local RealEntity = require "tinyworld.app.cellapp.entities.real_entity"
 local defs = require "tinyworld.entity.defs"
 
 -- 定义 cell 侧实体

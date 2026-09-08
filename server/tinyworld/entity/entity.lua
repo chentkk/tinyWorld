@@ -111,6 +111,18 @@ function Entity:getRecord(name)
     return self.records[name]
 end
 
+-- entity 级定时器(由所在 cell 的时间轮托管)
+-- delay 秒; times=-1 无限, 其他为总触发次数(缺省 1)
+function Entity:addTimer(delay, times, fn)
+    local cell = assert(rawget(self, "cell"), "entity not bound to a cell")
+    return cell:addTimer(self, delay, times, fn)
+end
+
+function Entity:removeTimer(timerId)
+    local cell = assert(rawget(self, "cell"), "entity not bound to a cell")
+    return cell:removeTimer(timerId)
+end
+
 -- 对象分类标签(来自 def.tags, 构造时已 normalize)
 function Entity:hasTag(tag)
     local tagMod = require "tinyworld.core.tag"
@@ -167,7 +179,7 @@ function Entity:getComponent(name)
     return self.components[name]
 end
 
--- 按 def 配置装配组件: componentsConfig = { {name="move", module="game.components.move"}, ... }
+-- 按 def 配置装配组件: componentsConfig = { {name="move", module="game.cell.move"}, ... }
 function Entity:setupComponents(componentsConfig)
     for _, conf in ipairs(componentsConfig or {}) do
         local modulePath
@@ -286,7 +298,7 @@ function Entity:destroy()
     rawset(self, "_destroyed", true)
 
     self:onDestroy()
-    if self.cell then
+    if self.cell and self.cell.removeEntity then
         self.cell:removeEntity(self)
     end
 end
@@ -296,6 +308,22 @@ function Entity:onEnterCell(cell)
     self:emit("on_enter_cell", cell)
     self:eachComponent(function(_, comp)
         if comp.onEnterCell then comp:onEnterCell(cell) end
+    end)
+end
+
+-- 迁移离开回调(本地 / 跨 cellapp 迁移前调用, 用于业务清理)
+function Entity:onMigrateOut(cell)
+    self:emit("on_migrate_out", cell)
+    self:eachComponent(function(_, comp)
+        if comp.onMigrateOut then comp:onMigrateOut(cell) end
+    end)
+end
+
+-- 迁移完成回调(本地 / 跨 cellapp 迁移在组件重新装配后调用)
+function Entity:onMigrateIn(cell)
+    self:emit("on_migrate_in", cell)
+    self:eachComponent(function(_, comp)
+        if comp.onMigrateIn then comp:onMigrateIn(cell) end
     end)
 end
 

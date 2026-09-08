@@ -38,9 +38,9 @@ return {
         equipmentDef,
     },
     baseComponents = {
-        "game.components.bag",
-        "game.components.equipment",
-        "game.components.task",
+        "game.base.bag",
+        "game.base.equipment",
+        "game.base.task",
 
     },
     baseOpenViews = { "bag", "equipment" },

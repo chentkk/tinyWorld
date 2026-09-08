@@ -44,6 +44,8 @@ function Component:onCreate() end
 function Component:onDestroy() end
 function Component:onEnterCell(cell) end
 function Component:onLeaveCell(cell) end
+function Component:onMigrateOut(cell) end
+function Component:onMigrateIn(cell) end
 function Component:onClientEnter(playerId) end
 function Component:onClientLeave(playerId) end
 function Component:onTick(dt) end

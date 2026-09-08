@@ -3,12 +3,11 @@
 -- 通过 __index / __newindex 支持 row.field = value。
 -- 字段写回会通知 owner(Record), 由 Record 合并生成同步 op。
 
-local RecordRow = {}
-RecordRow.__index = RecordRow
+local class = require "tinyworld.core.class"
 
-function RecordRow.new(schema, owner, id, data)
-    local self = setmetatable({}, RecordRow)
+local RecordRow = class.makeClass("RecordRow")
 
+function RecordRow:ctor(schema, owner, id, data)
     rawset(self, "_schema", schema)
     rawset(self, "_owner", owner)
     rawset(self, "_id", id)
@@ -18,8 +17,6 @@ function RecordRow.new(schema, owner, id, data)
     for name, value in pairs(data or {}) do
         storage[name] = schema:coerce(name, value)
     end
-
-    return self
 end
 
 function RecordRow:__index(name)

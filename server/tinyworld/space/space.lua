@@ -6,10 +6,10 @@
 -- cell 的 appId 不在配置中指定, 由 world 侧运行时分配(cell_allocator)。
 -- 本模块只负责几何切分, 不关心 cellapp。
 
+local class = require "tinyworld.core.class"
 local CellInfo = require "tinyworld.space.cell_info"
 
-local SpaceConfig = {}
-SpaceConfig.__index = SpaceConfig
+local SpaceConfig = class.makeClass("SpaceConfig")
 
 local function clampInt(n, default)
     n = tonumber(n)
@@ -29,7 +29,7 @@ end
 -- config: { id, width, height, aoiRange, ghostRange,
 --           cellSize | cellCols+cellRows | cells = { {id,x,y,w,h}, ... } }
 function SpaceConfig.compile(config)
-    local self = setmetatable({}, SpaceConfig)
+    local self = SpaceConfig.new()
 
     self.id = config.id or "main"
     self.width = tonumber(config.width) or 200

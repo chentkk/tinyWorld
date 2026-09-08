@@ -1,12 +1,8 @@
 -- tinyworld/net/msg.lua
--- 消息构造与 message.log 格式化工具。
+-- message.log 格式化工具与协议编码入口。
 
 local proto = require "tinyworld.core.proto"
 local M = {}
-
-function M.new(t, n, d)
-    return { t = t, n = n, d = d or {} }
-end
 
 local function pad(v)
     if type(v) == "number" or type(v) == "string" or type(v) == "boolean" then

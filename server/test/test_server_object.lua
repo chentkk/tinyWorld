@@ -8,9 +8,9 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local defs = require "tinyworld.entity.defs"
-local RealEntity = require "tinyworld.app.cellapp.real_entity"
+local RealEntity = require "tinyworld.app.cellapp.entities.real_entity"
 local SpaceConfig = require "tinyworld.space.space"
-local LocalSpace = require "tinyworld.app.cellapp.local_space"
+local LocalSpace = require "tinyworld.app.cellapp.space.local_space"
 local CellAllocator = require "tinyworld.app.world.cell_allocator"
 
 defs.register("ServerObject", require "game.def.server_object.server_object_def")
@@ -66,7 +66,7 @@ local function spawnEntity(spaceId, cellKey, kind, data, baseApp)
 end
 cell.host.spawn_entity = spawnEntity
 
-local ServerObject = require "tinyworld.app.cellapp.server_object"
+local ServerObject = require "tinyworld.app.cellapp.components.server_object"
 
 local entered, exited, destroyed
 local ok = ServerObject.Create(cell, {

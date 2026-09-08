@@ -2,12 +2,12 @@
 -- 事件总线: 组件系统可侦听 / 抛出事件。
 -- on / off / emit, 侦听器签名 listener(eventName, ...)
 
+local class = require "tinyworld.core.class"
 
-local EventBus = {}
-EventBus.__index = EventBus
+local EventBus = class.makeClass("EventBus")
 
-function EventBus.new()
-    return setmetatable({ listeners = {} }, EventBus)
+function EventBus:ctor()
+    self.listeners = {}
 end
 
 function EventBus:on(name, fn)

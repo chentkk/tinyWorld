@@ -12,6 +12,7 @@ function BaseEntity:ctor(def, id, kind, conn)
     self.account = conn and conn.account
     self.entered = false
     self.cell = nil -- { appAddr, cellKey }
+    self._toredown = false
 end
 
 -- middleware: 登录完成(rpc 前必须 enterWorld)才能调用
@@ -24,6 +25,21 @@ end
 
 function BaseEntity:bindCell(appAddr, cellKey, spaceId)
     self.cell = { appAddr = appAddr, cellKey = cellKey, spaceId = spaceId }
+end
+
+-- 退出 / 换 cell 时解除 cellentity 绑定
+function BaseEntity:unbindCell()
+    self.cell = nil
+    self.cellEntityId = nil
+    self.entered = false
+end
+
+-- 幂等收尾: 本侧实体没有 cell 运行时对象(只有绑定信息), 不能走 Entity.destroy
+function BaseEntity:teardown()
+    if self._toredown then return end
+    self._toredown = true
+    self:onDestroy()
+    self:unbindCell()
 end
 
 -- baseapp -> cellentity(real) rpc

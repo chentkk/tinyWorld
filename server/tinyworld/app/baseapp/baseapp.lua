@@ -8,12 +8,14 @@ local service = require "tinyworld.core.service"
 local log = require "tinyworld.core.log"
 local proto = require "tinyworld.core.proto"
 local msgUtil = require "tinyworld.net.msg"
+local protocol = require "tinyworld.net.protocol"
 local defs = require "tinyworld.entity.defs"
 local BaseEntity = require "tinyworld.app.baseapp.baseentity"
 local PlayerStore = require "tinyworld.app.baseapp.player_store"
 
 local cmd = {}
-local sessions = {} -- connId -> session
+local sessions = {}      -- connId -> session
+local playerSessions = {} -- playerId -> connId
 local playerStore = nil
 local registry
 local dbmgrAddr
@@ -38,7 +40,34 @@ local function sendToClient(session, msg)
 end
 
 local function replyAccount(session, name, data)
-    sendToClient(session, msgUtil.new("ACCOUNT", name, data))
+    sendToClient(session, protocol.account(name, data))
+end
+
+-- 仅当索引仍指向该 conn 时清理, 避免重连竞态误删新 session 的索引
+local function unindexPlayer(playerId, connId)
+    if playerSessions[playerId] == connId then playerSessions[playerId] = nil end
+end
+
+-- 退出世界 / 换角色复用: 取 real 坐标 -> despawn real -> 存盘 -> base 侧清理。
+local function teardownEntity(entity)
+    if not entity then return end
+
+    local cell = entity.cell
+    local cellEntityId = entity.cellEntityId
+    local dumpData = entity:dump()
+
+    if cell and cellEntityId then
+        local remote = skynet.call(cell.appAddr, "lua", "get_entity", cell.spaceId, cellEntityId)
+        if remote and remote.props then
+            dumpData.props.x = remote.props.x
+            dumpData.props.y = remote.props.y
+        end
+        pcall(skynet.call, cell.appAddr, "lua", "despawn_entity",
+            cell.spaceId, cell.cellKey, cellEntityId)
+    end
+
+    pcall(function() return playerStore:save(entity.id, dumpData) end)
+    entity:teardown() -- 幂等: onDestroy + unbindCell
 end
 
 -- 发送自身初始化数据: 表格全量 + 视图全量
@@ -48,13 +77,13 @@ local function sendOwnIncrements(entity, session)
     for name, rec in pairs(entity.records) do
         local flush = rec:flushSync()
         if flush then
-            sendToClient(session, msgUtil.new("record", name, { entityId = myId, ops = flush.ops }))
+            sendToClient(session, protocol.recordMsg(myId, name, flush.ops))
         end
     end
     for name, cont in pairs(entity.containers) do
         local flush = cont:flushSync()
         if flush then
-            sendToClient(session, msgUtil.new("view", name, { entityId = myId, ops = flush.ops }))
+            sendToClient(session, protocol.viewMsg(myId, name, flush.ops))
         end
     end
 end
@@ -66,8 +95,7 @@ local function sendOwnState(entity, session)
             for _, row in pairs(rec.rows) do
                 ops[#ops + 1] = { type = "add", key = rec.def:keyOf(row), data = rec:syncData(row) }
             end
-            sendToClient(session, msgUtil.new("record", name,
-                { entityId = entity.cellEntityId or entity.id, ops = ops }))
+            sendToClient(session, protocol.recordMsg(entity.cellEntityId or entity.id, name, ops))
         end
     end
 
@@ -78,16 +106,13 @@ local function sendOwnState(entity, session)
             for _, child in pairs(cont.children) do
                 ops[#ops + 1] = { type = "add", id = child.id, data = cont:childFullData(child) }
             end
-            sendToClient(session, msgUtil.new("view", name,
-                { entityId = entity.cellEntityId or entity.id, ops = ops }))
+            sendToClient(session, protocol.viewMsg(entity.cellEntityId or entity.id, name, ops))
         end
     end
 end
 
 local function sendObjectAdd(entity, session, props)
-    sendToClient(session, msgUtil.new("object", "add", {
-        entityId = entity.cellEntityId or entity.id, kind = entity.kind, props = props,
-        isSelf = true }))
+    sendToClient(session, protocol.objectAddSelf(entity, props))
 end
 
 -- ACCOUNT 阶段处理
@@ -128,6 +153,7 @@ local function enterWorld(entity, session)
     entity.cellEntityId = spawn.entityId
     entity:bindCell(info.appAddr, info.cell.id, info.spaceId)
     entity.entered = true
+    playerSessions[entity.id] = session.connId
 
     sendObjectAdd(entity, session, spawn.props)
     sendOwnState(entity, session)
@@ -140,6 +166,14 @@ local function accountSelectCharacter(session, d)
         replyAccount(session, "selectCharacter", { code = 1, msg = "player not found", playerId = d.playerId })
         return
     end
+
+    -- 重入保护: 已在世界则退出旧 real, 再次进入世界
+    local oldEntity = session.entity
+    if oldEntity and oldEntity.entered then
+        teardownEntity(oldEntity)
+        unindexPlayer(oldEntity.id, session.connId)
+    end
+    session.entity = nil
 
     local data = playerStore:load(playerId)
     local def = defs.get("Player")
@@ -182,12 +216,19 @@ local function handleRpc(session, msg)
     end
 
     if ok then
-        sendToClient(session, msgUtil.new("RPC", msg.n, res or {}))
+        sendToClient(session, protocol.rpc(msg.n, res or {}))
     end
 end
 
 -- gate 在 AUTH 通过后绑定会话
 function cmd.open_client(gateAddr, fd, connId, accountId)
+    -- 同账号重复登录: 踢掉旧连接, 避免一个账号两个 real
+    for oldConnId, s in pairs(sessions) do
+        if oldConnId ~= connId and s.accountId == accountId then
+            skynet.send(gateAddr, "lua", "kick", oldConnId)
+        end
+    end
+
     sessions[connId] = {
         gate = gateAddr, fd = fd, connId = connId,
         accountId = accountId, entity = nil,
@@ -245,25 +286,18 @@ end
 -- 客户端断开: 生命周期收尾 + 打包存盘(属性/表格/容器 -> player_bin)
 function cmd.client_disconnect(connId)
     local session = sessions[connId]
-    if not session or not session.entity then return end
+    if not session then return end
+    sessions[connId] = nil
 
     local entity = session.entity
-    local dumpData = entity:dump()
-
-    -- 坐标以 cellentity(real) 为准
-    if entity.cell and entity.cellEntityId then
-        local remote = skynet.call(entity.cell.appAddr, "lua", "get_entity",
-            entity.cell.spaceId, entity.cellEntityId)
-        if remote and remote.props then
-            dumpData.props.x = remote.props.x
-            dumpData.props.y = remote.props.y
-        end
+    if not entity then
+        log.info("session closed %s (no entity)", connId)
+        return
     end
 
-    pcall(function() return playerStore:save(entity.id, dumpData) end)
-    entity:onDestroy()
-    sessions[connId] = nil
-    log.info("session closed %s playerId=%d saved", connId, entity.id)
+    teardownEntity(entity)
+    unindexPlayer(entity.id, connId)
+    log.info("session closed %s playerId=%d", connId, entity.id)
 end
 
 -- cellapp 迁移完成后通知 baseapp 更新 real 的 cell 绑定

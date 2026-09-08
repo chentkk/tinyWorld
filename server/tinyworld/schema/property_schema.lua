@@ -1,6 +1,8 @@
 -- tinyworld/schema/property_schema.lua
 -- PropertySchema: 属性定义编译为平铺字段, 支持 include, 提供 get / coerce。
 
+local class = require "tinyworld.core.class"
+
 local function flattenFields(defs, result, seen, stack)
     result = result or {}
     seen = seen or {}
@@ -32,15 +34,13 @@ local function flattenFields(defs, result, seen, stack)
     return result
 end
 
-local PropertySchema = { flattenFields = flattenFields }
-PropertySchema.__index = PropertySchema
+local PropertySchema = class.makeClass("PropertySchema")
+PropertySchema.flattenFields = flattenFields
 
-function PropertySchema.new(defs)
-    local self = setmetatable({}, PropertySchema)
+function PropertySchema:ctor(defs)
     self.fields = flattenFields(defs)
     self.byName = {}
     for _, f in ipairs(self.fields) do self.byName[f.name] = f end
-    return self
 end
 
 function PropertySchema:get(name)

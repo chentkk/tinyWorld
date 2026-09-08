@@ -1,13 +1,12 @@
 -- tinyworld/schema/property.lua
 -- Properties: 属性运行实例, 负责 set/get、同步脏标记、持久化脏标记。
 
+local class = require "tinyworld.core.class"
 local PropertySchema = require "tinyworld.schema.property_schema"
 
-local Properties = {}
-Properties.__index = Properties
+local Properties = class.makeClass("Properties")
 
-function Properties.new(schema, host)
-    local self = setmetatable({}, Properties)
+function Properties:ctor(schema, host)
     self.schema = schema or PropertySchema.new({})
     self.host = host
     self.values = {}
@@ -17,7 +16,6 @@ function Properties.new(schema, host)
     for _, f in ipairs(self.schema.fields) do
         if f.default ~= nil then self.values[f.name] = f.default end
     end
-    return self
 end
 
 function Properties:get(name)

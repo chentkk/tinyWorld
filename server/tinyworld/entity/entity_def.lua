@@ -2,9 +2,29 @@
 -- 编译 *_def 文件: 增加 propSchema / recordDefs / containerDefs。
 
 local PropertySchema = require "tinyworld.schema.property_schema"
+local Record = require "tinyworld.schema.record"
 local RecordDef = require "tinyworld.schema.record_def"
 local ContainerDef = require "tinyworld.schema.container_def"
 local tag = require "tinyworld.core.tag"
+
+local function defineRecordStructs(def)
+    local function registerDefs(seen, list)
+        for _, rd in ipairs(list or {}) do
+            if not seen[rd.name] then
+                Record.define(rd)
+                seen[rd.name] = true
+            end
+        end
+    end
+
+    local seen = {}
+    registerDefs(seen, def.recordDefs)
+
+    for _, cd in ipairs(def.containerDefs or {}) do
+        registerDefs(seen, cd.recordDefs)
+        registerDefs(seen, cd.childRecordDefs)
+    end
+end
 
 return function(defModuleOrTable)
     local def
@@ -26,6 +46,9 @@ return function(defModuleOrTable)
     end
 
     -- 组件/视图装配配置(由 def 文件声明的数据, 不包含业务逻辑)
+    -- 启动期集中注册 Record 表结构(在创建任何实例之前)
+    defineRecordStructs(def)
+
     def.baseComponents = def.baseComponents or {}
     def.baseOpenViews = def.baseOpenViews or {}
     def.cellComponents = def.cellComponents or {}

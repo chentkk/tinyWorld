@@ -1,170 +1,90 @@
 -- tinyworld/schema/record.lua
--- Record: 表格运行实例, 支持 add/remove/query/set/get, 提供同步 ops。
--- 行对象支持 record[key].field = value 自动产生同步 op。
+-- Record 入口: C recordstore 直接承载全部表格逻辑, 仅保留一个薄 facade 用于:
+--   - 把 RecordDef(schema) 转成 C 需要的平铺字段表
+--   - 提供 rec[key] 行查找与 rec.rows 快照(与旧 Lua 实现同接口)
+-- C module 不可用(例如系统 Lua 5.4)时回退纯 Lua 实现。
 
-local RecordRow = require "tinyworld.schema.record_row"
+local okC, recordstore = pcall(require, "recordstore")
+if not okC or type(recordstore.new) ~= "function" then
+    return require "tinyworld.schema.record_legacy"
+end
 
-local Record = {}
-Record.__index = Record
+local class = require "tinyworld.core.class"
 
-function Record.new(def, host)
-    local self = {}
+local Record = class.makeClass("Record")
 
-    local instanceMeta = {
-        __index = function(_, key)
-            local rows = rawget(self, "rows")
-            local row = rows and rows[key]
-            if row then
-                return row
+local function fieldDefs(def)
+    local out = {}
+    for _, f in ipairs(def.schema.fields) do
+        out[#out + 1] = {
+            name = f.name,
+            type = f.type,
+            sync = f.sync,
+            persist = f.persist,
+            default = f.default,
+        }
+    end
+    return out
+end
+
+-- 启动阶段集中注册: 按 record def 在 C 内按类名建立共享 desc
+function Record.define(def)
+    recordstore.define(def.name, {
+        name = def.name,
+        keyFields = def.keyFields or { "key" },
+        sync = def.sync or "none",
+        fields = fieldDefs(def),
+    })
+end
+
+-- 实例 __index: 行查找优先(旧实现语义), 其次方法表
+function Record:__index(key)
+    if key == "rows" then
+        local store = rawget(self, "_store")
+        if store then
+            local out = {}
+            for _, row in ipairs(store:rowsList()) do
+                out[row:id()] = row
             end
-            return Record[key]
-        end,
-    }
-    self = setmetatable(self, instanceMeta)
+            return out
+        end
+        return nil
+    end
 
+    local store = rawget(self, "_store")
+    if store and type(key) == "string" then
+        local row = store:get(key)
+        if row then
+            return row
+        end
+    end
+    return Record[key]
+end
+
+function Record:ctor(def, host)
     rawset(self, "def", def)
     rawset(self, "host", host)
-    rawset(self, "rows", {})
-    rawset(self, "order", {})
-    rawset(self, "dirty", {})      -- 待同步 op 数组(按 key 合并后仍有序)
-    rawset(self, "dirtyIndex", {}) -- key -> dirty 数组下标
-
-    return self
-end
-
--- 移除 idx 位置的 op, 用末位元素填补空洞, 保持 dirty 数组密集
-local function compactDirty(self, idx)
-    local dirty = rawget(self, "dirty")
-    local index = rawget(self, "dirtyIndex")
-    local removed = dirty[idx]
-
-    local last = dirty[#dirty]
-    if last and last ~= removed then
-        dirty[idx] = last
-        dirty[#dirty] = nil
-        index[last.key] = idx
-    else
-        dirty[#dirty] = nil
-    end
-    if removed and removed.key then
-        index[removed.key] = nil
-    end
-    return removed
-end
-
-local function discardOp(self, key)
-    local index = rawget(self, "dirtyIndex")
-    local idx = index[key]
-    if idx then
-        return compactDirty(self, idx)
-    end
-end
-
-local function appendOp(self, op)
-    local dirty = rawget(self, "dirty")
-    local index = rawget(self, "dirtyIndex")
-    local idx = #dirty + 1
-    dirty[idx] = op
-    if op.key then
-        index[op.key] = idx
-    end
+    rawset(self, "_store", recordstore.new(def.name, self))
 end
 
 function Record:add(data)
-    local schema = self.def.schema
-    local key = self.def:keyOf(data)
-
-    if rawget(self, "rows")[key] then
-        return nil
-    end
-
-    local row = RecordRow.new(schema, self, key, data)
-
-    rawget(self, "rows")[key] = row
-    rawget(self, "order")[#rawget(self, "order") + 1] = key
-
-    if self.def.sync ~= "none" then
-        local index = rawget(self, "dirtyIndex")
-        local pendingIdx = index[key]
-        local pending = pendingIdx and rawget(self, "dirty")[pendingIdx]
-        if pending and pending.type == "add" then
-            pending.data = self:syncData(row)
-        else
-            if pending and pending.type == "remove" then
-                discardOp(self, key)
-            end
-            appendOp(self, {
-                type = "add",
-                key = key,
-                data = self:syncData(row),
-            })
-        end
-    end
-    if self.host and self.host.onRecordChange then
-        self.host:onRecordChange(self, { type = "add", key = key })
-    end
-
-    return row
+    return rawget(self, "_store"):add(data)
 end
 
 function Record:remove(key)
-    local rows = rawget(self, "rows")
-    if not rows[key] then
-        return false
-    end
-
-    rows[key] = nil
-
-    local order = rawget(self, "order")
-    for i, k in ipairs(order) do
-        if k == key then
-            table.remove(order, i)
-            break
-        end
-    end
-
-    if self.def.sync ~= "none" then
-        local index = rawget(self, "dirtyIndex")
-        local pendingIdx = index[key]
-        local pending = pendingIdx and rawget(self, "dirty")[pendingIdx]
-        if pending and pending.type == "add" then
-            discardOp(self, key)
-        else
-            if pending then
-                discardOp(self, key)
-            end
-            appendOp(self, { type = "remove", key = key })
-        end
-    end
-    if self.host and self.host.onRecordChange then
-        self.host:onRecordChange(self, { type = "remove", key = key })
-    end
-
-    return true
+    return rawget(self, "_store"):remove(key)
 end
 
 function Record:get(key)
-    return rawget(self, "rows")[key]
+    return rawget(self, "_store"):get(key)
 end
 
 function Record:count()
-    local n = 0
-    for _ in pairs(rawget(self, "rows")) do
-        n = n + 1
-    end
-    return n
+    return rawget(self, "_store"):count()
 end
 
 function Record:update(key, patch)
-    local row = rawget(self, "rows")[key]
-    if not row then
-        return nil
-    end
-
-    for name, value in pairs(patch) do
-        row[name] = value
-    end
-    return row
+    return rawget(self, "_store"):update(key, patch)
 end
 
 function Record:set(key, name, value)
@@ -172,60 +92,20 @@ function Record:set(key, name, value)
 end
 
 function Record:rowsList()
-    local rows = rawget(self, "rows")
-    local order = rawget(self, "order")
-
-    local out = {}
-    for _, key in ipairs(order) do
-        local row = rows[key]
-        if row then
-            out[#out + 1] = row
-        end
-    end
-    return out
+    return rawget(self, "_store"):rowsList()
 end
 
 function Record:query(pred)
-    local rows = rawget(self, "rows")
-    local out = {}
-    for key, row in pairs(rows) do
-        if not pred or pred(row, key) then
-            out[#out + 1] = row
-        end
-    end
-    return out
+    return rawget(self, "_store"):query(pred)
 end
 
 function Record:findOne(field, value)
-    local rows = rawget(self, "rows")
-    for _, row in pairs(rows) do
-        if row[field] == value then
-            return row
-        end
-    end
+    return rawget(self, "_store"):findOne(field, value)
 end
 
--- RecordRow 写回入口: 行字段变化 -> 合并到该行当前待同步 op。
--- 同一 flush 周期内同一行只保留一个 op, 最终字段覆盖中间值。
 function Record:onChildPropChange(child, name, value)
-    local key = child:id()
-
-    if self.def.sync ~= "none" then
-        local index = rawget(self, "dirtyIndex")
-        local pending = index[key] and rawget(self, "dirty")[index[key]]
-        if pending then
-            pending.data[name] = value
-        else
-            appendOp(self, {
-                type = "set",
-                key = key,
-                data = { [name] = value },
-            })
-        end
-    end
-    if self.host and self.host.onRecordChange then
-        self.host:onRecordChange(self, { type = "set", key = key })
-    end
+    -- C 行 __newindex 已在 C 内合并 set op 并通知 host; 该方法仅作接口兼容。
+    return rawget(self, "_store"):set(child:id(), name, value)
 end
 
 function Record:syncData(row)
@@ -240,27 +120,15 @@ function Record:syncData(row)
 end
 
 function Record:collectSync()
-    local dirty = rawget(self, "dirty")
-    rawset(self, "dirty", {})
-    rawset(self, "dirtyIndex", {})
-    return dirty
+    return rawget(self, "_store"):flush()
 end
 
 function Record:flushSync()
-    local ops = self:collectSync()
-    if #ops == 0 then
-        return nil
-    end
-    return { name = self.def.name, ops = ops }
+    return rawget(self, "_store"):flushSync()
 end
 
 function Record:dump()
-    local rows = rawget(self, "rows")
-    local out = {}
-    for k, row in pairs(rows) do
-        out[k] = row:data()
-    end
-    return out
+    return rawget(self, "_store"):dump()
 end
 
 return Record

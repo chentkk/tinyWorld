@@ -16,7 +16,7 @@ return {
         abilitiesViewDef,
     },
     cellComponents = {
-        "game.components.move",
+        "game.cell.move",
         "tinyworld.combat.combat_agent",
     },
     cellOpenViews = { "modifiers_view", "abilities_view" },

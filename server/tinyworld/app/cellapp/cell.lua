@@ -13,10 +13,11 @@ local function outboxHasChanges(outbox)
            next(outbox.recordOps or {}) ~= nil or next(outbox.viewOps or {}) ~= nil or
            #(outbox.events or {}) > 0
 end
-local SpatialIndex = require "tinyworld.app.cellapp.spatial_index"
-local entityMsg = require "tinyworld.app.cellapp.entity_msg"
-local RealEntity = require "tinyworld.app.cellapp.real_entity"
-local GhostEntity = require "tinyworld.app.cellapp.ghost_entity"
+local SpatialIndex = require "tinyworld.app.cellapp.space.spatial_index"
+local TimerScheduler = require "tinyworld.framework.timer.timer_scheduler"
+local protocol = require "tinyworld.net.protocol"
+local RealEntity = require "tinyworld.app.cellapp.entities.real_entity"
+local GhostEntity = require "tinyworld.app.cellapp.entities.ghost_entity"
 local defs = require "tinyworld.entity.defs"
 
 local Cell = class.makeClass("Cell")
@@ -29,10 +30,26 @@ function Cell:ctor(cellInfo, host, space)
     self.players = {}
     self.spatial = SpatialIndex.new(space.config.aoiRange, cellInfo.w, cellInfo.h)
     self.playerCount = 0
+
+    -- entity 级定时器(时间轮, 一次性到期; 重复调度在 scheduler)
+    self.timerScheduler = TimerScheduler.new()
 end
 
 function Cell:key()
     return self.info.id
+end
+
+-- entity 级定时器: delay 秒; times=-1 无限, 其他为总触发次数(缺省 1)。
+function Cell:addTimer(entity, delay, times, fn)
+    return self.timerScheduler:add(entity, delay, times, fn)
+end
+
+function Cell:removeTimer(id)
+    return self.timerScheduler:remove(id)
+end
+
+function Cell:updateTimers(dt)
+    return self.timerScheduler:update(dt)
 end
 
 function Cell:getSpaceId()
@@ -70,6 +87,10 @@ end
 
 function Cell:removeEntity(entity)
     if not self.entities[entity.id] then return end
+
+    -- 实体离开本 cell 时, 框架负责清掉挂在本 cell 调度器上的定时器;
+    -- 跨 cell 迁移后的新 cell 上由业务组件在 onMigrateIn 里重新添加。
+    self.timerScheduler:clearEntity(entity:getRealId())
 
     self.entities[entity.id] = nil
     self.spatial:leave(entity, entity.x, entity.y)
@@ -110,6 +131,9 @@ function Cell:tick(dt)
     self:checkMigrations()
     self:ensureGhosts()
     self:broadcastGhostChanges()
+
+    -- 时间轮定时器(秒转毫秒)
+    self:updateTimers(dt)
 end
 
 function Cell:updateEntities(dt)
@@ -177,9 +201,7 @@ end
 function Cell:sendProp(player, entity, props)
     if not props or not next(props) then return end
 
-    local data = { t = "prop", n = "props", d = { entityId = entity:getRealId() } }
-    for k, v in pairs(props) do data.d[k] = v end
-    self.host:sendToClient(player, data)
+    self.host:sendToClient(player, protocol.propMsg(entity, props))
 end
 
 -- 以 player 为观察者, 取目标实体 outbox 中属于 around 的部分发送
@@ -210,19 +232,15 @@ end
 function Cell:sendGhostViewProp(player, entity, stage)
     if not stage or not next(stage) then return end
 
-    local data = { t = "prop", n = "props", d = { entityId = entity:getRealId() } }
-    for k, v in pairs(stage) do data.d[k] = v end
-    self.host:sendToClient(player, data)
+    self.host:sendToClient(player, protocol.propMsg(entity, stage))
 end
 
 function Cell:sendRecordOps(player, entity, name, ops)
-    self.host:sendToClient(player, { t = "record", n = name,
-        d = { entityId = entity:getRealId(), ops = ops } })
+    self.host:sendToClient(player, protocol.recordMsg(entity:getRealId(), name, ops))
 end
 
 function Cell:sendViewOps(player, entity, name, ops)
-    self.host:sendToClient(player, { t = "view", n = name,
-        d = { entityId = entity:getRealId(), ops = ops } })
+    self.host:sendToClient(player, protocol.viewMsg(entity:getRealId(), name, ops))
 end
 
 function Cell:deliverOutboxes()
@@ -281,14 +299,14 @@ function Cell:updatePlayerVisibility(player)
     for id, other in pairs(visible) do
         if player.visibleEntities[id] ~= other then
             player.visibleEntities[id] = other
-            self.host:sendToClient(player, entityMsg.objectAddMsg(other))
+            self.host:sendToClient(player, protocol.objectAddMsg(other))
         end
     end
 
     for id, old in pairs(player.visibleEntities) do
         if not visible[id] then
             player.visibleEntities[id] = nil
-            self.host:sendToClient(player, entityMsg.objectRemoveMsg(old))
+            self.host:sendToClient(player, protocol.objectRemoveMsg(old))
         end
     end
 end
@@ -352,6 +370,7 @@ function Cell:migrateLocal(real, target)
     end
 
     local oldCell = real.cell
+    real:onMigrateOut(oldCell)
     oldCell:removeEntity(real)
     oldCell:leaveWitness(real)
 
@@ -379,6 +398,9 @@ function Cell:migrateLocal(real, target)
     promoted:setupComponents(promoted.def.cellComponents)
     promoted.readyForSync = true
 
+    -- 迁移完成通知(组件在此重新添加自己的 cell 级定时器等)
+    promoted:onMigrateIn(target)
+
     real.migrating = false
 end
 
@@ -397,6 +419,7 @@ function Cell:migrateRemote(real, ideal)
     end
 
     local oldCell = real.cell
+    real:onMigrateOut(oldCell)
     oldCell:removeEntity(real)
     oldCell:leaveWitness(real)
 

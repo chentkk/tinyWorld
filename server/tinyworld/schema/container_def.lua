@@ -2,15 +2,13 @@
 -- ContainerDef: 容器/视图定义。
 -- 容器自身可携带 props / records; 子对象通过 childDef 定义(与 player/modifier 同结构)。
 
+local class = require "tinyworld.core.class"
 local PropertySchema = require "tinyworld.schema.property_schema"
 local RecordDef = require "tinyworld.schema.record_def"
 
-local ContainerDef = {}
-ContainerDef.__index = ContainerDef
+local ContainerDef = class.makeClass("ContainerDef")
 
-function ContainerDef.new(def)
-    local self = setmetatable({}, ContainerDef)
-
+function ContainerDef:ctor(def)
     self.name = def.name
     self.persist = def.persist == true
     self.selfOnly = def.selfOnly == true
@@ -31,8 +29,6 @@ function ContainerDef.new(def)
     for _, rd in ipairs(childRecordDef) do
         self.childRecordDefs[#self.childRecordDefs + 1] = RecordDef.new(rd)
     end
-
-    return self
 end
 
 function ContainerDef:childId(data)

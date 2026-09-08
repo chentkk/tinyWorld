@@ -1,19 +1,17 @@
 -- tinyworld/schema/record_def.lua
 -- RecordDef: 表格定义(主键字段 / 同步方式 / 字段 schema)。
 
+local class = require "tinyworld.core.class"
 local PropertySchema = require "tinyworld.schema.property_schema"
 
-local RecordDef = {}
-RecordDef.__index = RecordDef
+local RecordDef = class.makeClass("RecordDef")
 
-function RecordDef.new(def)
-    local self = setmetatable({}, RecordDef)
+function RecordDef:ctor(def)
     self.name = def.name
     self.keyFields = def.keyFields or { def.key or "key" }
     self.sync = def.sync or "none"
     self.schema = PropertySchema.new(def.fields or {})
     self.indexes = def.indexes or {}
-    return self
 end
 
 function RecordDef:keyOf(data)

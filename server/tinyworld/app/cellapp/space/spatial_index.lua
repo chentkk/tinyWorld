@@ -1,37 +1,40 @@
 -- tinyworld/app/cellapp/spatial_index.lua
 -- cell 内空间划分索引(十字链表):
 --   cell 内所有对象分别挂在 X / Y 两条有序链表上,
---   每条链表由跳表支撑, 优先加载 luaclib/skiplist.so 的 C 实现, 失败时退回 lualib/skiplist.lua。
+--   每条链表由跳表支撑(luaclib/skiplist.so 的 C 实现, 参考 Redis zskiplist)。
 --   两条链表组支持 O(log n) 的 enter / move / leave 维护,
 --   以及 O(k log n + out) 的 X/Y 区间相交查询。
 -- 查询语义: 返回与 (x, y) 欧氏距离 <= range 的所有对象(包含自身, 由调用方过滤)。
+--
+-- 唯一性约定: C skiplist 与 Redis 一样不额外去重(允许同 (score,id) 重复节点),
+-- 因此"同一个 id 只保留最新坐标"由本层保证:
+--   - enter: 已存在则先 leave 再 insert;
+--   - move:  坐标变化时先 remove 旧坐标再 insert 新坐标;
+--   - leave: 先用 self.nodes 中的旧坐标 remove, 再清空索引。
+-- 任何情况下不允许跳过 remove 直接 insert。
 
--- C 实现: luaclib/skiplist.so(源码 lualib-src/skiplist.c); Lua 实现: lualib/skiplist.lua
-local Skiplist = pcall(require, "skiplist") and require "skiplist"
-if not Skiplist then
-    Skiplist = require "lualib.skiplist"
-end
+-- 跳表由 C 模块提供(luaclib/skiplist.so)。
+local class = require "tinyworld.core.class"
+local Skiplist = require "skiplist"
 
-local SpatialIndex = {}
-SpatialIndex.__index = SpatialIndex
+local SpatialIndex = class.makeClass("SpatialIndex")
 
-function SpatialIndex.new(range, cellW, cellH)
-    return setmetatable({
-        range = range or 20,
-        indexX = Skiplist.new(),
-        indexY = Skiplist.new(),
-        nodes = {},  -- id -> { x = number, y = number, ent = entity }
-    }, SpatialIndex)
+function SpatialIndex:ctor(range, cellW, cellH)
+    self.range = range or 20
+    self.indexX = Skiplist.new()
+    self.indexY = Skiplist.new()
+    self.nodes = {}  -- id -> { x = number, y = number, ent = entity }
 end
 
 function SpatialIndex:enter(entity, x, y)
     x = x or entity.x or 0
     y = y or entity.y or 0
 
-    -- 同 id 重复进入时按最新坐标重建, 保证两个轴链表状态一致
+    -- 同 id 重复进入时按最新坐标重建: 先删旧节点再插新节点(C skiplist 不做去重)
     if self.nodes[entity.id] then
         self:leave(entity)
     end
+    assert(not self.nodes[entity.id], "spatial_index: stale node after leave")
 
     self.nodes[entity.id] = { x = x, y = y, ent = entity }
     self.indexX:insert(x, entity.id)
@@ -49,12 +52,14 @@ function SpatialIndex:move(entity, x, y)
     end
 
     if node.x ~= x then
-        self.indexX:remove(node.x, entity.id)
+        assert(self.indexX:remove(node.x, entity.id),
+            "spatial_index: X node missing during move id=" .. tostring(entity.id))
         self.indexX:insert(x, entity.id)
         node.x = x
     end
     if node.y ~= y then
-        self.indexY:remove(node.y, entity.id)
+        assert(self.indexY:remove(node.y, entity.id),
+            "spatial_index: Y node missing during move id=" .. tostring(entity.id))
         self.indexY:insert(y, entity.id)
         node.y = y
     end
@@ -64,8 +69,10 @@ function SpatialIndex:leave(entity)
     local node = self.nodes[entity.id]
     if not node then return end
 
-    self.indexX:remove(node.x, entity.id)
-    self.indexY:remove(node.y, entity.id)
+    assert(self.indexX:remove(node.x, entity.id),
+        "spatial_index: X node missing during leave id=" .. tostring(entity.id))
+    assert(self.indexY:remove(node.y, entity.id),
+        "spatial_index: Y node missing during leave id=" .. tostring(entity.id))
     self.nodes[entity.id] = nil
 end
 

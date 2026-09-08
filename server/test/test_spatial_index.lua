@@ -6,7 +6,7 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
-local SpatialIndex = require "tinyworld.app.cellapp.spatial_index"
+local SpatialIndex = require "tinyworld.app.cellapp.space.spatial_index"
 
 math.randomseed(20260902)
 
@@ -77,7 +77,9 @@ end
 -- 同一 id 重复 enter 按最新坐标重建
 local e = entities[1]
 assert(e.x == nil or e.x >= 0) -- read-back sanity
+e.x, e.y = 50, 50
 idx:enter(e, 50, 50)
+e.x, e.y = 51, 51
 idx:enter(e, 51, 51)
 assert(sameSet(idx:query(51, 51), bruteForce(entities, 51, 51, RANGE, nil)),
     "re-enter rebuild mismatch")

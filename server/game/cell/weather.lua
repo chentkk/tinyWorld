@@ -1,16 +1,17 @@
--- game/components/weather.lua
--- 全局场景天气系统示例(cellapp 侧)。
+-- game/cell/weather.lua
+-- cellapp 侧全局场景天气系统示例。
 -- 组件能侦听 / 抛出事件: 天气变化通过实体事件总线广播, 业务自行订阅。
 
+local class = require "tinyworld.core.class"
 local event = require "tinyworld.core.event"
 local WEATHERS = { "sunny", "rain", "fog", "storm" }
 
-local WeatherSystem = {}
-WeatherSystem.__index = WeatherSystem
+local WeatherSystem = class.makeClass("WeatherSystem")
 
-function WeatherSystem.new()
-    local self = setmetatable({ index = 1, timer = 0, event = event.new() }, WeatherSystem)
-    return self
+function WeatherSystem:ctor()
+    self.index = 1
+    self.timer = 0
+    self.event = event.new()
 end
 
 function WeatherSystem:current()

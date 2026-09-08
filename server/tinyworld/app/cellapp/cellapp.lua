@@ -8,17 +8,16 @@ local service = require "tinyworld.core.service"
 local log = require "tinyworld.core.log"
 local proto = require "tinyworld.core.proto"
 local util = require "tinyworld.core.util"
-local LocalSpace = require "tinyworld.app.cellapp.local_space"
+local LocalSpace = require "tinyworld.app.cellapp.space.local_space"
 local defs = require "tinyworld.entity.defs"
-local entityMsg = require "tinyworld.app.cellapp.entity_msg"
-local RealEntity = require "tinyworld.app.cellapp.real_entity"
+local protocol = require "tinyworld.net.protocol"
+local RealEntity = require "tinyworld.app.cellapp.entities.real_entity"
 
 local cmd = {}
 local cellapp = setmetatable({}, { __index = cmd })
 cellapp.appId = nil
 cellapp.world = nil
 cellapp.spaces = {}  -- spaceId -> LocalSpace; 一个 cellapp 可运行多个 space
-cellapp.reals = {}
 cellapp.addrs = {} -- appId -> addr
 
 -- 取本 app 某空间里的本地 cell(多数命令按 spaceId 定位)
@@ -70,11 +69,6 @@ end
 function cellapp:notifyEntityMoved(real)
     -- 跨 cellapp 迁移完成后回调
     log.info("entity %s promoted on app %d", real:getRealId(), cellapp.appId)
-end
-
--- 注册一个真身实体(供业务查找)
-function cellapp:indexReal(real)
-    cellapp.reals[real.id .. "@" .. real.cell.info.id] = real
 end
 
 function cmd.init(registryAddr, index, gameConfig)
@@ -207,12 +201,23 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     real:setupComponents(def.cellComponents)
 
     cell:addEntity(real)
-    cellapp:indexReal(real)
     real.readyForSync = true
 
-    local info = entityMsg.entitySpawnInfo(real)
+    local info = protocol.entitySpawnInfo(real)
     info.cellKey = cellKey
     return info
+end
+
+-- 销毁真身: 触发 onDestroy(组件 + ghost 清理) 并移出 cell。
+function cmd.despawn_entity(spaceId, cellKey, entityId)
+    local cell = getLocalCell(spaceId, cellKey)
+    if not cell then return true end
+
+    local real = cell:get(entityId)
+    if real and real.isReal then
+        real:destroy() -- Entity:destroy 内部 removeEntity + onDestroy + ghost 清理
+    end
+    return true
 end
 
 -- 投掷物创建入口: 与实体创建同一条生命周期, 业务无需重复装配逻辑。
@@ -271,6 +276,9 @@ function cmd.ghost_promote(spaceId, cellKey, realId, req)
     real:openViews(real.def.cellOpenViews)
     real:setupComponents(real.def.cellComponents)
     real.readyForSync = true
+
+    -- 迁移完成通知, 业务组件在此重新注册 cell 级逻辑(如定时器)
+    real:onMigrateIn(cell)
 
     if real.baseApp then
         skynet.send(real.baseApp, "lua", "rebind_cell",

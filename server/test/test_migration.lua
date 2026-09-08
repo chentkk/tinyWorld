@@ -8,10 +8,19 @@
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
+-- 用于验证 onMigrateOut / onMigrateIn 回调的测试组件
+package.preload["test.migrate_probe"] = function()
+    local component = require "tinyworld.entity.component"
+    local Probe = component.extend("MigrateProbe")
+    function Probe:onMigrateOut(cell) _G.migrateProbeOrder[#_G.migrateProbeOrder + 1] = "out:" .. tostring(cell and cell.info.id) end
+    function Probe:onMigrateIn(cell) _G.migrateProbeOrder[#_G.migrateProbeOrder + 1] = "in:" .. tostring(cell and cell.info.id) end
+    return Probe
+end
+
 local SpaceConfig = require "tinyworld.space.space"
 local CellAllocator = require "tinyworld.app.world.cell_allocator"
-local LocalSpace = require "tinyworld.app.cellapp.local_space"
-local RealEntity = require "tinyworld.app.cellapp.real_entity"
+local LocalSpace = require "tinyworld.app.cellapp.space.local_space"
+local RealEntity = require "tinyworld.app.cellapp.entities.real_entity"
 local defs = require "tinyworld.entity.defs"
 
 defs.register("MigrateDummy", {
@@ -130,6 +139,12 @@ do
     real.props:load({ x = 20, y = 50 })
     cellA:addEntity(real)
 
+    -- 迁移前给实体挂一个有限次数定时器
+    local fired = 0
+    cellA:addTimer(real, 0.5, 2, function()
+        fired = fired + 1
+    end)
+
     real:set("x", 150)  -- 越过 0:0 右边界 100 且 >
     cellA:tick(0)
 
@@ -138,6 +153,21 @@ do
         "local migrate: real left origin")
     local moved = cellB:get(real.id)
     assert(moved and moved.isReal, "local migrate: real in target cell")
+
+    -- 框架撤退: 旧 cell 已清除该实体的定时器; 新 cell 不会自动拥有
+    assert(not next(cellA.timerScheduler.timers), "origin cell should clear timers")
+    assert(cellB.timerScheduler.byEntity[tostring(real.id)] == nil,
+        "framework must NOT auto-migrate timers")
+
+    -- 业务组件在 onMigrateIn 里重新添加定时器(其他组件逻辑同理)
+    -- 这里直接模拟业务行为, 迁移完成后再挂一个定时器
+    local firedAfter = 0
+    cellB:addTimer(moved, 0.3, 1, function()
+        firedAfter = firedAfter + 1
+    end)
+    cellB:updateTimers(0.31)
+    assert(firedAfter == 1, "business can register timer on new cell")
+    assert(not next(cellB.timerScheduler.timers), "one-shot business timer should finish")
 
     -- 原 cell 留下 witness ghost
     local witness = false
@@ -270,6 +300,48 @@ do
     assert(cellA:get(500) and cellA:get(500).isReal, "non-migratable entity must stay in origin cell")
     assert(s:get("x") == 150, "non-migratable entity position should still update")
     print("PASS migration-nonmigratable")
+end
+
+-- ============ 场景 5: onMigrateOut / onMigrateIn 回调 ============
+do
+    defs.register("MigrateProbeDummy", {
+        name = "MigrateProbeDummy",
+        props = {
+            { name = "x", type = "number", sync = "all" },
+            { name = "y", type = "number", sync = "all" },
+        },
+        records = {},
+        containers = {},
+        cellComponents = { "test.migrate_probe" },
+    })
+
+    _G.migrateProbeOrder = {}
+    local config = SpaceConfig.compile({ id = "probemv", width = 200, height = 100,
+        aoiRange = 20, ghostRange = 40, cellSize = 100, minMigrateInterval = 0, hysteresis = 5 })
+    CellAllocator.distribute(config, { 1 })
+
+    local app = { appId = 1, time = 100, seq = 0, spaceConfig = config }
+    function app:now() return self.time end
+    function app:sendToClient() end
+    function app:notifyEntityMoved() end
+    local space = LocalSpace.new(app)
+    for _, info in ipairs(config.cells) do space:addLocalCell(info) end
+
+    local cellA = space:getCell("0:0")
+    local cellB = space:getCell("1:0")
+    local real = RealEntity.new(defs.get("MigrateProbeDummy"), 4242, "MigrateProbeDummy", space, cellA)
+    real.props:load({ x = 20, y = 50 })
+    cellA:addEntity(real)
+    real:setupComponents(real.def.cellComponents)
+
+    real:set("x", 150)
+    cellA:tick(0)
+
+    -- 迁移时应先 out 再 in
+    assert(#_G.migrateProbeOrder == 2, "expect one out and one in callback")
+    assert(_G.migrateProbeOrder[1] == "out:0:0", "onMigrateOut should fire before leaving")
+    assert(_G.migrateProbeOrder[2] == "in:1:0", "onMigrateIn should fire after promote")
+    print("PASS migration-callbacks")
 end
 
 print("ALL MIGRATION TESTS PASS")

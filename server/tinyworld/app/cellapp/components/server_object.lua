@@ -1,4 +1,4 @@
--- tinyworld/app/cellapp/server_object.lua
+-- tinyworld/app/cellapp/components/server_object.lua
 -- 纯服务器对象组件(客户端不可感知):
 --   * networked=false 的对象不参与 outbox / ghost / visibility;
 --   * 仍参与 cell tick, 可做区域感知 / 刷新控制 / 活动宿主等逻辑。

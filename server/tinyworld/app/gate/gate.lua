@@ -10,6 +10,7 @@ local service = require "tinyworld.core.service"
 local log = require "tinyworld.core.log"
 local proto = require "tinyworld.core.proto"
 local msgUtil = require "tinyworld.net.msg"
+local protocol = require "tinyworld.net.protocol"
 
 local cmd = {}
 local conns = {} -- fd -> conn
@@ -43,8 +44,14 @@ local function closeConn(conn)
 end
 
 local function sendBody(conn, msgType, name, dataStr, body)
-    socket.write(conn.fd, proto.packBody(body))
+    local ok = pcall(socket.write, conn.fd, proto.packBody(body))
+    if not ok then
+        log.warn("sendBody failed connId=%s", conn.connId)
+        closeConn(conn)
+        return false
+    end
     writeLog(conn.connId, "send", msgType, name, dataStr)
+    return true
 end
 
 function cmd.send_to_client(connId, body, msgType, name, dataStr)
@@ -69,7 +76,7 @@ local function handleAuth(conn, msg)
     local accountId = skynet.call(loginAddr, "lua", "auth_token", msg.d.token)
     if not accountId then
         sendBody(conn, "AUTH", "auth_fail", "code=1 msg=bad token",
-            proto.encode(msgUtil.new("AUTH", "auth_fail", { code = 1, msg = "bad token" })))
+            proto.encode(protocol.authFail(1, "bad token")))
         closeConn(conn)
         return
     end
@@ -78,8 +85,7 @@ local function handleAuth(conn, msg)
     conn.baseApp = pickBaseApp()
     skynet.send(conn.baseApp, "lua", "open_client", conn.gateway, conn.fd, conn.connId, accountId)
 
-    local reply = msgUtil.new("AUTH", "auth_ok",
-        { code = 0, accountId = accountId, connId = conn.connId, msg = "auth ok" })
+    local reply = protocol.authOk(accountId, conn.connId)
     sendBody(conn, "AUTH", "auth_ok", msgUtil.logData(reply.d, reply.t, reply.n), proto.encode(reply))
 end
 
@@ -100,15 +106,20 @@ end
 
 local function reader(conn)
     local fd = conn.fd
-    while conns[fd] do
-        local header = socket.read(fd, 2)
-        if not header then break end
+    local ok = pcall(function()
+        while conns[fd] do
+            local header = socket.read(fd, 2)
+            if not header then return end
 
-        local len = string.unpack("<I2", header)
-        local body = socket.read(fd, len)
-        if not body then break end
+            local len = string.unpack("<I2", header)
+            local body = socket.read(fd, len)
+            if not body then return end
 
-        onClientData(conn, body)
+            onClientData(conn, body)
+        end
+    end)
+    if not ok then
+        log.warn("client reader error connId=%s", conn.connId)
     end
     closeConn(conn)
 end
