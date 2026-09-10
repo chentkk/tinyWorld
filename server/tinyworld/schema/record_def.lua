@@ -9,7 +9,12 @@ local RecordDef = class.makeClass("RecordDef")
 function RecordDef:ctor(def)
     self.name = def.name
     self.keyFields = def.keyFields or { def.key or "key" }
-    self.sync = def.sync or "none"
+    local sync = def.sync or "none"
+    if sync ~= "none" and sync ~= "self" and sync ~= "all" then
+        error("record sync must be none/self/all: " .. tostring(def.name))
+    end
+    self.sync = sync
+    self.persist = def.persist == true
     self.schema = PropertySchema.new(def.fields or {})
     self.indexes = def.indexes or {}
 end

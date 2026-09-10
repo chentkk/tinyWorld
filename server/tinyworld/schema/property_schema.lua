@@ -21,10 +21,14 @@ local function flattenFields(defs, result, seen, stack)
             end
         else
             if not item.name then error("property field missing name") end
+            local sync = item.sync or "all"
+            if sync ~= "none" and sync ~= "self" and sync ~= "all" then
+                error("property sync must be none/self/all: " .. tostring(item.name))
+            end
             result[#result + 1] = {
                 name = item.name,
                 type = item.type or "number",
-                sync = item.sync or "all",
+                sync = sync,
                 persist = item.persist == true,
                 comment = item.comment or "",
                 default = item.default,
@@ -58,11 +62,6 @@ function PropertySchema:coerce(name, value)
         return value == true
     end
     return value
-end
-
-function PropertySchema:loadDefinition(requirePath)
-    local def = require(requirePath)
-    return PropertySchema.new(def.props or def)
 end
 
 return PropertySchema

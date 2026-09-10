@@ -171,7 +171,7 @@ function Entity:addComponent(name, compClass, ...)
     end
     if select("#", ...) > 0 and comp.init then comp:init(...) end
     self.components[name] = comp
-    if comp.onCreate then comp:onCreate() end
+    -- 组件 onCreate 由 Entity:onCreate 统一触发, 保证所有组件装配完成后再初始化
     return comp
 end
 
@@ -277,6 +277,16 @@ function Entity:onContainerPersist(cont)
     -- 基类不处理存盘, 由 RealEntity / BaseEntity 重写
 end
 
+-- 组件装配完成后、onCreate 之前, 把 baseapp 组件打包的 cell 数据交给 cell 组件处理。
+-- data.initData 不存在时直接 return; 需要处理的组件实现 onApplyCellData(initData)。
+function Entity:onApplyCellData(data)
+    local initData = data and data.initData
+    if not initData then return end
+    self:eachComponent(function(_, comp)
+        if comp.onApplyCellData then comp:onApplyCellData(initData) end
+    end)
+end
+
 -- 生命周期
 function Entity:onCreate()
     self:emit("on_create")
@@ -354,15 +364,79 @@ function Entity:onClientLeave(playerId)
     end)
 end
 
--- 序列化: 属性 / 表格 / 容器 三块
-function Entity:dump()
-    local props = {}
-    local schema = self.def.propSchema
-    for _, f in ipairs(schema.fields) do
-        if f.persist and self.props:get(f.name) ~= nil then
-            props[f.name] = self.props:get(f.name)
+-- 创建 ghost 时使用的投影数据: 只包含"周围玩家可见"的内容。
+-- 过滤规则按 def 的 sync 三态: props/record/container 仅取 sync == "all"。
+-- 数据格式与 snapshot/restore 一致, 由 GhostEntity:restore 统一还原。
+function Entity:ghostSnapshot()
+    local props = self.props:dumpSync("all")
+
+    local records = {}
+    for name, rec in pairs(self.records) do
+        if rec.def.sync == "all" then
+            records[name] = rec:dump()
         end
     end
+
+    local containers = {}
+    for name, cont in pairs(self.containers) do
+        if cont.def.sync == "all" then
+            local contRecords = {}
+            for recName, rec in pairs(cont.records or {}) do
+                contRecords[recName] = rec:dump()
+            end
+            containers[name] = { props = cont.props, records = contRecords, children = cont:dump() }
+        end
+    end
+
+    return { props = props, records = records, containers = containers }
+end
+
+-- 自定义 Lua 字段约定: 以 "__" 开头的是内部/瞬态字段, 不随实体迁移。
+-- 除 props/records/containers(单独序列化)外, 其余非 "__" 开头的纯数据字段
+-- 自动收集, 因此新增字段无需再维护黑名单。
+local CUSTOM_PREFIX = "__"
+
+-- table 是否为纯数据: 自身及递归内容都不含对象实例(带元表的 Entity/Object/Component
+-- /Container 等), 也不含 function / userdata / thread, 且无环。
+local function isPureData(v, seen)
+    local t = type(v)
+    if t == "number" or t == "string" or t == "boolean" then return true end
+    if t ~= "table" then return false end
+    -- 对象实例统一带元表; 纯数据 table 无元表
+    if getmetatable(v) ~= nil then return false end
+    if seen[v] then return false end
+    seen[v] = true
+    for k, val in pairs(v) do
+        local kt = type(k)
+        if (kt ~= "number" and kt ~= "string") or not isPureData(val, seen) then
+            seen[v] = nil
+            return false
+        end
+    end
+    seen[v] = nil
+    return true
+end
+
+-- 收集 entity 上的自定义 Lua 字段(迁移随行)。
+-- 规则: 跳过 props/records/containers 与 "__" 前缀字段; 其余字段若为纯数据
+-- (标量 / 不含对象实例的 table)则收集。含对象实例或不可序列化值的字段视为
+-- 框架/瞬态数据, 直接跳过(它们在目标侧由构造流程重建)。
+function Entity:collectCustomData()
+    local custom = {}
+    for k, v in pairs(self) do
+        if k ~= "props" and k ~= "records" and k ~= "containers"
+            and not (type(k) == "string" and k:sub(1, #CUSTOM_PREFIX) == CUSTOM_PREFIX)
+            and isPureData(v, {}) then
+            custom[k] = v
+        end
+    end
+    return custom
+end
+
+-- 迁移/跨进程序列化: 完整运行时状态, 与持久化 dump 分离。
+-- props / records / containers 全部导出, 不区分 persist; 目标侧用 restore 还原。
+function Entity:snapshot()
+    local props = self.props:dump()
 
     local records = {}
     for name, rec in pairs(self.records) do
@@ -378,7 +452,48 @@ function Entity:dump()
         containers[name] = { props = cont.props, records = contRecords, children = cont:dump() }
     end
 
+    return { props = props, records = records, containers = containers, custom = self:collectCustomData() }
+end
+
+-- 序列化: 属性 / 表格 / 容器 三块
+function Entity:dump()
+    local props = {}
+    local schema = self.def.propSchema
+    for _, f in ipairs(schema.fields) do
+        if f.persist and self.props:get(f.name) ~= nil then
+            props[f.name] = self.props:get(f.name)
+        end
+    end
+
+    local records = {}
+    for name, rec in pairs(self.records) do
+        if rec.def.persist then
+            records[name] = rec:dump()
+        end
+    end
+
+    local containers = {}
+    for name, cont in pairs(self.containers) do
+        -- persist=true 才存整个容器; 容器自身 props / 子对象 / 子 record 再按各自 def 的 persist 过滤。
+        if cont.def.persist then
+            local contRecords = {}
+            for recName, rec in pairs(cont.records or {}) do
+                if rec.def.persist then contRecords[recName] = rec:dump() end
+            end
+            containers[name] = {
+                props = cont:dumpPropsPersist(),
+                records = contRecords,
+                children = cont:dumpPersist(),
+            }
+        end
+    end
+
     return { props = props, records = records, containers = containers }
+end
+
+-- 迁移/跨进程反序列化: 与 snapshot 对称, 完整恢复 props/records/containers。
+function Entity:restore(data)
+    self:load(data)
 end
 
 function Entity:load(data)
@@ -404,6 +519,11 @@ function Entity:load(data)
             end
             cont:load(saved.children)
         end
+    end
+
+    -- 恢复 Lua 自定义字段: 业务直接在 entity 上挂的变量(不 sync / persist, 但迁移随走)
+    for k, v in pairs(data.custom or {}) do
+        self[k] = v
     end
 end
 

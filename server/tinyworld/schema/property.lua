@@ -70,6 +70,29 @@ function Properties:dump()
     return out
 end
 
+-- 存盘导出: 仅保留 persist=true 的字段。
+function Properties:dumpPersist()
+    local out = {}
+    for _, f in ipairs(self.schema.fields) do
+        if f.persist and self.values[f.name] ~= nil then
+            out[f.name] = self.values[f.name]
+        end
+    end
+    return out
+end
+
+-- 按同步范围导出当前值(用于 ghost 打包): sync == scope 或 self 视为 all 时也导出。
+function Properties:dumpSync(scope)
+    scope = scope or "all"
+    local out = {}
+    for _, f in ipairs(self.schema.fields) do
+        if self.values[f.name] ~= nil and (f.sync == scope or scope == "all" and f.sync == "all") then
+            out[f.name] = self.values[f.name]
+        end
+    end
+    return out
+end
+
 function Properties:load(t)
     self:setBatch(t, "load")
 end

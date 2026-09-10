@@ -9,6 +9,13 @@ local Record = require "tinyworld.schema.record"
 
 local Object = class.makeClass("Object")
 
+-- 反序列化工厂(类方法): 由 Container 在加载/迁移时调用, 用于重建子对象实例。
+-- 默认构造纯数据 Object; 带行为的子类(ability/modifier)覆盖此方法。
+-- 只负责构造实例, props/records 仍由 Container 统一按 data 填充。
+function Object.fromData(container, data)
+    return Object.new(container.def.childSchema, container.def.childRecordDefs)
+end
+
 function Object:ctor(schema, recordDefs)
     rawset(self, "_schema", schema)
     rawset(self, "_owner", nil)
@@ -52,6 +59,22 @@ function Object:onRecordChange(rec, op)
     -- 容器子对象 record 变化暂不额外处理, 同步由 owner 决定
 end
 
+-- 反序列化(与 Entity:load 对称): 恢复可序列化状态。
+-- data 为平铺结构: 命中 records 的键按行恢复, 其余按键写入 props。
+function Object:load(data)
+    for name, value in pairs(data or {}) do
+        local rec = self.records[name]
+        if rec then
+            for _, row in pairs(type(value) == "table" and value or {}) do
+                rec:add(row)
+            end
+        else
+            self[name] = value
+        end
+    end
+    return self
+end
+
 function Object:objectId()
     local rawId = rawget(self, "_id")
     if rawId ~= nil then return rawId end
@@ -68,6 +91,17 @@ function Object:objectData()
     local out = {}
     for _, f in ipairs(self.props.schema.fields) do
         if self.props.values[f.name] ~= nil then
+            out[f.name] = self.props.values[f.name]
+        end
+    end
+    return out
+end
+
+-- 子对象存盘导出: 仅保留 childDef 中 persist=true 的字段。
+function Object:objectDataPersist()
+    local out = {}
+    for _, f in ipairs(self.props.schema.fields) do
+        if f.persist and self.props.values[f.name] ~= nil then
             out[f.name] = self.props.values[f.name]
         end
     end
