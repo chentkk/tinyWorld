@@ -43,6 +43,19 @@ local function replyAccount(session, name, data)
     sendToClient(session, protocol.account(name, data))
 end
 
+-- 由 baseentity 组件各自打包需要传给 cellentity 的数据;
+-- 组件在 buildCellData 中返回 table, 这里汇总成一份 initData。
+local function collectCellData(entity)
+    local out = {}
+    for _, comp in pairs(entity.components) do
+        if comp.buildCellData then
+            local data = comp:buildCellData()
+            for k, v in pairs(data or {}) do out[k] = v end
+        end
+    end
+    return out
+end
+
 -- 仅当索引仍指向该 conn 时清理, 避免重连竞态误删新 session 的索引
 local function unindexPlayer(playerId, connId)
     if playerSessions[playerId] == connId then playerSessions[playerId] = nil end
@@ -142,7 +155,7 @@ local function enterWorld(entity, session)
         return
     end
 
-    local cellData = playerStore:buildCellData(entity)
+    local cellData = collectCellData(entity)
     local spawn = skynet.call(info.appAddr, "lua", "spawn_entity", info.spaceId, info.cell.id,
         "Player", { x = spawnX, y = spawnY, playerId = entity.id, initData = cellData }, skynet.self())
     if not spawn then
@@ -180,11 +193,12 @@ local function accountSelectCharacter(session, d)
     local entity = BaseEntity.new(def, playerId, "Player", session)
     entity:load(data)
     entity.account = session.accountId
-    entity:onCreate()
     session.entity = entity
 
     entity:setupComponents(entity.def.baseComponents)
     entity:openViews(entity.def.baseOpenViews)
+    -- 组件与数据全部就绪后, 最后触发 onCreate
+    entity:onCreate()
     enterWorld(entity, session)
 end
 
@@ -252,33 +266,14 @@ function cmd.client_data(connId, body)
 end
 
 -- cellapp -> 客户端(实体属性 / 表格 / 视图 / 对象增减)
+-- cellapp:sendToClient 必定携带 msg.playerId, 因此直接走 playerSessions 索引定位会话。
 function cmd.client_send(msg)
-    log.debug("baseapp client_send t=%s n=%s playerId=%s", tostring(msg and msg.t),
-        tostring(msg and msg.n), tostring(msg and msg.playerId))
-    local session = sessions[msg and msg.connId]
-    if not session then
-        -- 来自 cellapp: 按 playerId 精确匹配; 找不到才按 cellEntityId(对象id) 回退。
-        local playerId = msg and msg.playerId
-        local objId = msg and msg.d and msg.d.entityId
+    assert(msg and msg.playerId, "client_send: msg.playerId required")
+    log.debug("baseapp client_send t=%s n=%s playerId=%s", tostring(msg.t),
+        tostring(msg.n), tostring(msg.playerId))
 
-        if playerId then
-            for connId, s in pairs(sessions) do
-                if s.entity and s.entity.id == playerId then
-                    session = s
-                    break
-                end
-            end
-        end
-
-        if not session and objId then
-            for connId, s in pairs(sessions) do
-                if s.entity and s.entity.cellEntityId == objId then
-                    session = s
-                    break
-                end
-            end
-        end
-    end
+    local connId = playerSessions[msg.playerId]
+    local session = connId and sessions[connId]
     if not session then return end
     sendToClient(session, msg)
 end

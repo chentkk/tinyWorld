@@ -29,8 +29,9 @@ function RealEntity:setPosition(x, y, source)
     self.y = y
 end
 
-function RealEntity:setBaseApp(addr)
-    self.baseApp = addr
+-- 构建完成后标记可同步(组件装配/数据加载全部就绪)
+function RealEntity:setReady()
+    self.readyForSync = true
 end
 
 function RealEntity:getSpaceId()
@@ -94,14 +95,6 @@ end
 
 function RealEntity:removeGhost(key)
     self.ghosts[key] = nil
-end
-
-function RealEntity:ghostSnapshot()
-    return { props = self.props:dump(), records = self:dump().records, containers = self:dump().containers }
-end
-
-function RealEntity:applySnapshot(snap)
-    if snap.props then self.props:load(snap.props) end
 end
 
 -- real 销毁时需同步销毁所有 ghost, 否则远端会残留不更新的 ghost。

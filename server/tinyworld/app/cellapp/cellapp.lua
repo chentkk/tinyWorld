@@ -30,6 +30,11 @@ function cellapp:now()
     return skynet.time()
 end
 
+-- 本 cellapp 的 skynet 服务地址(供 baseapp 回绑 cell 时使用)
+function cellapp:selfAddr()
+    return cellapp.addrs and cellapp.addrs[cellapp.appId]
+end
+
 function cellapp:nextId()
     return util.makeEntityId(cellapp.appId)
 end
@@ -53,6 +58,12 @@ function cellapp:send(appId, command, ...)
     if addr then
         skynet.send(addr, "lua", command, ...)
     end
+end
+
+-- 向任意 skynet 服务地址(如 baseapp)发送消息; appId 寻址请用 send。
+function cellapp:sendService(addr, command, ...)
+    assert(addr, "cellapp:sendService requires an address")
+    skynet.send(addr, "lua", command, ...)
 end
 
 function cellapp:sendToClient(player, msg)
@@ -177,10 +188,6 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     local space = cellapp.spaces[spaceId]
     local real = RealEntity.new(def, entityId, kind, space, cell)
     real.playerId = playerId
-    real.cellInitData = data and data.initData
-    if data and data.ability then
-        real.ability = data.ability
-    end
     if data and data.runtime then
         -- 由 spawn_projectile 配置的运行时字段; 组件从 entity.runtime 读取
         real.runtime = data.runtime
@@ -195,13 +202,17 @@ function cmd.spawn_entity(spaceId, cellKey, kind, data, baseApp)
     if data.props then
         for k, v in pairs(data.props) do spawnProps[k] = v end
     end
-    real.props:load(spawnProps)
-    real:onCreate()
+    -- 新构建流程: 先写上下文与元数据, 再统一加载数据, 最后装配并触发 onCreate
+    real:load({ props = spawnProps })
     real:openViews(def.cellOpenViews)
     real:setupComponents(def.cellComponents)
 
+    -- 组件已装配完成、onCreate 之前, 把 baseapp 组件打包的数据交给 cell 组件处理
+    real:onApplyCellData(data)
+
     cell:addEntity(real)
-    real.readyForSync = true
+    real:setReady()
+    real:onCreate()
 
     local info = protocol.entitySpawnInfo(real)
     info.cellKey = cellKey
@@ -271,11 +282,6 @@ function cmd.ghost_promote(spaceId, cellKey, realId, req)
 
     local real = cell:promoteGhost(realId, req)
     if not real then return false end
-
-    -- 迁移后重新装配 cell 侧组件(移动 / 战斗同步等)
-    real:openViews(real.def.cellOpenViews)
-    real:setupComponents(real.def.cellComponents)
-    real.readyForSync = true
 
     -- 迁移完成通知, 业务组件在此重新注册 cell 级逻辑(如定时器)
     real:onMigrateIn(cell)

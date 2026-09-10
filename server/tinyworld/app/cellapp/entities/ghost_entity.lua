@@ -101,7 +101,7 @@ function GhostEntity:applyViewOps(name, ops)
     if not cont then return end
 
     for _, op in ipairs(ops or {}) do
-        if op.type == "add" then cont:add(op.data)
+        if op.type == "add" then cont:addFromData(op.data)
         elseif op.type == "remove" then cont:remove(op.id)
         elseif op.type == "set" then
             local child = cont:get(op.id)

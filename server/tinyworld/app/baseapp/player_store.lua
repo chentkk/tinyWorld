@@ -21,7 +21,6 @@ function PlayerStore:ctor(db, cfg)
     self.template = cfg.template or {}
     self.rowProps = cfg.rowProps or {}
     self.createDefaults = cfg.createDefaults or {}
-    self.cellData = cfg.cellData or {}
 end
 
 function PlayerStore:sqlValue(v)
@@ -126,23 +125,6 @@ function PlayerStore:save(playerId, dump)
         "INSERT INTO %s (%s,%s) VALUES (%d,%s)",
         self.binTable, self.ownerIdField, self.binField, playerId,
         self:sqlValue(body)))
-end
-
--- 从实体 records 按配置提取 cell init data
-function PlayerStore:buildCellData(entity)
-    local out = {}
-    for _, spec in ipairs(self.cellData or {}) do
-        local rec = entity:getRecord(spec.record)
-        if not rec then goto continue end
-
-        local values = {}
-        for _, row in ipairs(rec:rowsList()) do
-            values[#values + 1] = row[spec.field]
-        end
-        out[spec.target] = values
-        ::continue::
-    end
-    return out
 end
 
 return PlayerStore

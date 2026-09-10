@@ -20,6 +20,17 @@ local RealEntity = require "tinyworld.app.cellapp.entities.real_entity"
 local GhostEntity = require "tinyworld.app.cellapp.entities.ghost_entity"
 local defs = require "tinyworld.entity.defs"
 
+-- 统一打包 ghost 创建请求
+local function ghostReq(real)
+    return {
+        realId = real.id,
+        kind = real.kind,
+        x = real.x,
+        y = real.y,
+        ghostSnapshot = real:ghostSnapshot(),
+    }
+end
+
 local Cell = class.makeClass("Cell")
 
 function Cell:ctor(cellInfo, host, space)
@@ -175,8 +186,8 @@ function Cell:buildOutbox(entity)
     for name, cont in pairs(entity.containers) do
         local flush = cont:flushSync()
         if flush and #flush.ops > 0 then
-            if cont.def.selfOnly then outbox.selfViewOps[name] = flush.ops
-            else outbox.viewOps[name] = flush.ops end
+            if cont.def.sync == "self" then outbox.selfViewOps[name] = flush.ops
+            elseif cont.def.sync == "all" then outbox.viewOps[name] = flush.ops end
         end
     end
 
@@ -255,8 +266,10 @@ function Cell:deliverToPlayer(player)
     -- 自己: 自身属性包 + 自己的战斗事件
     local selfOutbox = player.outbox
     if selfOutbox then
-        if selfOutbox.selfProps and player.lastMoveSeq then
-            selfOutbox.selfProps.seq = player.lastMoveSeq
+        -- 仅在确有自身属性变更时才附带 move seq(供客户端 Reconciliation);
+        -- 否则每 tick 都会因 seq 让空 selfProps 变成非空, 产生冗余消息。
+        if selfOutbox.selfProps and next(selfOutbox.selfProps) and player.__lastMoveSeq then
+            selfOutbox.selfProps.seq = player.__lastMoveSeq
         end
         self:sendProp(player, player, selfOutbox.selfProps)
 
@@ -326,7 +339,7 @@ end
 function Cell:checkMigrations()
     local toMigrate = {}
     for _, real in pairs(self.entities) do
-        if real.isReal and real:canMigrate() and not real.migrating then
+        if real.isReal and real:canMigrate() and not real.__migrating then
             local ideal = self.space.config:cellAt(real.x, real.y)
             if ideal.id ~= self.info.id and self:shouldMigrate(real, ideal) then
                 toMigrate[#toMigrate + 1] = { real = real, ideal = ideal }
@@ -358,13 +371,13 @@ end
 -- 因此不能直接把 real 塞进 target; 统一消费 target 里的 ghost -> 提升为新 real。
 -- 这样本地与远端迁移在对象身份 / ghost 清理 / witness 处理上完全一致。
 function Cell:migrateLocal(real, target)
-    real.migrating = true
+    real.__migrating = true
 
     -- 目标 cell 若还没有该 real 的 ghost, 先补一个(与 ensureGhostIn 语义一致)
     local ghost = target:findGhost(real.id)
     if not ghost then
         local key = real.id .. "@" .. target.info.id
-        ghost = target:buildGhost(real)
+        ghost = target:buildGhost(ghostReq(real))
         target:addEntity(ghost)
         real:addGhost({ key = key, app = self.host.appId, cellKey = target.info.id, sameApp = true })
     end
@@ -384,37 +397,38 @@ function Cell:migrateLocal(real, target)
         peers = peers,
         baseApp = real.baseApp,
         playerId = real.playerId,
-        initData = real.cellInitData,
         lastMigrateTime = real.lastMigrateTime,
-        snapshot = real:ghostSnapshot(),
+        snapshot = real:snapshot(), -- 完整迁移快照(props/records/containers)
     })
     if not promoted then
-        real.migrating = false
+        real.__migrating = false
         return
     end
-
-    -- 提升得到的是全新 real, 重新装配 cell 组件/视图(与 cellapp.cmd.ghost_promote 一致)
-    promoted:openViews(promoted.def.cellOpenViews)
-    promoted:setupComponents(promoted.def.cellComponents)
-    promoted.readyForSync = true
 
     -- 迁移完成通知(组件在此重新添加自己的 cell 级定时器等)
     promoted:onMigrateIn(target)
 
-    real.migrating = false
+    -- 本地迁移虽然 app 不变, 但 cellKey 已变, 必须通知 baseapp 更新绑定,
+    -- 否则后续客户端指令仍会打到旧 cell 导致 "entity not found"。
+    if promoted.baseApp then
+        self.host:sendService(promoted.baseApp, "rebind_cell",
+            promoted.playerId, self:getSpaceId(), target.info.id, self.host:selfAddr())
+    end
+
+    real.__migrating = false
 end
 
 function Cell:migrateRemote(real, ideal)
-    real.migrating = true
-    local snapshot = real:ghostSnapshot()
+    real.__migrating = true
+    local snapshot = real:snapshot()
 
     local ok = self.host:call(ideal.appId, "ghost_create", self:getSpaceId(), ideal.id, {
         realId = real.id, kind = real.kind, x = real.x, y = real.y,
-        snapshot = snapshot, fromApp = self.host.appId,
+        ghostSnapshot = real:ghostSnapshot(), fromApp = self.host.appId,
         ownerCellKey = self.info.id, promote = true,
     })
     if not ok then
-        real.migrating = false
+        real.__migrating = false
         return
     end
 
@@ -431,10 +445,10 @@ function Cell:migrateRemote(real, ideal)
         peers = peers,
         baseApp = real.baseApp,
         playerId = real.playerId,
-        initData = real.cellInitData,
         lastMigrateTime = real.lastMigrateTime,
+        snapshot = snapshot,
     })
-    real.migrating = nil
+    real.__migrating = nil
 end
 
 -- 迁移前显式通知所有旧 ghost: real 换到新的 app/cell
@@ -483,7 +497,7 @@ end
 
 function Cell:ensureGhosts()
     for _, real in pairs(self.entities) do
-        if real.isReal and real:canGhost() and not real.migrating then
+        if real.isReal and real:canGhost() and not real.__migrating then
             self:pruneGhosts(real)
 
             for _, neighbor in ipairs(self.space.config:neighbors(self.info)) do
@@ -537,7 +551,7 @@ function Cell:ensureGhostIn(real, neighborInfo)
         local target = self.space:getCell(neighborInfo.id)
         if not target then return end
 
-        local ghost = target:buildGhost(real)
+        local ghost = target:buildGhost(ghostReq(real))
         ghost.realApp = self.host.appId
         ghost.realCellKey = self.info.id
         target:addEntity(ghost)
@@ -549,7 +563,7 @@ function Cell:ensureGhostIn(real, neighborInfo)
 
     local ok = self.host:call(neighborInfo.appId, "ghost_create", self:getSpaceId(), neighborInfo.id, {
         realId = real.id, kind = real.kind, x = real.x, y = real.y,
-        snapshot = real:ghostSnapshot(), fromApp = self.host.appId,
+        ghostSnapshot = real:ghostSnapshot(), fromApp = self.host.appId,
         ownerCellKey = self.info.id, promote = false,
     })
     if ok then
@@ -558,11 +572,14 @@ function Cell:ensureGhostIn(real, neighborInfo)
     end
 end
 
--- 在本 cell 构造一个 real 的 ghost
-function Cell:buildGhost(real)
-    local def = defs.get(real.kind) or real.def
-    local ghost = GhostEntity.new(def, real.id, real.kind, self.space, self, real.id, real.x, real.y)
-    ghost.props:load(real.props:dump())
+-- 统一 ghost 创建入口: 接收打包好的 ghost 请求(realId/kind/x/y/ghostSnapshot),
+-- 本地与远端 cellapp 最终都调用同一个方法。
+function Cell:buildGhost(req)
+    local def = defs.get(req.kind)
+    if not def then return nil end
+
+    local ghost = GhostEntity.new(def, req.realId, req.kind, self.space, self, req.realId, req.x, req.y)
+    ghost:restore(req.ghostSnapshot)
     ghost.props:collectSync() -- 初始属性随 object add 下发, 不再作为变更重复广播
     return ghost
 end
@@ -576,7 +593,7 @@ end
 
 -- 本 cell 内留下 witness ghost(同 app 迁移用)
 function Cell:leaveWitness(real)
-    local witness = self:buildGhost(real)
+    local witness = self:buildGhost(ghostReq(real))
     witness.realApp = self.host.appId
     self:addEntity(witness)
     real:addGhost({ key = real.id .. "@" .. self.info.id, app = self.host.appId,
@@ -607,13 +624,9 @@ function Cell:upsertRemoteGhost(req)
     local ghost = self:findGhost(req.realId)
     if ghost then return true end
 
-    local def = defs.get(req.kind)
-    if not def then return false end
+    ghost = self:buildGhost(req)
+    if not ghost then return false end
 
-    ghost = GhostEntity.new(def, req.realId, req.kind, self.space, self, req.realId, req.x, req.y)
-    if req.snapshot and req.snapshot.props then
-        ghost.props:load(req.snapshot.props)
-    end
     ghost.realApp = req.fromApp
     ghost.realCellKey = req.ownerCellKey
     ghost.promote = req.promote
@@ -630,18 +643,11 @@ function Cell:promoteGhost(realId, req)
         realId, ghost.id)
 
     local real = RealEntity.new(ghost.def, realId, ghost.kind, self.space, self, ghost.x, ghost.y)
-    -- 优先用迁移快照恢复完整状态(props/records/containers); 只有 props 时退回 props 恢复
-    if req.snapshot then
-        real:load(req.snapshot)
-        -- ghost 的位置才是 real 进入本 cell 的坐标, 快照可能落后于最新位置
-        real.props:set("x", ghost.x)
-        real.props:set("y", ghost.y)
-    else
-        real.props:load(ghost.props:dump())
-    end
+    -- 迁移快照必须存在, 否则说明迁移请求缺少完整状态
+    assert(req.snapshot, "promoteGhost: snapshot required")
+    real:restore(req.snapshot)
     real.baseApp = req.baseApp
     real.playerId = req.playerId
-    real.cellInitData = req.initData
     real.lastMigrateTime = req.lastMigrateTime or real.lastMigrateTime
 
     real.ghosts = {}
@@ -654,6 +660,15 @@ function Cell:promoteGhost(realId, req)
 
     self:removeEntity(ghost)
     self:addEntity(real)
+
+    -- 迁移构建流程与 spawn 一致: 数据恢复后装配组件并触发 onCreate,
+    -- 组件在 onCreate 里重新注册 rpc / 初始化状态(新实例, 必须重跑);
+    -- 迁移完成回调 onMigrateIn 由调用者在返回后触发。
+    real:openViews(real.def.cellOpenViews)
+    real:setupComponents(real.def.cellComponents)
+    real:setReady()
+    real:onCreate()
+
     self:ghostLog("promote real=%d cell=%s", real.id, self.info.id)
     self.host:notifyEntityMoved(real)
     return real
