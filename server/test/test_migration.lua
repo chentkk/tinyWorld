@@ -85,9 +85,6 @@ local function buildCluster(spaceId, config, appIds, opts)
                 promotes[#promotes + 1] = { app = targetAppId, cellKey = cellKey, playerId = req.playerId }
                 local real = cell:promoteGhost(realId, req)
                 if not real then return end
-                real:setupComponents(real.def.cellComponents)
-                real:openViews(real.def.cellOpenViews)
-                real.readyForSync = true
                 if real.baseApp then
                     rebinds[#rebinds + 1] = { playerId = real.playerId, cellKey = cellKey }
                 end
@@ -126,10 +123,18 @@ do
         aoiRange = 20, ghostRange = 40, cellSize = 100, minMigrateInterval = 0, hysteresis = 5 })
     CellAllocator.distribute(config, { 1 })
 
+    local localRebinds = {}
     local app1 = { appId = 1, time = 100, seq = 0, spaceConfig = config }
     function app1:now() return self.time end
     function app1:sendToClient() end
     function app1:notifyEntityMoved() end
+    function app1:selfAddr() return 1000 end
+    function app1:sendService(target, command, ...)
+        if command == "rebind_cell" then
+            local playerId, spaceId, cellKey, appAddr = ...
+            localRebinds[#localRebinds + 1] = { playerId = playerId, cellKey = cellKey, appAddr = appAddr }
+        end
+    end
     local space = LocalSpace.new(app1)
     for _, info in ipairs(config.cells) do space:addLocalCell(info) end
 
@@ -137,6 +142,8 @@ do
     local cellB = space:getCell("1:0")
     local real = RealEntity.new(defs.get("MigrateDummy"), 100, "MigrateDummy", space, cellA)
     real.props:load({ x = 20, y = 50 })
+    real.playerId = 100
+    real.baseApp = 999
     cellA:addEntity(real)
 
     -- 迁移前给实体挂一个有限次数定时器
@@ -153,6 +160,12 @@ do
         "local migrate: real left origin")
     local moved = cellB:get(real.id)
     assert(moved and moved.isReal, "local migrate: real in target cell")
+
+    -- 本地迁移必须通知 baseapp 回绑新的 cellKey(同 app), 否则后续指令打到旧 cell
+    assert(#localRebinds == 1, "local migrate must rebind baseapp")
+    assert(localRebinds[1].playerId == 100, "local rebind playerId")
+    assert(localRebinds[1].cellKey == "1:0", "local rebind cellKey")
+    assert(localRebinds[1].appAddr == 1000, "local rebind appAddr")
 
     -- 框架撤退: 旧 cell 已清除该实体的定时器; 新 cell 不会自动拥有
     assert(not next(cellA.timerScheduler.timers), "origin cell should clear timers")

@@ -4,8 +4,14 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local tests = {
-    "test_proto", "test_schema", "test_record", "test_space", "test_loadbalancer", "test_combat",
-    "test_ghost_sync", "test_blood_harvest", "test_ghost_promote", "test_migration",
+    "test_proto", "test_schema", "test_record", "test_space", "test_loadbalancer",
+    "test_direction",
+    "test_ghost_sync", "test_ghost_promote", "test_migration",
+    "test_migration_data",
+    "test_custom_data",
+    "test_container_order",
+    "test_migrate_rpc",
+    "test_migrate_factory",
     "test_projectile",
     "test_combat_entity",
     "test_server_object",

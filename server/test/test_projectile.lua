@@ -88,7 +88,7 @@ assert(targetA:get("hp") == 100, "component must not apply damage by itself")
 local hitData2
 local dirTargetA = newEntity(3, 4, 0)
 local dirTargetB = newEntity(4, 4, 2)
-local p2 = newProjectile(0, 0, { dir = 0, speed = 10, range = 40, hitRadius = 5 }, {
+local p2 = newProjectile(0, 0, { angle = 0, speed = 10, range = 40, hitRadius = 5 }, {
     movement = "linear",
     onHit = function(_, targets, x, y)
         hitData2 = { targets = targets, x = x, y = y }
@@ -105,7 +105,7 @@ assert(#hitData2.targets >= 2, "linear should hit multiple targets in radius")
 
 -- 3) linear: 超距销毁
 local p3Hits = 0
-local p3 = newProjectile(0, 0, { dir = 0, speed = 20, range = 15, hitRadius = 3 }, {
+local p3 = newProjectile(0, 0, { angle = 0, speed = 20, range = 15, hitRadius = 3 }, {
     movement = "linear",
     onHit = function()
         p3Hits = p3Hits + 1

@@ -16,7 +16,7 @@ local def = compileDef({
         { name = "tmp", type = "number", sync = "none", persist = false, default = 7 },
     },
     records = {
-        { name = "tasks", keyFields = { "taskid" }, sync = "all", fields = {
+        { name = "tasks", keyFields = { "taskid" }, sync = "all", persist = true, fields = {
             { name = "taskid", type = "number", sync = "all" },
             { name = "progress", type = "number", sync = "all", default = 0 } } },
     },
@@ -63,10 +63,10 @@ assert(ops[2].data.progress == 5)
 -- container: 视图 op 类型覆盖 add/remove/set/view
 local bag = e:getContainer("bag")
 bag:openView("1")
-bag:add({ id = 1, itemId = 1001, count = 3 })
+bag:addFromData({ id = 1, itemId = 1001, count = 3 })
 bag:get(1).count = 2
 bag.capacity = 16
-bag:add({ id = 2, itemId = 2002 })
+bag:addFromData({ id = 2, itemId = 2002 })
 bag:remove(2)
 local vops = bag:collectSync()
 assert(vops[1].type == "add" and vops[1].data.count == 3)

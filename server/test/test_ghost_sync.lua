@@ -46,7 +46,13 @@ local cellB = space:getCell("1:0")
 local real = RealEntity.new(defs.get("GhostDummy"), 1001, "GhostDummy", space, cellA, 10, 10)
 cellA:addEntity(real)
 
-local ghost = cellB:buildGhost(real)
+local ghost = cellB:buildGhost({
+        realId = real.id,
+        kind = real.kind,
+        x = real.x,
+        y = real.y,
+        ghostSnapshot = real:ghostSnapshot(),
+    })
 cellB:addEntity(ghost)
 real:addGhost({ key = "1001@1:0", app = 1, cellKey = "1:0", sameApp = true })
 

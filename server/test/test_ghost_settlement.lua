@@ -48,12 +48,18 @@ local cellB = space:getCell("1:0")
 
 local real = Real.new(defs.get("SettleDummy"), 10, "SettleDummy", space, cellA)
 real.props:load({ hp = 100 })
-real.cellInitData = { abilities = {} }
 cellA:addEntity(real)
 real:getContainer("modifiers_view"):openView("modifiers")
 real:addComponent("combat_agent", require "tinyworld.combat.combat_agent")
+real:onCreate()
 
-local ghost = cellB:buildGhost(real)
+local ghost = cellB:buildGhost({
+        realId = real.id,
+        kind = real.kind,
+        x = real.x,
+        y = real.y,
+        ghostSnapshot = real:ghostSnapshot(),
+    })
 ghost.realApp = fake.appId
 ghost.realCellKey = cellA:key()
 cellB:addEntity(ghost)

@@ -46,7 +46,7 @@ local cellB = space:getCell("1:0")
 assert(cellA and cellB)
 
 local p = RealEntity.new(defs.get("Projectile"), 7001, "Projectile", space, cellA)
-p.props:load({ x = 90, y = 50, dir = 0, speed = 200, range = 80, hitRadius = 2 })
+p.props:load({ x = 90, y = 50, angle = 0, speed = 200, range = 80, hitRadius = 2 })
 rawset(p, "runtime", { movement = "linear" })
 cellA:addEntity(p)
 p:openViews(p.def.cellOpenViews)

@@ -78,11 +78,6 @@ local function newApp(appId)
         local real = cell:promoteGhost(realId, req)
         if not real then return end
 
-        -- 与 cellapp.cmd.ghost_promote 一致: 迁移后重新装配组件
-        real:setupComponents(real.def.cellComponents)
-        real:openViews(real.def.cellOpenViews)
-        real.readyForSync = true
-
         if real.baseApp then
             rebind[real.playerId] = { spaceId = spaceId, cellKey = cellKey, appAddr = targetAppId }
         end
