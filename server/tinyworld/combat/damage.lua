@@ -13,7 +13,6 @@ M.DAMAGE_TYPE = {
 
 M.HEAL_TYPE = {
     HEAL = 1,
-    REGEN = 2,
 }
 
 local function attackerOrCasterId(unit)
@@ -79,10 +78,6 @@ function M.dealDamage(attacker, target, amount, damageType, sourceAbility)
         })
     end
 
-    if amount < 0 then
-        return dealHealId(attacker, target, -amount, M.HEAL_TYPE.REGEN, abilityName)
-    end
-
     return M.applyLocalDamage(target, attackerOrCasterId(attacker), amount, damageType, abilityName)
 end
 
@@ -103,10 +98,6 @@ function M.dealHeal(caster, target, amount, healType, sourceAbility)
     end
 
     return M.applyLocalHeal(target, attackerOrCasterId(caster), amount, healType, abilityName)
-end
-
-function dealHealId(caster, target, amount, healType, abilityName)
-    return M.dealHeal(caster, target, amount, healType, abilityName)
 end
 
 return M

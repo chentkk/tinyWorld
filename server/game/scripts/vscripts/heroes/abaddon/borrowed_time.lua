@@ -1,45 +1,12 @@
 -- game/scripts/vscripts/heroes/abaddon/borrowed_time.lua
--- 回光返照: 被动 modifier 在低血量时自动开启持续施法。
+-- 回光返照: 被动效果在 modifier 系统重新设计后再实现。
 
 local Ability = require "tinyworld.combat.ability"
-local modifierManager = require "tinyworld.combat.modifier_manager"
-local Modifier = require "tinyworld.combat.modifier"
 
 ability_borrowed_time = Ability.extend("ability_borrowed_time")
-modifier_ability_borrowed_time_passive = Modifier.extend("modifier_ability_borrowed_time_passive")
-modifier_abaddon_borrowed_time_lua_active = Modifier.extend("modifier_abaddon_borrowed_time_lua_active")
-
-function ability_borrowed_time:GetIntrinsicModifierName()
-    return "modifier_ability_borrowed_time_passive"
-end
-
-function ability_borrowed_time:OnChannelStart()
-    modifierManager.addModifier(self:GetCaster(), "modifier_abaddon_borrowed_time_lua_active", self, {
-        duration = tonumber(self:GetSpecialValueFor("duration")),
-    })
-end
-
-function ability_borrowed_time:OnChannelFinish()
-    local active = modifierManager.hasModifier(self:GetCaster(), "modifier_abaddon_borrowed_time_lua_active")
-    if active then active:destroy() end
-end
 
 function ability_borrowed_time:startCooldown()
     Ability.startCooldown(self)
 end
 
-function modifier_ability_borrowed_time_passive:OnIntervalThink()
-    local caster = self:GetCaster()
-    local hp = caster:get("hp") or 0
-    local maxHp = caster:get("maxHp") or 1
-    local pct = tonumber(self:GetAbility():GetSpecialValueFor("threshold_pct")) or 30
-
-    if hp / maxHp * 100 < pct and self:GetAbility():IsReady() then
-        self:GetAbility():cast(caster)
-    end
-end
-
-function modifier_abaddon_borrowed_time_lua_active:GetModifierIncomingDamage_Percentage(data)
-    return -100 -- 回光返照期间受伤害转为 0, 实际治疗由业务结算
-end
-
+return ability_borrowed_time

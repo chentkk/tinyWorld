@@ -17,7 +17,7 @@ function ability_projectile_track:OnSpellStart()
         Source = caster,
         Target = target,
         Ability = self,
-        iMoveSpeed = tonumber(self:GetSpecialValueFor("movementSpeed")) or 40,
+        iMoveSpeed = tonumber(self:GetSpecialValueFor("movementSpeed")) or 300,
         range = tonumber(self:GetSpecialValueFor("range")) or 80,
         hitRadius = tonumber(self:GetSpecialValueFor("hitRadius")) or 4,
         damage = {

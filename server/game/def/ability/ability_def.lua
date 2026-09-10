@@ -10,4 +10,6 @@ return {
         { name = "state", type = "string", sync = "all", default = "ready" },
     },
     records = {},
+    -- 迁移/加载时重建 Ability 实例(否则退化为纯数据 Object, onTick 会崩)
+    class = "tinyworld.combat.ability",
 }

@@ -18,6 +18,17 @@ local STATE = {
 
 local Ability = Object.extend("Ability")
 
+-- 反序列化工厂(类方法): Ability 的宿主(caster)必须存在, 技能行为依赖 npc 数据,
+-- 因此按 data.id(技能名)经 ability_loader 重建实例; caster 即容器宿主实体。
+-- (ability 的宿主一定存在, 与 modifier 不同: modifier 的来源 ability 可能已消失)
+function Ability.fromData(container, data)
+    local abilityLoader = require "tinyworld.combat.ability_loader"
+    local name = assert(data and data.id, "Ability.fromData: data.id required")
+    local caster = assert(container.host, "Ability.fromData: container has no host")
+    return assert(abilityLoader.createAbility(caster, name),
+        "Ability.fromData: unknown ability " .. tostring(name))
+end
+
 function Ability:ctor(caster, data, schema)
     Object.ctor(self, schema)
     self.caster = caster

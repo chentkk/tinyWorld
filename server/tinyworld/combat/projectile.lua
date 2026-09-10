@@ -248,9 +248,9 @@ function Projectile:move(dt)
     end
 
     if mode == "linear" then
-        local dir = entity:get("dir")
-        entity.x = round2(entity.x + math.cos(dir) * speed * dt)
-        entity.y = round2(entity.y + math.sin(dir) * speed * dt)
+        local angle = entity:get("angle")
+        entity.x = round2(entity.x + math.cos(angle) * speed * dt)
+        entity.y = round2(entity.y + math.sin(angle) * speed * dt)
         return
     end
 

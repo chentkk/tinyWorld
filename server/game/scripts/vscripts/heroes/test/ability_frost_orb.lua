@@ -6,7 +6,6 @@
 
 local Ability = require "tinyworld.combat.ability"
 local combatDamage = require "tinyworld.combat.damage"
-local modifierManager = require "tinyworld.combat.modifier_manager"
 local projectileManager = require "tinyworld.combat.projectile_manager"
 
 ability_frost_orb = Ability.extend("ability_frost_orb")
@@ -16,8 +15,9 @@ function ability_frost_orb:OnSpellStart()
     if not caster then return end
 
     -- 目标点: 这里示例直接往 caster 前方 60 放; 实际业务可替换成瞄准点
-    local dx = math.cos(caster:get("dir") or 0)
-    local dy = math.sin(caster:get("dir") or 0)
+    local angle = caster:get("dir") or 0
+    local dx = math.cos(angle)
+    local dy = math.sin(angle)
     local x = caster.x + dx * 60
     local y = caster.y + dy * 60
 
@@ -36,12 +36,8 @@ function ability_frost_orb:OnSpellStart()
             type = combatDamage.DAMAGE_TYPE.MAGICAL,
         },
 
-        -- 使用层附加效果: 范围减速
-        onIntervalThink = function(projectile, targets, tickIndex)
-            for _, target in ipairs(targets) do
-                modifierManager.addModifier(target, "modifier_frost_slow", self, { duration = 1.5 })
-            end
-        end,
+        -- 使用层附加效果: 待 modifier 系统重构后重新实现范围减速。
+        onIntervalThink = nil,
     })
 end
 

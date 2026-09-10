@@ -41,12 +41,13 @@ function M.createAbility(caster, abilityName)
     return M.abilityFactory(caster, abilityName, schema)
 end
 
+-- 装配技能: 与迁移还原走同一条容器构建流程(view:addFromData -> Ability.fromData),
+-- 这里只提供技能名, 其余交给 abilities_view 的子对象类。
 function M.loadAbilities(unit, names)
     local view = unit:getContainer("abilities_view")
     if view then
         for _, abilityName in ipairs(names or {}) do
-            local ability = M.createAbility(unit, abilityName)
-            if ability then view:add(ability) end
+            view:addFromData({ id = abilityName })
         end
     end
     return view and view:childrenList() or {}

@@ -14,8 +14,8 @@ return {
     props = {
         { name = "x", type = "number", sync = "all", persist = true },
         { name = "y", type = "number", sync = "all", persist = true },
-        { name = "dir", type = "number", sync = "all", default = 0 },
-        { name = "speed", type = "number", sync = "all", default = 10 },
+        { name = "angle", type = "number", sync = "all", default = 0, comment = "瞄准角度(弧度)" },
+        { name = "speed", type = "number", sync = "all", default = 300 },
         { name = "range", type = "number", sync = "all", default = 20 },
         { name = "hitRadius", type = "number", sync = "all", default = 2 },
         { name = "ownerId", type = "number", sync = "all" },

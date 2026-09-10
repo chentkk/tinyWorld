@@ -16,7 +16,6 @@ local function idOf(obj)
     if type(obj) == "table" and obj.getRealId then return obj:getRealId() end
     return obj
 end
-
 function CombatAgent:onCreate()
     local entity = self.entity
 
@@ -52,13 +51,18 @@ function CombatAgent:onCreate()
         })
     end)
 
-    assert(entity.cellInitData, "CombatAgent: entity.cellInitData required")
-    assert(type(entity.cellInitData.abilities) == "table", "CombatAgent: cellInitData.abilities required")
+end
+
+-- 处理 baseapp 组件(cellData 打包)传来的初始化数据: 目前加载 abilities
+function CombatAgent:onApplyCellData(data)
+    local abilities = data and data.abilities
+    if not abilities then return end
+
     local names = {}
-    for _, abilityName in ipairs(entity.cellInitData.abilities) do
+    for _, abilityName in ipairs(abilities) do
         names[#names + 1] = abilityName
     end
-    abilityLoader.loadAbilities(entity, names)
+    abilityLoader.loadAbilities(self.entity, names)
 end
 
 function CombatAgent:applyCombatDamage(data)

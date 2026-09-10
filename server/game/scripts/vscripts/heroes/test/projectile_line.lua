@@ -15,10 +15,10 @@ function ability_projectile_line:OnSpellStart()
     projectileManager.CreateLinearProjectile({
         Source = caster,
         Ability = self,
-        iMoveSpeed = tonumber(self:GetSpecialValueFor("movementSpeed")) or 40,
+        iMoveSpeed = tonumber(self:GetSpecialValueFor("movementSpeed")) or 400,
         range = tonumber(self:GetSpecialValueFor("range")) or 80,
         hitRadius = tonumber(self:GetSpecialValueFor("hitRadius")) or 6,
-        dir = caster:get("dir") or 0,
+        angle = caster:get("dir") or 0,
         damage = {
             amount = tonumber(self:GetSpecialValueFor("damage")) or 0,
             type = combatDamage.DAMAGE_TYPE.MAGICAL,

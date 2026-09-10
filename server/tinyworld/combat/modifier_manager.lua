@@ -1,35 +1,48 @@
 -- tinyworld/combat/modifier_manager.lua
 -- modifier 的增删查。modifier 数据直接存放在 modifiers_view 容器中。
 
+local Modifier = require "tinyworld.combat.modifier"
+
 local M = {}
+
+-- 已存在的同类 modifier 则刷新, 否则返回 nil(由调用方继续走注册流程)
+local function findExisting(view, name)
+    for _, old in ipairs(view:childrenList()) do
+        if old:GetModifierName() == name then
+            return old
+        end
+    end
+    return nil
+end
 
 function M.addModifier(unit, mod, ability, params)
     assert(unit, "addModifier: unit required")
     assert(mod, "addModifier: mod required")
     assert(ability, "addModifier: ability required")
 
-    if type(mod) == "string" then
-        local cls = assert(_G[mod], "addModifier: unknown modifier class " .. tostring(mod))
-        local view = unit:getContainer("modifiers_view")
-        assert(view, "addModifier: unit has no modifiers_view")
-        mod = cls.new(unit, ability, params, view.def.childSchema)
-    end
-
-    if not mod.owner then mod.owner = unit end
-
     local view = unit:getContainer("modifiers_view")
     assert(view, "addModifier: unit has no modifiers_view")
 
-    local name = mod:GetModifierName()
-    for _, old in ipairs(view:childrenList()) do
-        if old:GetModifierName() == name then
-            old:refresh({})
-            unit:emit("combat_modifier_refresh", name, old.stack)
-            return old
-        end
+    -- 已存在同类 modifier: 刷新而不重复创建
+    local name = type(mod) == "string" and mod or mod:GetModifierName()
+    local existing = findExisting(view, name)
+    if existing then
+        existing:refresh({})
+        unit:emit("combat_modifier_refresh", name, existing.stack)
+        return existing
     end
 
-    mod:OnCreated(mod._params or {})
+    -- 构造步骤与迁移还原一致: newChild -> load -> add。
+    -- 传入类名时由来源 ability 派生构造参数; 传入实例时直接复用该实例。
+    if type(mod) == "string" then
+        local spec = Modifier.buildParams(ability, params)
+        spec.name = mod
+        mod = view:newChild(spec)
+        mod:load(spec)
+    end
+
+    mod.owner = unit
+    mod:OnCreated(params or {})
     view:add(mod)
     unit:emit("combat_modifier_add", name, mod.duration, mod.stack)
     return mod

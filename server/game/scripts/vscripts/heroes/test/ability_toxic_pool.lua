@@ -12,8 +12,9 @@ function ability_toxic_pool:OnSpellStart()
     local caster = self:GetCaster()
     if not caster then return end
 
-    local dx = math.cos(caster:get("dir") or 0)
-    local dy = math.sin(caster:get("dir") or 0)
+    local angle = caster:get("dir") or 0
+    local dx = math.cos(angle)
+    local dy = math.sin(angle)
     local x = caster.x + dx * 40
     local y = caster.y + dy * 40
 
