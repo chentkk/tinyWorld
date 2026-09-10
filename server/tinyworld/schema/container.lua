@@ -6,29 +6,6 @@ local class = require "tinyworld.core.class"
 local Record = require "tinyworld.schema.record"
 local Object = require "tinyworld.schema.object"
 
--- 包装子对象: 保留 props/records/id, 同时支持 obj.field = value
-local function makeChildProxy(child)
-    return setmetatable(child, {
-        __index = function(self, key)
-            if key == "props" then return rawget(self, "props") end
-            if key == "records" then return rawget(self, "records") end
-            if key == "id" then return rawget(self, "id") end
-
-            local props = rawget(self, "props")
-            return props[key]
-        end,
-        __newindex = function(self, key, value)
-            if key == "props" or key == "records" or key == "id" then
-                rawset(self, key, value)
-                return
-            end
-
-            local props = rawget(self, "props")
-            props[key] = value
-        end,
-    })
-end
-
 local Container = class.makeClass("Container")
 
 -- 子对象/容器自身属性直接读写的辅助
@@ -91,6 +68,12 @@ function Container:ctor(def, host)
     rawset(self, "dirty", {})
     rawset(self, "dirtyIndex", {})
     rawset(self, "isView", false)
+
+    -- 子对象类(可选): 反序列化时重建带行为子对象, 见 ContainerDef.childClass。
+    rawset(self, "childClass", Object)
+    if def.childClass then
+        rawset(self, "childClass", require(def.childClass))
+    end
 end
 
 function Container:isViewOpened()
@@ -115,17 +98,16 @@ function Container:closeView()
     self.dirtyIndex = {}
 end
 
-function Container:add(objOrData)
-    local child = objOrData
+-- 子对象构建分三步, 与 cell entity 构建(new -> load -> addEntity)对齐:
+--   1) newChild(data)   构造实例(带行为的子类走 childClass.fromData)
+--   2) child:load(data) 恢复可序列化状态(Object:load)
+--   3) add(child)       登记入库 + 产生视图 op
+-- 迁移/加载走 addFromData(三步串联); 业务创建(addModifier / createAbility)复用同一组步骤。
 
-    -- 兼容 old 用法: 传入 data table 时内部构造 Object
-    if type(objOrData) ~= "table" or rawget(objOrData, "_schema") == nil then
-        local data = objOrData or {}
-        child = Object.new(self.def.childSchema, self.def.childRecordDefs)
-        for name, value in pairs(data) do
-            child[name] = value
-        end
-    end
+-- 第 3 步: 已构造好的子对象实例入库
+function Container:add(child)
+    assert(type(child) == "table" and rawget(child, "_schema") ~= nil,
+        "Container.add expects an Object instance, use addFromData for tables")
 
     local id = child:objectId()
     if id == nil then
@@ -137,10 +119,7 @@ function Container:add(objOrData)
 
     child:attach(self, id)
     self.children[id] = child
-    if not child.__seen then
-        self.order[#self.order + 1] = id
-        child.__seen = true
-    end
+    self.order[#self.order + 1] = id
 
     if self.isView then
         self.dirty[#self.dirty + 1] = {
@@ -154,6 +133,20 @@ function Container:add(objOrData)
     end
 
     return child
+end
+
+-- 第 1 步: 构造子对象实例。带行为的子类由 childClass.fromData 重建(ability/modifier),
+-- 未声明 childClass 时返回默认纯数据 Object。
+function Container:newChild(data)
+    return self.childClass.fromData(self, data or {})
+end
+
+-- 第 1+2+3 步串联: 从纯数据恢复一个子对象并入库。
+function Container:addFromData(data)
+    data = data or {}
+    local child = self:newChild(data)
+    child:load(data)
+    return self:add(child)
 end
 
 function Container:remove(id)
@@ -274,17 +267,50 @@ function Container:flushSync(viewId)
     }
 end
 
+-- 按插入顺序导出(与 childrenList 一致), 保证迁移/加载后子对象顺序稳定,
+-- 客户端按 index 访问(如技能施放)才不会因序列化顺序漂移。
 function Container:dump()
     local out = {}
-    for id, child in pairs(self.children) do
-        out[#out + 1] = self:childFullData(child)
+    for _, id in ipairs(self.order or {}) do
+        local child = self.children[id]
+        if child then out[#out + 1] = self:childFullData(child) end
+    end
+    return out
+end
+
+-- 容器自身 props 存盘导出: 按 propsSchema 的 persist 字段过滤。
+function Container:dumpPropsPersist()
+    local out = {}
+    for _, f in ipairs(self.propsSchema.fields) do
+        if f.persist and self.props[f.name] ~= nil then
+            out[f.name] = self.props[f.name]
+        end
+    end
+    return out
+end
+
+-- 子对象存盘导出: 每个 child 只保留 persist=true 字段, 子 record 只保留 persist 表。
+function Container:dumpPersist()
+    local out = {}
+    for _, id in ipairs(self.order or {}) do
+        local child = self.children[id]
+        if child then
+            local data = { id = child:objectId() }
+            for k, v in pairs(child:objectDataPersist() or {}) do
+                data[k] = v
+            end
+            for recName, rec in pairs(child.records or {}) do
+                if rec.def.persist then data[recName] = rec:dump() end
+            end
+            out[#out + 1] = data
+        end
     end
     return out
 end
 
 function Container:load(list)
     for _, data in ipairs(list or {}) do
-        self:add(data)
+        self:addFromData(data)
     end
 end
 

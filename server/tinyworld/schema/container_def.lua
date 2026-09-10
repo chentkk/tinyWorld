@@ -11,7 +11,11 @@ local ContainerDef = class.makeClass("ContainerDef")
 function ContainerDef:ctor(def)
     self.name = def.name
     self.persist = def.persist == true
-    self.selfOnly = def.selfOnly == true
+    local sync = def.sync or "all"
+    if sync ~= "none" and sync ~= "self" and sync ~= "all" then
+        error("container sync must be none/self/all: " .. tostring(def.name))
+    end
+    self.sync = sync
 
     -- 容器自身定义: props + records
     self.propsSchema = PropertySchema.new(def.props or {})
@@ -29,17 +33,11 @@ function ContainerDef:ctor(def)
     for _, rd in ipairs(childRecordDef) do
         self.childRecordDefs[#self.childRecordDefs + 1] = RecordDef.new(rd)
     end
-end
 
-function ContainerDef:childId(data)
-    return data.id or data[self:childIdField()]
-end
-
-function ContainerDef:childIdField()
-    for _, f in ipairs(self.childSchema.fields) do
-        if f.name == "id" then return "id" end
-    end
-    return "id"
+    -- 子对象类: 反序列化(迁移/加载)时用于重建带行为的子对象(ability/modifier 等)。
+    -- 值为扩展自 Object 的类模块路径; 该类需实现 fromData(container, data)。
+    -- 未声明时使用默认 Object(纯数据子对象, 如 item)。
+    self.childClass = childDef.class
 end
 
 return ContainerDef
