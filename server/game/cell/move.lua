@@ -4,6 +4,7 @@
 -- 最后把 coordinate+最后 sequenceid 一起下发, 客户端据此 Reconciliation。
 
 local component = require "tinyworld.entity.component"
+local direction = require "tinyworld.core.direction"
 local math = math
 
 local Move = component.extend("Move")
@@ -41,10 +42,11 @@ function Move:onTick(dt)
     local entity = self.entity
     if #self.queue == 0 then return end
 
-    local speed = entity:get("speed") or 6
+    local speed = entity:get("speed") or 150
     local x = entity.x
     local y = entity.y
-    local lastSeq = entity.lastMoveSeq
+    local lastSeq = entity.__lastMoveSeq
+    local facing
 
     for _, cmd in ipairs(self.queue) do
         local dirx, diry = cmd.dx, cmd.dy
@@ -52,6 +54,8 @@ function Move:onTick(dt)
         if len > 0.001 then
             dirx = dirx / len
             diry = diry / len
+            -- 朝向: 连续角度, 取最后一次有效移动方向(客户端再量化为 4 方向美术)
+            facing = direction.angleFromVector(cmd.dx, cmd.dy)
         end
         x = x + dirx * speed * cmd.dt
         y = y + diry * speed * cmd.dt
@@ -61,7 +65,8 @@ function Move:onTick(dt)
     self.queue = {}
     entity:set("x", x)
     entity:set("y", y)
-    entity.lastMoveSeq = lastSeq
+    entity.__lastMoveSeq = lastSeq
+    if facing then entity:set("dir", facing) end
 end
 
 return Move
