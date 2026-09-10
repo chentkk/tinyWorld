@@ -13,7 +13,7 @@ return {
     },
     records = {
         {
-            name = "current_tasks", sync = "all", keyFields = { "taskid" },
+            name = "current_tasks", sync = "all", persist = true, keyFields = { "taskid" },
             fields = {
                 { name = "taskid", type = "number", sync = "all" },
                 { name = "state", type = "number", sync = "all", default = 0 },
@@ -21,13 +21,13 @@ return {
             },
         },
         {
-            name = "completed_tasks", sync = "none", keyFields = { "taskid" },
+            name = "completed_tasks", sync = "none", persist = true, keyFields = { "taskid" },
             fields = {
                 { name = "taskid", type = "number" },
             },
         },
         {
-            name = "abilities", sync = "none", keyFields = { "name" },
+            name = "abilities", sync = "none", persist = true, keyFields = { "name" },
             fields = {
                 { name = "name", type = "string" },
             },
@@ -38,10 +38,10 @@ return {
         equipmentDef,
     },
     baseComponents = {
+        "game.base.combat_base",
         "game.base.bag",
         "game.base.equipment",
         "game.base.task",
-
     },
     baseOpenViews = { "bag", "equipment" },
 }

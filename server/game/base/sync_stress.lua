@@ -44,7 +44,7 @@ function BaseSyncStress:onTick(dt)
 
     if op2 == 0 then
         local id = 2000 + self.step
-        bag:add({ id = id, slot = id, itemId = 7000 + self.step, count = self.step % 5 + 1 })
+        bag:addFromData({ id = id, slot = id, itemId = 7000 + self.step, count = self.step % 5 + 1 })
     else
         local id, child = next(bag.children)
         if child then

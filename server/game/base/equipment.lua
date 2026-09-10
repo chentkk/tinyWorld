@@ -23,7 +23,7 @@ function Equipment:onEquipItem(d)
     if equipment:has(slotName) then return { code = 2, msg = "slot used" } end
 
     bag:remove(item.id)
-    equipment:add({ id = slotName, slotName = slotName, itemId = item.props.itemId })
+    equipment:addFromData({ id = slotName, slotName = slotName, itemId = item.props.itemId })
     return nil
 end
 
@@ -37,7 +37,7 @@ function Equipment:onUnequipItem(d)
     if not item then return { code = 1, msg = "no equip" } end
 
     equipment:remove(item.id)
-    bag:add({ id = item.id, slot = item.id, itemId = item.props.itemId, count = 1 })
+    bag:addFromData({ id = item.id, slot = item.id, itemId = item.props.itemId, count = 1 })
     return nil
 end
 

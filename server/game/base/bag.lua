@@ -32,7 +32,7 @@ function Bag:addItem(itemId, count)
 
     local slot = 0
     while bag:has(slot) do slot = slot + 1 end
-    bag:add({ id = slot, slot = slot, itemId = itemId, count = count or 1 })
+    bag:addFromData({ id = slot, slot = slot, itemId = itemId, count = count or 1 })
     return slot
 end
 

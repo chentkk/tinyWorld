@@ -152,15 +152,5 @@ function SpaceConfig:neighbors(cellInfo)
     return out
 end
 
--- 矩形到点最近距离平方(0 表示在内部)
-function SpaceConfig.rectDist2(info, x, y)
-    local dx = 0
-    local dy = 0
-    if x < info.x then dx = info.x - x
-    elseif x >= info.x + info.w then dx = x - (info.x + info.w) end
-    if y < info.y then dy = info.y - y
-    elseif y >= info.y + info.h then dy = y - (info.y + info.h) end
-    return dx * dx + dy * dy
-end
 
 return SpaceConfig

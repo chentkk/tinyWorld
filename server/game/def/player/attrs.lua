@@ -12,6 +12,6 @@ return {
         { name = "maxMp", type = "number", sync = "all", persist = true, comment = "最大魔法", default = 100 },
         { name = "gold", type = "number", sync = "all", persist = true, comment = "金币", default = 0 },
         { name = "scene", type = "string", sync = "all", persist = true, comment = "场景", default = "main" },
-        { name = "speed", type = "number", sync = "all", persist = true, comment = "移速", default = 6 },
+        { name = "speed", type = "number", sync = "all", persist = true, comment = "移速", default = 150 },
     },
 }

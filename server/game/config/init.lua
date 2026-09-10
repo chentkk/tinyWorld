@@ -36,8 +36,5 @@ return {
             x = 10,
             y = 10,
         },
-        cellData = {
-            { target = "abilities", record = "abilities", field = "name" },
-        },
     },
 }
