@@ -1,0 +1,12 @@
+{
+  "_comment": "占位角色序列帧描述。正式美术按同样布局替换 hero.png 即可，无需改代码。行=朝向(down/up/left/right 各一行，4 向独立绘制)，列=帧序号。若美术只画 3 行(down/up/side 朝右)，把 directions 改成 [\"down\",\"up\",\"side\"] 即可，左右由代码镜像(facing.gd 的 render_for 两种布局都支持)。",
+  "name": "hero",
+  "sheet": "res://assets/sprites/hero.png",
+  "frame_size": { "w": 64, "h": 64 },
+  "directions": ["down", "up", "left", "right"],
+  "actions": {
+    "idle":   { "row_start": 0, "columns": 6, "fps": 6,  "loop": true },
+    "walk":   { "row_start": 4, "columns": 6, "fps": 10, "loop": true },
+    "attack": { "row_start": 8, "columns": 6, "fps": 12, "loop": false }
+  }
+}

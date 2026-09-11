@@ -1,9 +1,9 @@
 # tinyWorld 交接文档
 
-本仓库位于 `/root/test/testv3`。服务器在 `/root/test/testv3/server`，客户端在 `/root/test/testv3/client`。
+本仓库位于 `/root/test/testv3`。服务器在 `/root/test/testv3/server`，
+客户端在 `/root/test/testv3/client`（Godot 主力）+ `/root/test/testv3/tools/love_client`（LÖVE 参考）。
 
 - 远端仓库：`git@github.com:chentkk/tinyWorld.git`（当前分支 `main`）
-- 最新提交：`50b1a50 refactor(server): reorganize code, unify protocol, fix login/logout flow`
 - 协议/流程文档：`doc/` 目录（客户端开发先读这里）
 
 ---
@@ -68,9 +68,17 @@ server/
     test/run_all.lua            # 全部单元测试入口
     test/test_projectile_10_clients.py
     test/test_projectile_live.py
-client/                         # love2d 客户端（LÖVE/LuaJIT）
-  main.lua
-  src/                          # net/json/entities/views/records/ui/move/debuglog
+client/
+  godot/                        # Godot 4.x 客户端（主力）
+    core/                       #   框架层: protocol / net(frame_codec,tcp_client,http_login)
+    game/                       #   玩法层: session(login_flow) / world / movement
+    ui/                         #   表现层: hud(panels) / world / combat
+    scripts/main.gd             #   入口装配
+    scenes/ assets/
+tools/
+  love_client/                  # LÖVE Lua 客户端（已冻结，协议参考实现）
+    main.lua
+    src/                        # net/json/entities/views/records/ui/move/debuglog
 doc/                            # 协议 / 登录流程 / 客户端开发指南
   README.md
   protocol.md
@@ -79,7 +87,9 @@ doc/                            # 协议 / 登录流程 / 客户端开发指南
   protocol_review.md
 ```
 
----
+客户端说明见 `client/README.md`；Godot 客户端分层与开发约定见 `client/godot/README.md`。
+
+## 3. 核心设计
 
 ## 3. 当前代码关键设计
 

@@ -10,8 +10,33 @@
 
 ## 2. 目录约定
 
+本仓库现有两套客户端，都实现本文档描述的协议：
+
+**Godot 客户端（主力，`client/godot/`）** —— 分层架构，依赖单向
+（`core` 框架层 → `game` 玩法层 → `ui` 表现层，`scripts/main.gd` 只做装配）：
+
 ```
-client/
+client/godot/
+├── core/                 # 框架层: 与玩法无关
+│   ├── protocol/         #   协议常量与消息构造
+│   └── net/              #   帧编解码 / TCP / HTTP 登录
+├── game/                 # 玩法层: 状态与规则
+│   ├── session/          #   登录状态机
+│   ├── world/            #   世界状态(entity/record/view)
+│   └── movement/         #   移动预测与 Reconciliation
+├── ui/                   # 表现层: 渲染与交互
+│   ├── hud/panels/       #   各数据面板
+│   ├── world/            #   网格 / 实体显示
+│   └── combat/           #   战斗飘字
+└── scripts/main.gd       # 入口装配
+```
+
+详见 `client/godot/README.md`。
+
+**LÖVE Lua 客户端（已冻结，`tools/love_client/`）** —— 协议参考实现，目录如下：
+
+```
+tools/love_client/
 ├── main.lua              # 入口（状态机）
 ├── src/
 │   ├── net.lua           # 网络帧收发、登录接口
@@ -23,6 +48,9 @@ client/
 │   └── ui.lua            # UI
 └── logs/
 ```
+
+下文的最小实现示例沿用 Lua 写法（LuaJIT 无 `string.pack` 等），
+概念对任何语言都适用。
 
 ## 3. 网络层最小实现
 

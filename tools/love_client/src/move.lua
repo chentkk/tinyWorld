@@ -6,7 +6,7 @@
 local net = require "src.net"
 local M = {}
 
-M.speed = 150
+M.speed = 6
 M.myId = nil
 M.pending = {} -- 本地缓存指令 { seq, dx, dy, dt }
 M.serverSeq = 0

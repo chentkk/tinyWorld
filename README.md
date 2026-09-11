@@ -32,10 +32,15 @@ server/
     ├── main.lua            # 启动编排
     └── logs/               # message.log 协议调试日志
 
-client/                     # love2d 客户端
+client/                     # 客户端
+  godot/                    #   Godot 4.x 客户端(主力, core/game/ui 分层)
+tools/
+  love_client/              #   LÖVE Lua 客户端(已冻结, 协议参考)
 server/sql/init.sql         # mysql 建表脚本
 server/test/                # 单元测试 + 性能压测
 ```
+
+客户端说明见 [`client/README.md`](client/README.md)。
 
 ## 启动
 

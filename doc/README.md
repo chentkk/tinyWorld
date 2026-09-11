@@ -36,5 +36,10 @@
 
 ## 客户端目录
 
-- 现有客户端参考：`client/`（LÖVE + LuaJIT）。
-- 登录/收发帧参考实现：`client/src/net.lua`。
+| 客户端 | 路径 | 说明 |
+|--------|------|------|
+| Godot 客户端（主力） | `client/godot/` | Godot 4.x + GDScript，`core/`（框架）/ `game/`（玩法）/ `ui/`（表现）分层 |
+| LÖVE Lua 客户端（已冻结） | `tools/love_client/` | 协议参考实现；登录/收发帧参考见 `tools/love_client/src/net.lua` |
+
+- Godot 客户端分层与开发约定见 `client/godot/README.md`。
+- 客户端总览见 `client/README.md`。

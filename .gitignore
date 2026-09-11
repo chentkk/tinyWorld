@@ -4,9 +4,12 @@ server/skynet/
 # logs
 *.log
 server/game/logs/
-client/logs/
+tools/love_client/logs/
 
 # artifacts
 *.so
+
+# 裸 core 用于忽略 core dump; 但源码里的 core/ 目录需要显式豁免
 core
 !server/tinyworld/core/
+!client/godot/core/

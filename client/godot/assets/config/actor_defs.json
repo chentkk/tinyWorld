@@ -1,0 +1,36 @@
+{
+  "_comment": "对象(实体)表现配置: kind -> 外观与行为参数。新增 NPC/投掷物只需在此加一项, 无需改代码。字段说明见 ui/world/actor_def.gd。",
+  "default": {
+    "sprite": "res://assets/sprites/hero.json",
+    "show_name": true,
+    "interpolate": true,
+    "z_index": 10,
+    "placeholder_radius": 8.0,
+    "placeholder_color": [1.0, 0.45, 0.2]
+  },
+  "kinds": {
+    "Player": {
+      "sprite": "res://assets/sprites/hero.json",
+      "show_name": true,
+      "interpolate": true,
+      "z_index": 10,
+      "placeholder_radius": 9.0,
+      "placeholder_color": [0.2, 0.5, 1.0]
+    },
+    "Projectile": {
+      "show_name": false,
+      "interpolate": true,
+      "z_index": 5,
+      "placeholder_radius": 3.0,
+      "placeholder_color": [0.9, 0.9, 0.3]
+    },
+    "Npc": {
+      "sprite": "res://assets/sprites/hero.json",
+      "show_name": true,
+      "interpolate": true,
+      "z_index": 10,
+      "placeholder_radius": 9.0,
+      "placeholder_color": [0.6, 0.9, 0.4]
+    }
+  }
+}
