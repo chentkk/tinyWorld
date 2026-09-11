@@ -18,6 +18,7 @@ local views = require "src.views"
 local records = require "src.records"
 local move = require "src.move"
 local ui = require "src.ui"
+local direction = require "tinyworld.core.direction"
 
 local HOST = "127.0.0.1"
 local LOGIN_PORT = 8080
@@ -236,8 +237,20 @@ function love.draw()
             x, y = move.renderPos(e)
         end
         if x then
-            love.graphics.setColor(e.entityId == net.selfId and 1 or 1, e.entityId == net.selfId and 0.3 or 0.8, 0.3)
-            love.graphics.circle("fill", x, y, e.entityId == net.selfId and 6 or 5)
+            local isSelf = e.entityId == net.selfId
+            love.graphics.setColor(1, isSelf and 0.3 or 0.8, 0.3)
+            love.graphics.circle("fill", x, y, isSelf and 6 or 5)
+
+            -- 朝向指示: 服务端 dir 为连续角度, 客户端量化到 4 方向选美术
+            local dir = e.props.dir or 0
+            local quad = direction.quantize(dir)
+            local a = direction.angle(quad)
+            local len = isSelf and 14 or 12
+            love.graphics.setColor(1, 1, 0.3)
+            love.graphics.setLineWidth(2)
+            love.graphics.line(x, y, x + math.cos(a) * len, y + math.sin(a) * len)
+            love.graphics.setLineWidth(1)
+
             love.graphics.setColor(1, 1, 1)
             love.graphics.print((e.props.name or "") .. " L" .. (e.props.level or 0), x - 14, y - 18)
         end
