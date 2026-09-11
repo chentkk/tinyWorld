@@ -31,10 +31,12 @@ function M.stop()
     net.enqueue("RPC", "onStopMove", {})
 end
 
--- 服务器回包: x/y/seq, 丢弃 seq <= serverSeq 的本地指令并重放
+-- 服务器回包: x/y/seq, 丢弃 seq <= serverSeq 的本地指令并重放。
+-- 服务端只下发"变脏"的属性, 纯水平/垂直移动可能只带 x 或只带 y,
+-- 因此这里只在字段存在时更新, 不能把缺省字段写成 nil。
 function M.onServerPosition(entity, x, y, seq)
-    entity.props.x = x
-    entity.props.y = y
+    if x ~= nil then entity.props.x = x end
+    if y ~= nil then entity.props.y = y end
     M.serverSeq = seq or M.serverSeq
 
     local keep = {}

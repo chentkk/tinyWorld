@@ -114,11 +114,19 @@ function M.update()
             buffer = buffer:sub(3 + len)
             local msg = json.decode(body)
             if msg then
-                if msg.t == "AUTH" and msg.n == "auth_ok" and msg.d and msg.d.connId then
-                    M.connId = msg.d.connId
+                if msg.t == "batch" then
+                    -- 服务器把同一 tick 的多条消息合并成一帧; 这里按顺序展开逐条处理
+                    for _, sub in ipairs(msg.d.msgs or {}) do
+                        writeLog("recv", sub.t, sub.n, json.encode(sub.d or {}))
+                        if M.onMessage then M.onMessage(sub) end
+                    end
+                else
+                    if msg.t == "AUTH" and msg.n == "auth_ok" and msg.d and msg.d.connId then
+                        M.connId = msg.d.connId
+                    end
+                    writeLog("recv", msg.t, msg.n, json.encode(msg.d or {}))
+                    if M.onMessage then M.onMessage(msg) end
                 end
-                writeLog("recv", msg.t, msg.n, json.encode(msg.d or {}))
-                if M.onMessage then M.onMessage(msg) end
             end
         end
         byte = sock:receive(1)
