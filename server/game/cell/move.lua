@@ -45,7 +45,7 @@ function Move:onTick(dt)
     local speed = entity:get("speed") or 150
     local x = entity.x
     local y = entity.y
-    local lastSeq = entity.__lastMoveSeq
+    local lastSeq
     local facing
 
     for _, cmd in ipairs(self.queue) do
@@ -65,7 +65,8 @@ function Move:onTick(dt)
     self.queue = {}
     entity:set("x", x)
     entity:set("y", y)
-    entity.__lastMoveSeq = lastSeq
+    -- 移动确认序号作为自身属性下发(sync=self 只发给自己), 供客户端 Reconciliation
+    if lastSeq then entity:set("seq", lastSeq) end
     if facing then entity:set("dir", facing) end
 end
 

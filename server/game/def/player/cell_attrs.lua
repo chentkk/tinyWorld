@@ -8,5 +8,8 @@ return {
         { name = "x", type = "number", sync = "all", persist = true, comment = "x 坐标", default = 10 },
         { name = "y", type = "number", sync = "all", persist = true, comment = "y 坐标", default = 10 },
         { name = "dir", type = "number", sync = "all", persist = true, comment = "朝向角(弧度)", default = 0 },
+        -- 移动确认序号: 最近一次被服务器处理的 onRequestMove seq, 供客户端 Reconciliation。
+        -- sync=self 只下发给自己, 周围玩家/ghost 收不到; 不存盘。
+        { name = "seq", type = "number", sync = "self", persist = false, comment = "移动确认seq", default = 0 },
     },
 }

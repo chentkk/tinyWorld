@@ -209,49 +209,31 @@ function Cell:buildOutboxes()
     end
 end
 
-function Cell:sendProp(player, entity, props)
+-- 把实体的一个属性包 append 到本站 tick 待发列表(不是立即发送)
+function Cell:appendProp(msgs, entity, props)
     if not props or not next(props) then return end
-
-    self.host:sendToClient(player, protocol.propMsg(entity, props))
+    msgs[#msgs + 1] = protocol.propMsg(entity, props)
 end
 
--- 以 player 为观察者, 取目标实体 outbox 中属于 around 的部分发送
-function Cell:sendEntityAroundTo(player, entity)
+-- 以 player 为观察者, 取目标实体 outbox 中属于 around 的部分 append 到待发列表
+function Cell:appendEntityAroundTo(msgs, entity)
     local outbox = entity.outbox
     if not outbox then return end
 
-    if entity.isReal then
-        self:sendProp(player, entity, outbox.aroundProps)
-    elseif entity.isGhost then
-        self:sendGhostViewProp(player, entity, outbox.aroundProps)
-    end
+    -- real 与 ghost 的属性包都用 aroundProps; ghost 无需 seq, 直接进 props message
+    self:appendProp(msgs, entity, outbox.aroundProps)
 
     for name, ops in pairs(outbox.recordOps or {}) do
-        self:sendRecordOps(player, entity, name, ops)
+        msgs[#msgs + 1] = protocol.recordMsg(entity:getRealId(), name, ops)
     end
 
     for name, ops in pairs(outbox.viewOps or {}) do
-        self:sendViewOps(player, entity, name, ops)
+        msgs[#msgs + 1] = protocol.viewMsg(entity:getRealId(), name, ops)
     end
 
     for _, event in ipairs(outbox.events or {}) do
-        self.host:sendToClient(player, event)
+        msgs[#msgs + 1] = event
     end
-end
-
--- ghost 的属性包不需要 seq, 数据直接放进 props message
-function Cell:sendGhostViewProp(player, entity, stage)
-    if not stage or not next(stage) then return end
-
-    self.host:sendToClient(player, protocol.propMsg(entity, stage))
-end
-
-function Cell:sendRecordOps(player, entity, name, ops)
-    self.host:sendToClient(player, protocol.recordMsg(entity:getRealId(), name, ops))
-end
-
-function Cell:sendViewOps(player, entity, name, ops)
-    self.host:sendToClient(player, protocol.viewMsg(entity:getRealId(), name, ops))
 end
 
 function Cell:deliverOutboxes()
@@ -260,39 +242,43 @@ function Cell:deliverOutboxes()
     end
 end
 
+-- 收集本 tick 发给该玩家的全部消息, 合并成一份 batch 发给 baseapp,
+-- 由 baseapp 一次编码/转发, 避免每个实体、每种消息各发一次。
 function Cell:deliverToPlayer(player)
     player.visibleEntities = player.visibleEntities or {}
+    local msgs = {}
 
     -- 自己: 自身属性包 + 自己的战斗事件
+    -- (移动确认 seq 已作为 sync=self 的普通属性, 由 Move 组件 set 后自然进 selfProps;
+    --  仅变化时才下发, 不会污染无关属性包)
     local selfOutbox = player.outbox
     if selfOutbox then
-        -- 仅在确有自身属性变更时才附带 move seq(供客户端 Reconciliation);
-        -- 否则每 tick 都会因 seq 让空 selfProps 变成非空, 产生冗余消息。
-        if selfOutbox.selfProps and next(selfOutbox.selfProps) and player.__lastMoveSeq then
-            selfOutbox.selfProps.seq = player.__lastMoveSeq
-        end
-        self:sendProp(player, player, selfOutbox.selfProps)
+        self:appendProp(msgs, player, selfOutbox.selfProps)
 
         -- 自己也能看到自身 around views(如 modifiers_view)
         for name, ops in pairs(selfOutbox.viewOps or {}) do
-            self:sendViewOps(player, player, name, ops)
+            msgs[#msgs + 1] = protocol.viewMsg(player:getRealId(), name, ops)
         end
         for name, ops in pairs(selfOutbox.selfViewOps or {}) do
-            self:sendViewOps(player, player, name, ops)
+            msgs[#msgs + 1] = protocol.viewMsg(player:getRealId(), name, ops)
         end
         for _, event in ipairs(selfOutbox.events or {}) do
-            self.host:sendToClient(player, event)
+            msgs[#msgs + 1] = event
         end
     end
 
-    -- 我看到的所有实体: 把它们的 around 包发给我
+    -- 我看到的所有实体: 把它们的 around 包收集起来
     for _, target in pairs(player.visibleEntities) do
         if target.outbox then
-            self:sendEntityAroundTo(player, target)
+            self:appendEntityAroundTo(msgs, target)
             self:ghostLog("deliver outbox player=%s source=%s entity=%d kind=%s",
                 tostring(player.playerId), target.isGhost and "ghost" or "real",
                 target:getRealId(), target.kind)
         end
+    end
+
+    if #msgs > 0 then
+        self.host:sendToClient(player, protocol.batch(msgs))
     end
 end
 

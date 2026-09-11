@@ -43,14 +43,14 @@ local function closeConn(conn)
     end
 end
 
-local function sendBody(conn, msgType, name, dataStr, body)
+-- 只负责把负载写入 socket; 日志由调用方按需逐条写(支持 batch 展开)
+local function sendBody(conn, body)
     local ok = pcall(socket.write, conn.fd, proto.packBody(body))
     if not ok then
         log.warn("sendBody failed connId=%s", conn.connId)
         closeConn(conn)
         return false
     end
-    writeLog(conn.connId, "send", msgType, name, dataStr)
     return true
 end
 
@@ -59,11 +59,19 @@ function cmd.send_to_client(connId, body, msgType, name, dataStr)
     if not conn then return false end
 
     local msg = proto.decode(body)
-    msgType = msgType or (msg and msg.t) or "?"
-    name = name or (msg and msg.n) or ""
-    dataStr = dataStr or msgUtil.logData(msg and msg.d, msg and msg.t, msg and msg.n)
-    sendBody(conn, msgType, name, dataStr, body)
-    return true
+    if msg and msg.t == "batch" then
+        -- 批量消息: 网络上仍只发送一帧, message.log 逐条展开记录便于联调
+        for _, sub in ipairs(msg.d.msgs or {}) do
+            writeLog(conn.connId, "send", sub.t, sub.n, msgUtil.logData(sub.d, sub.t, sub.n))
+        end
+    else
+        msgType = msgType or (msg and msg.t) or "?"
+        name = name or (msg and msg.n) or ""
+        dataStr = dataStr or msgUtil.logData(msg and msg.d, msg and msg.t, msg and msg.n)
+        writeLog(conn.connId, "send", msgType, name, dataStr)
+    end
+
+    return sendBody(conn, body)
 end
 
 function cmd.kick(connId)
@@ -75,8 +83,8 @@ local function handleAuth(conn, msg)
 
     local accountId = skynet.call(loginAddr, "lua", "auth_token", msg.d.token)
     if not accountId then
-        sendBody(conn, "AUTH", "auth_fail", "code=1 msg=bad token",
-            proto.encode(protocol.authFail(1, "bad token")))
+        writeLog(conn.connId, "send", "AUTH", "auth_fail", "code=1 msg=bad token")
+        sendBody(conn, proto.encode(protocol.authFail(1, "bad token")))
         closeConn(conn)
         return
     end
@@ -86,7 +94,8 @@ local function handleAuth(conn, msg)
     skynet.send(conn.baseApp, "lua", "open_client", conn.gateway, conn.fd, conn.connId, accountId)
 
     local reply = protocol.authOk(accountId, conn.connId)
-    sendBody(conn, "AUTH", "auth_ok", msgUtil.logData(reply.d, reply.t, reply.n), proto.encode(reply))
+    writeLog(conn.connId, "send", "AUTH", "auth_ok", msgUtil.logData(reply.d, reply.t, reply.n))
+    sendBody(conn, proto.encode(reply))
 end
 
 local function onClientData(conn, body)

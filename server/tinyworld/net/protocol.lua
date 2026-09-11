@@ -10,6 +10,12 @@ function M.make(msgType, name, data)
     return { t = msgType, n = name, d = data or {} }
 end
 
+-- 批量信封: 把同一 tick 发给同一玩家的多条消息合并成一份, 减少跨服务发送与编码。
+-- 客户端收到后按顺序展开逐条处理。msgs 为已构造好的消息表数组。
+function M.batch(msgs)
+    return { t = "batch", n = "msgs", d = { msgs = msgs } }
+end
+
 function M.account(name, data)
     return M.make("ACCOUNT", name, data)
 end
