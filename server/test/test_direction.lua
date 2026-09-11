@@ -45,6 +45,7 @@ defs.register("MoveDummy", {
         { name = "y", type = "number", sync = "all" },
         { name = "dir", type = "number", sync = "all", default = 0 },
         { name = "speed", type = "number", sync = "all", default = 150 },
+        { name = "seq", type = "number", sync = "self", default = 0 },
     },
     records = {},
     containers = {},
@@ -81,5 +82,19 @@ assert(math.abs(real:get("dir") - math.pi / 2) < 1e-9, "facing down")
 move(1, 1, 3)
 assert(math.abs(real:get("dir") - math.pi / 4) < 1e-9, "diagonal facing stays continuous")
 assert(direction.quantize(real:get("dir")) == direction.RIGHT, "client quantizes to right")
+
+-- 移动确认 seq 是 sync=self 普通属性: 只进 selfProps, 不进 aroundProps;
+-- 且只有移动(seq 变化)时才下发, 纯属性变更包不带 seq。
+real:dispatchClientRpc("onRequestMove", { seq = 9, dt = 0.1, dirX = 1, dirY = 0 })
+cell:updateEntities(0.1)
+local outbox = cell:buildOutbox(real)
+assert(outbox.selfProps.seq == 9, "own move packet must carry seq")
+assert(outbox.aroundProps.seq == nil, "around packet must not carry seq")
+
+real.outbox = nil
+real:clearClientDirty()
+real:set("dir", 0)  -- 纯属性变更
+local outbox2 = cell:buildOutbox(real)
+assert(outbox2.selfProps.seq == nil, "non-move packet must not carry seq")
 
 print("PASS direction")
