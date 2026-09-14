@@ -1,0 +1,29 @@
+# 统一行尾: 仓库内一律以 LF 存储, 检出时不自动转换。
+# 避免 Windows(CRLF) 与 WSL(LF) 之间产生大量"假改动"。
+* text=auto eol=lf
+
+# 明确按 LF 处理文本源码/配置/文档
+*.lua    text eol=lf
+*.gd     text eol=lf
+*.tscn   text eol=lf
+*.godot  text eol=lf
+*.json   text eol=lf
+*.md     text eol=lf
+*.txt    text eol=lf
+*.sh     text eol=lf
+*.py     text eol=lf
+*.c      text eol=lf
+*.h      text eol=lf
+Makefile text eol=lf
+*.cfg    text eol=lf
+*.uid    text eol=lf
+
+# 二进制文件不做行尾转换
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.so     binary
+*.ttf    binary
+*.woff   binary
+*.woff2  binary
